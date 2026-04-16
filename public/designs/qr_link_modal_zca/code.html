@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Project ZCA - Add Child Account</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#004ac6",
+                        "on-surface-variant": "#434655",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "inverse-surface": "#2d3133",
+                        "surface-variant": "#e0e3e5",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-surface": "#191c1e",
+                        "on-background": "#191c1e",
+                        "on-secondary-fixed-variant": "#2d486d",
+                        "surface-dim": "#d8dadc",
+                        "surface-container": "#eceef0",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "tertiary-container": "#bc4800",
+                        "surface-tint": "#0053db",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#eeefff",
+                        "secondary-container": "#b5d0fd",
+                        "inverse-on-surface": "#eff1f3",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "primary-fixed": "#dbe1ff",
+                        "inverse-primary": "#b4c5ff",
+                        "primary-container": "#2563eb",
+                        "tertiary": "#943700",
+                        "secondary": "#455f87",
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary-fixed-dim": "#adc8f5",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "on-secondary-fixed": "#001c3b",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffede6",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7f9fb",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#737686",
+                        "background": "#f7f9fb",
+                        "on-secondary-container": "#3e5980"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #004ac6 0%, #2563eb 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<!-- Sidebar Navigation Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#1E3A5F] flex flex-col py-6">
+<div class="px-6 mb-8">
+<div class="text-lg font-bold text-white tracking-tight">Project ZCA</div>
+<div class="text-[10px] uppercase tracking-widest text-blue-300/60 font-semibold mt-1">Automation Hub</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-blue-400 border-l-4 border-blue-600 pl-4 py-3 bg-blue-900/20" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="text-sm">Zalo Accounts</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="text-sm">Zalo Groups</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="text-sm">Messages</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-sm">Configs</span>
+</a>
+</nav>
+<div class="mt-auto px-4">
+<button class="w-full bg-gradient-primary text-white py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                New Campaign
+            </button>
+<div class="mt-6 pt-6 border-t border-white/10">
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-sm">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Header / Top Bar -->
+<header class="flex justify-between items-center h-16 px-8 ml-64 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+<div class="flex items-center gap-4">
+<h1 class="headline-sm font-semibold tracking-tight text-blue-700">Command Center</h1>
+<div class="h-6 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-2 text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-full text-xs font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                System Status: Online
+            </div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help_outline">help_outline</span>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant/20">
+<div class="text-right">
+<p class="text-xs font-bold text-on-surface">Admin User</p>
+<p class="text-[10px] text-on-surface-variant">ZCA Manager</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a professional male administrator in a brightly lit studio setting with a clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADZWPz0q55rWItElSLt2RHiuPbGKkgZl5dJIW2GK5fa9JB_gKqs-xQ0MC1puw_d9a1RqtYIItNIT1ZBMwEssu-cVJbDxzeIwqy3G6qsNHzINesdS3vbxGCk5qzsf82MdTZYvOHdyTCCSKPziY2xZN5hwlldMU4N6DtfRO9lkKK1zaLeuOGcru3JE-MMv9w6p-IlWmAwwn3nNkJxaFnj3UHzyjQHQp3ZpYvtiSvlViPyTkWgW6Qd_LA6vS6z_dvMJCNyZ6ov4YQfDE"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area (Background for Modal) -->
+<main class="ml-64 p-8 min-h-[calc(100vh-64px)]">
+<div class="flex items-center justify-between mb-10">
+<div>
+<h2 class="display-lg text-on-surface mb-1">Accounts</h2>
+<p class="body-md text-on-surface-variant">Manage your connected Zalo automation profiles.</p>
+</div>
+</div>
+<!-- Dashboard Grid Mockup (Beneath Overlay) -->
+<div class="grid grid-cols-12 gap-6 opacity-40 grayscale pointer-events-none">
+<div class="col-span-8 bg-surface-container-lowest rounded-xl p-6 h-64"></div>
+<div class="col-span-4 bg-surface-container-lowest rounded-xl p-6 h-64"></div>
+</div>
+</main>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40 backdrop-blur-sm">
+<!-- Modal Container (md size ~480px) -->
+<div class="bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col mx-4">
+<!-- Modal Header -->
+<div class="px-8 py-6 flex items-center justify-between">
+<div>
+<h3 class="headline-sm font-semibold text-on-surface">Add Child Account</h3>
+<p class="text-xs text-on-surface-variant mt-0.5">Step 2: Authenticate Connection</p>
+</div>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="close">close</span>
+</button>
+</div>
+<!-- Modal Content -->
+<div class="px-8 pb-8 flex flex-col items-center">
+<!-- QR Code Container -->
+<div class="w-full max-w-[280px] aspect-square bg-surface-container-lowest p-6 rounded-2xl relative group">
+<!-- Glassmorphism Card for QR -->
+<div class="w-full h-full border border-outline-variant/10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] rounded-xl flex items-center justify-center bg-white">
+<!-- Simulated QR Code (Clean SVG-like representation) -->
+<div class="w-48 h-48 bg-white p-2">
+<img class="w-full h-full" data-alt="High contrast black and white professional QR code centered on a white background for digital authentication" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_InfdwHFI-xHAPaDKmriXjzVVMwRMXMOwaRKkIetKez192-FrcQ99gUFAAaioybY_AwKymysAj88Zdz6a499ywbQ__Rgp7UZJYW8cIqEk0e8hUpj48gWxgiKJqlUve6dJGO1u3iHDhyOZtQVx_etx2hGvZjTC-oUPfFlEmvk7LxGOSz9J_1L0TtnewYIL25HkS3kItB6zSxZjin7FFiTMiQsbyTG5NNAQwBL1O8eeUMgEeP-Hm8tkih7CRAcXlSOyo2gysuL7PsI"/>
+</div>
+</div>
+<!-- Decorative Corners -->
+<div class="absolute top-2 left-2 w-8 h-8 border-t-2 border-l-2 border-primary rounded-tl-lg"></div>
+<div class="absolute top-2 right-2 w-8 h-8 border-t-2 border-r-2 border-primary rounded-tr-lg"></div>
+<div class="absolute bottom-2 left-2 w-8 h-8 border-b-2 border-l-2 border-primary rounded-bl-lg"></div>
+<div class="absolute bottom-2 right-2 w-8 h-8 border-b-2 border-r-2 border-primary rounded-br-lg"></div>
+</div>
+<!-- Status Message -->
+<div class="mt-8 flex flex-col items-center gap-3">
+<div class="flex items-center gap-3 px-4 py-2 bg-primary/5 rounded-full">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+</span>
+<span class="text-sm font-medium text-primary tracking-tight">Waiting for scan...</span>
+</div>
+<p class="text-center text-on-surface-variant body-md max-w-[260px]">
+                        Open Zalo on your phone and scan the QR code to authorize this automation.
+                    </p>
+</div>
+<!-- Refresh Button -->
+<button class="mt-6 flex items-center gap-2 text-primary hover:text-primary-container transition-colors text-sm font-semibold group">
+<span class="material-symbols-outlined text-lg group-active:rotate-180 transition-transform duration-500" data-icon="refresh">refresh</span>
+                    Refresh QR Code
+                </button>
+</div>
+<!-- Modal Footer -->
+<div class="bg-surface-container-low px-8 py-5 flex items-center justify-between">
+<p class="text-[10px] text-on-surface-variant font-medium tracking-wide uppercase">Code expires in 01:54</p>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 text-on-surface font-semibold text-sm hover:bg-surface-container transition-colors rounded-lg">
+                        Cancel
+                    </button>
+<button class="px-5 py-2.5 bg-gradient-primary text-white font-semibold text-sm rounded-lg shadow-sm">
+                        Continue
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

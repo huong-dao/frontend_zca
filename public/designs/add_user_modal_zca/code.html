@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>User Management - Project ZCA</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed": "#360f00",
+                      "inverse-surface": "#2d3133",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed-dim": "#ffb596",
+                      "primary-fixed": "#dbe1ff",
+                      "surface-bright": "#f7f9fb",
+                      "on-error": "#ffffff",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "secondary-fixed": "#d5e3ff",
+                      "on-tertiary-fixed-variant": "#7d2d00",
+                      "tertiary": "#943700",
+                      "surface-tint": "#0053db",
+                      "on-primary": "#ffffff",
+                      "on-surface-variant": "#434655",
+                      "on-secondary": "#ffffff",
+                      "surface-container-high": "#e6e8ea",
+                      "primary-container": "#2563eb",
+                      "error-container": "#ffdad6",
+                      "surface": "#f7f9fb",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#b4c5ff",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-container": "#b5d0fd",
+                      "surface-dim": "#d8dadc",
+                      "on-primary-container": "#eeefff",
+                      "outline": "#737686",
+                      "on-secondary-fixed": "#001c3b",
+                      "tertiary-container": "#bc4800",
+                      "outline-variant": "#c3c6d7",
+                      "on-secondary-container": "#3e5980",
+                      "surface-container-highest": "#e0e3e5",
+                      "inverse-on-surface": "#eff1f3",
+                      "on-background": "#191c1e",
+                      "secondary-fixed-dim": "#adc8f5",
+                      "on-error-container": "#93000a",
+                      "on-primary-fixed": "#00174b",
+                      "surface-variant": "#e0e3e5",
+                      "surface-container-low": "#f2f4f6",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "primary": "#004ac6",
+                      "on-tertiary-container": "#ffede6",
+                      "on-secondary-fixed-variant": "#2d486d",
+                      "secondary": "#455f87",
+                      "surface-container": "#eceef0",
+                      "tertiary-fixed": "#ffdbcd",
+                      "background": "#f7f9fb",
+                      "on-surface": "#191c1e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Inter"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="bg-[#1E3A5F] h-screen w-64 fixed left-0 top-0 flex flex-col py-6 font-inter text-sm antialiased">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-bold text-white tracking-tight">Project ZCA</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold mt-1">Command Center</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-300 hover:text-white hover:bg-white/10 transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center px-6 py-3 border-l-4 border-blue-600 text-blue-400 bg-white/5 font-semibold transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3 text-blue-400">group</span>
+<span>Users</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-300 hover:text-white hover:bg-white/10 transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">groups</span>
+<span>Zalo Groups</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-300 hover:text-white hover:bg-white/10 transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">account_circle</span>
+<span>Zalo Accounts</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-300 hover:text-white hover:bg-white/10 transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">chat</span>
+<span>Messages</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-300 hover:text-white hover:bg-white/10 transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span>Configs</span>
+</a>
+<a class="flex items-center px-6 py-3 text-slate-300 hover:text-white hover:bg-white/10 transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">vpn_key</span>
+<span>API Keys</span>
+</a>
+</nav>
+<div class="px-6 pt-6 mt-auto border-t border-white/10">
+<a class="flex items-center text-slate-300 hover:text-white transition-colors scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined mr-3">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area (Background for Modal) -->
+<main class="ml-64 min-h-screen flex flex-col blur-sm grayscale-[0.2] opacity-60">
+<!-- Top Navigation -->
+<header class="bg-[#f7f9fb]/80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center px-8 h-16 w-full font-inter text-sm">
+<div class="flex items-center bg-surface-container-low px-4 py-2 rounded-xl w-96">
+<span class="material-symbols-outlined text-outline mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full" placeholder="Search users, groups or logs..." type="text"/>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex space-x-4">
+<a class="text-slate-500 hover:text-[#2563eb] transition-all opacity-80 hover:opacity-100" href="#">Dashboard</a>
+<a class="text-[#004ac6] font-bold border-b-2 border-[#004ac6] transition-all" href="#">Users</a>
+</div>
+<div class="h-6 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center space-x-3">
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+<button class="text-slate-500 hover:text-primary transition-colors"><span class="material-symbols-outlined">settings</span></button>
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container overflow-hidden">
+<img alt="Admin Profile" class="w-full h-full object-cover" data-alt="clean professional studio headshot of a corporate administrator in business attire with neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIzNzCsz_PuJhlEql5BIOnxRHYOmC2yWUZbjc64WupyXkGOaz3XrtfnXPImxsHYfkXDB9cA7IvFYg7d6Wzdjc5I4CvGlWCMD5ar4PNiCj4jcfmvME8HZ2oc6HIkcSllKqG4uVRVQwG0oEsr_63obJBKFwAGzfzvy57B9pkzcExPtDZuo7W1orGz5m1UgHmpPBEY4xyi0LOkQ57eJ1lRDXLPR8dncjv1YiHkO_9WNAMwGYjnN4yE25mjlZRHixo-v1F5DAz_dhv7wc"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<section class="p-8 space-y-8">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-bold tracking-tight text-on-background">Users Directory</h2>
+<p class="text-on-surface-variant mt-1">Manage administrative access and agent permissions.</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-6 py-2.5 rounded-xl font-semibold shadow-lg shadow-primary/20 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span> Add User
+                </button>
+</div>
+<!-- Bento Grid of Users (Background Display) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- User Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container">person</span>
+</div>
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold rounded-full uppercase tracking-wider">Admin</span>
+</div>
+<h3 class="font-bold text-lg">Alex Thompson</h3>
+<p class="text-sm text-outline mb-4">alex.t@projectzca.com</p>
+<div class="flex items-center text-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-sm mr-1">history</span> Last active 2h ago
+                    </div>
+</div>
+<!-- User Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-fixed">support_agent</span>
+</div>
+<span class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-full uppercase tracking-wider">User</span>
+</div>
+<h3 class="font-bold text-lg">Sarah Jenkins</h3>
+<p class="text-sm text-outline mb-4">s.jenkins@zca.io</p>
+<div class="flex items-center text-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-sm mr-1">history</span> Last active 15m ago
+                    </div>
+</div>
+<!-- User Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15">
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-error-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-error-container">security</span>
+</div>
+<span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold rounded-full uppercase tracking-wider">Admin</span>
+</div>
+<h3 class="font-bold text-lg">System Root</h3>
+<p class="text-sm text-outline mb-4">root@internal.local</p>
+<div class="flex items-center text-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-sm mr-1">warning</span> Restricted Access
+                    </div>
+</div>
+</div>
+</section>
+</main>
+<!-- User Management Modal Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/20 backdrop-blur-[2px]">
+<!-- Modal Card -->
+<div class="bg-surface-container-lowest w-full max-w-md mx-4 rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-outline-variant/20 overflow-hidden">
+<!-- Header -->
+<div class="px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center">
+<h3 class="text-xl font-bold tracking-tight text-on-surface">Add User</h3>
+<button class="text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Form Content -->
+<div class="p-8 space-y-6">
+<!-- Email Field -->
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider ml-1">Email Address</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined">mail</span>
+</div>
+<input class="w-full bg-surface-container-low border-none focus:ring-2 focus:ring-primary-fixed rounded-xl py-3.5 pl-12 pr-4 text-sm transition-all outline-none text-on-surface" placeholder="e.g. user@projectzca.com" type="email"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider ml-1">Password</label>
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+<span class="material-symbols-outlined">lock</span>
+</div>
+<input class="w-full bg-surface-container-low border-none focus:ring-2 focus:ring-primary-fixed rounded-xl py-3.5 pl-12 pr-4 text-sm transition-all outline-none text-on-surface" placeholder="••••••••••••" type="password"/>
+</div>
+</div>
+<!-- Role Selection -->
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-wider ml-1">Access Role</label>
+<div class="grid grid-cols-2 gap-4">
+<label class="relative flex flex-col p-4 rounded-xl bg-surface-container-low border-2 border-transparent cursor-pointer hover:bg-surface-container transition-all has-[:checked]:border-primary-container has-[:checked]:bg-primary-fixed/20">
+<input checked="" class="sr-only" name="role" type="radio" value="ADMIN"/>
+<span class="material-symbols-outlined text-primary mb-2">verified_user</span>
+<span class="font-bold text-sm">ADMIN</span>
+<span class="text-[10px] text-on-surface-variant mt-1 leading-tight">Full system control and user management</span>
+</label>
+<label class="relative flex flex-col p-4 rounded-xl bg-surface-container-low border-2 border-transparent cursor-pointer hover:bg-surface-container transition-all has-[:checked]:border-primary-container has-[:checked]:bg-primary-fixed/20">
+<input class="sr-only" name="role" type="radio" value="USER"/>
+<span class="material-symbols-outlined text-secondary mb-2">person</span>
+<span class="font-bold text-sm">USER</span>
+<span class="text-[10px] text-on-surface-variant mt-1 leading-tight">Can manage automation and messages</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="px-8 py-6 bg-surface-container-low/50 border-t border-outline-variant/10 flex items-center justify-end gap-4">
+<button class="px-6 py-2.5 text-sm font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors rounded-xl">
+                    Cancel
+                </button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95">
+                    Save User
+                </button>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+        <meta charset="utf-8" />
+        <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+        <title>ZCA UI Kit - Common Components</title>
+        <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+                rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+                rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+                rel="stylesheet" />
+        <script id="tailwind-config">
+                tailwind.config = {
+                        darkMode: "class",
+                        theme: {
+                                extend: {
+                                        "colors": {
+                                                "on-error": "#ffffff",
+                                                "on-secondary": "#ffffff",
+                                                "secondary-container": "#b5d0fd",
+                                                "tertiary-fixed-dim": "#ffb596",
+                                                "on-primary": "#ffffff",
+                                                "on-secondary-fixed-variant": "#2d486d",
+                                                "inverse-primary": "#b4c5ff",
+                                                "surface-variant": "#e0e3e5",
+                                                "error": "#ba1a1a",
+                                                "surface": "#f7f9fb",
+                                                "background": "#f7f9fb",
+                                                "on-error-container": "#93000a",
+                                                "surface-bright": "#f7f9fb",
+                                                "primary-fixed-dim": "#b4c5ff",
+                                                "on-primary-container": "#eeefff",
+                                                "on-surface": "#191c1e",
+                                                "tertiary": "#943700",
+                                                "on-background": "#191c1e",
+                                                "surface-container-lowest": "#ffffff",
+                                                "inverse-surface": "#2d3133",
+                                                "surface-container-low": "#f2f4f6",
+                                                "secondary-fixed-dim": "#adc8f5",
+                                                "on-tertiary-container": "#ffede6",
+                                                "tertiary-container": "#bc4800",
+                                                "secondary": "#455f87",
+                                                "primary-fixed": "#dbe1ff",
+                                                "surface-container-highest": "#e0e3e5",
+                                                "surface-tint": "#0053db",
+                                                "tertiary-fixed": "#ffdbcd",
+                                                "on-surface-variant": "#434655",
+                                                "primary-container": "#2563eb",
+                                                "surface-container-high": "#e6e8ea",
+                                                "outline-variant": "#c3c6d7",
+                                                "on-tertiary": "#ffffff",
+                                                "on-tertiary-fixed": "#360f00",
+                                                "primary": "#004ac6",
+                                                "surface-container": "#eceef0",
+                                                "on-primary-fixed": "#00174b",
+                                                "on-primary-fixed-variant": "#003ea8",
+                                                "surface-dim": "#d8dadc",
+                                                "on-secondary-fixed": "#001c3b",
+                                                "secondary-fixed": "#d5e3ff",
+                                                "inverse-on-surface": "#eff1f3",
+                                                "on-tertiary-fixed-variant": "#7d2d00",
+                                                "error-container": "#ffdad6",
+                                                "outline": "#737686",
+                                                "on-secondary-container": "#3e5980"
+                                        },
+                                        "borderRadius": {
+                                                "DEFAULT": "0.125rem",
+                                                "lg": "0.25rem",
+                                                "xl": "0.5rem",
+                                                "full": "0.75rem"
+                                        },
+                                        "fontFamily": {
+                                                "headline": ["Inter", "sans-serif"],
+                                                "body": ["Inter", "sans-serif"],
+                                                "label": ["Inter", "sans-serif"]
+                                        }
+                                },
+                        }
+                }
+        </script>
+        <style>
+                body {
+                        font-family: 'Inter', sans-serif;
+                }
+
+                .material-symbols-outlined {
+                        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+                        display: inline-block;
+                        vertical-align: middle;
+                }
+
+                .no-scrollbar::-webkit-scrollbar {
+                        display: none;
+                }
+        </style>
+</head>
+
+<body class="bg-surface text-on-surface">
+        <!-- SideNavBar -->
+        <aside class="h-screen w-64 fixed left-0 top-0 bg-[#1E3A5F] flex flex-col py-6 z-50">
+                <div class="px-6 mb-10">
+                        <h1 class="text-xl font-bold text-white tracking-tight">Project ZCA</h1>
+                        <p class="text-slate-400 text-xs font-medium uppercase tracking-wider mt-1">Automation Engine
+                        </p>
+                </div>
+                <nav class="flex-1 space-y-1">
+                        <a class="text-slate-300 hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                                <span class="font-medium body-md">Dashboard</span>
+                        </a>
+                        <a class="text-slate-300 hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="robot_2">robot_2</span>
+                                <span class="font-medium body-md">Automations</span>
+                        </a>
+                        <a class="text-slate-300 hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="campaign">campaign</span>
+                                <span class="font-medium body-md">Campaigns</span>
+                        </a>
+                        <a class="text-slate-300 hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="groups">groups</span>
+                                <span class="font-medium body-md">Audience</span>
+                        </a>
+                        <a class="text-slate-300 hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                                <span class="font-medium body-md">Analytics</span>
+                        </a>
+                        <a class="text-slate-300 hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+                                <span class="font-medium body-md">Logs</span>
+                        </a>
+                        <a class="border-l-4 border-blue-500 text-blue-400 font-semibold bg-blue-900/20 px-6 py-3 flex items-center gap-3 transition-colors"
+                                href="#">
+                                <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                                <span class="font-medium body-md">Settings</span>
+                        </a>
+                </nav>
+                <div class="px-6 mt-auto pt-6 border-t border-white/10 space-y-4">
+                        <button
+                                class="w-full bg-primary-container text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-primary/20">
+                                <span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+                                New Automation
+                        </button>
+                        <div class="space-y-1">
+                                <a class="text-slate-400 hover:text-white flex items-center gap-3 py-2 text-sm transition-colors"
+                                        href="#">
+                                        <span class="material-symbols-outlined text-[18px]"
+                                                data-icon="description">description</span> Documentation
+                                </a>
+                                <a class="text-slate-400 hover:text-white flex items-center gap-3 py-2 text-sm transition-colors"
+                                        href="#">
+                                        <span class="material-symbols-outlined text-[18px]" data-icon="help">help</span>
+                                        Support
+                                </a>
+                        </div>
+                </div>
+        </aside>
+        <!-- Main Content Canvas -->
+        <main class="ml-64 min-h-screen">
+                <!-- TopAppBar -->
+                <header
+                        class="flex justify-between items-center h-16 px-8 sticky top-0 z-40 bg-white/80 backdrop-blur-md shadow-sm">
+                        <div class="flex items-center gap-8">
+                                <h2 class="text-lg font-semibold text-slate-900 tracking-tight">Design System &amp; UI
+                                        Kit</h2>
+                                <div class="relative w-80">
+                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]"
+                                                data-icon="search">search</span>
+                                        <input class="w-full pl-10 pr-4 py-1.5 bg-surface-container-low rounded-xl border-none focus:ring-2 focus:ring-primary/20 text-sm"
+                                                placeholder="Search components..." type="text" />
+                                </div>
+                        </div>
+                        <div class="flex items-center gap-6">
+                                <nav class="hidden md:flex items-center gap-6">
+                                        <a class="text-blue-600 border-b-2 border-blue-600 pb-1 text-sm font-medium"
+                                                href="#">Components</a>
+                                        <a class="text-slate-500 hover:text-slate-900 text-sm font-medium transition-all"
+                                                href="#">Guidelines</a>
+                                        <a class="text-slate-500 hover:text-slate-900 text-sm font-medium transition-all"
+                                                href="#">Assets</a>
+                                </nav>
+                                <div class="h-6 w-[1px] bg-outline-variant/30"></div>
+                                <div class="flex items-center gap-3">
+                                        <button
+                                                class="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-all">
+                                                <span class="material-symbols-outlined"
+                                                        data-icon="notifications">notifications</span>
+                                        </button>
+                                        <button
+                                                class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all">Deploy
+                                                Changes</button>
+                                        <div
+                                                class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/50">
+                                                <img alt="Admin Avatar"
+                                                        data-alt="professional headshot of a product manager with warm lighting and a neutral background"
+                                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8nRBU0zMFp8f4gmCNNluzTuxgDY-EU6474OWARBatD_IsmMLoiRHREcFyMjhnPyuR7Vdm6BG8WyQ_7-dKMhfwKz8RVVrv4FmBHj-cRJ5kz6WmZtmOBKj-wyS68M6-G28Hzo5h8m07Q3z4_rJ0CXsegntYhip0yc2GsDa0DUUMFqGpm0-rEHT-CIXNNijTAkhX3Lpx-Kn32FdzQCVQQCTTUvUulG_xpU5oPmUSkQWCGgXrCNm7lCG0gc6wY1PUT0wmJhRe5Kr4RA8" />
+                                        </div>
+                                </div>
+                        </div>
+                </header>
+                <!-- Page Content -->
+                <div class="p-10 max-w-[1400px] mx-auto space-y-12">
+                        <!-- Hero Header -->
+                        <section class="space-y-4">
+                                <h3 class="text-4xl font-bold tracking-tight text-on-surface">Common Components</h3>
+                                <p class="text-on-surface-variant max-w-2xl text-lg leading-relaxed">A central design
+                                        authority for the Project ZCA ecosystem. Built with precision, focusing on tonal
+                                        architecture and high-performance workflows.</p>
+                        </section>
+                        <!-- 1. Actions & Buttons (Asymmetric Layout) -->
+                        <section class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+                                <div class="md:col-span-4 sticky top-24">
+                                        <h4 class="text-2xl font-bold text-primary">Actions &amp; Buttons</h4>
+                                        <p class="text-on-surface-variant text-sm mt-2">Core interaction primitives
+                                                supporting multiple states and contexts.</p>
+                                </div>
+                                <div
+                                        class="md:col-span-8 bg-surface-container-lowest p-8 rounded-xl shadow-sm border border-outline-variant/10">
+                                        <div class="grid grid-cols-2 lg:grid-cols-3 gap-8">
+                                                <!-- Primary States -->
+                                                <div class="space-y-4">
+                                                        <label
+                                                                class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Primary</label>
+                                                        <button
+                                                                class="w-full bg-primary text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-primary-container transition-all">Default</button>
+                                                        <button
+                                                                class="w-full bg-primary/40 text-white px-6 py-2.5 rounded-xl font-semibold cursor-not-allowed">Disabled</button>
+                                                        <button
+                                                                class="w-full bg-primary text-white px-6 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2">
+                                                                <span
+                                                                        class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                                                Loading
+                                                        </button>
+                                                </div>
+                                                <!-- Secondary & Ghost -->
+                                                <div class="space-y-4">
+                                                        <label
+                                                                class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Secondary
+                                                                / Ghost</label>
+                                                        <button
+                                                                class="w-full bg-surface-container text-on-surface-variant px-6 py-2.5 rounded-xl font-semibold hover:bg-surface-container-high transition-all">Secondary</button>
+                                                        <button
+                                                                class="w-full text-primary px-6 py-2.5 rounded-xl font-semibold hover:bg-primary/5 transition-all">Ghost
+                                                                Action</button>
+                                                        <button
+                                                                class="w-full bg-error/10 text-error px-6 py-2.5 rounded-xl font-semibold hover:bg-error/20 transition-all">Destructive</button>
+                                                </div>
+                                                <!-- Icons -->
+                                                <div class="space-y-4">
+                                                        <label
+                                                                class="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">Icon
+                                                                Variants</label>
+                                                        <div class="flex flex-wrap gap-3">
+                                                                <button
+                                                                        class="w-12 h-12 flex items-center justify-center bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                                                                        <span class="material-symbols-outlined"
+                                                                                data-icon="add">add</span>
+                                                                </button>
+                                                                <button
+                                                                        class="w-12 h-12 flex items-center justify-center border border-outline-variant text-on-surface-variant rounded-xl hover:bg-surface-container transition-all">
+                                                                        <span class="material-symbols-outlined"
+                                                                                data-icon="edit">edit</span>
+                                                                </button>
+                                                                <button
+                                                                        class="w-12 h-12 flex items-center justify-center text-on-surface-variant rounded-xl hover:bg-surface-container transition-all">
+                                                                        <span class="material-symbols-outlined"
+                                                                                data-icon="delete">delete</span>
+                                                                </button>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                </div>
+                        </section>
+                        <!-- 2. Form Controls (Bento Style) -->
+                        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div
+                                        class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-xl border border-outline-variant/10">
+                                        <h4 class="text-xl font-bold mb-6">Standard Controls</h4>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div class="space-y-1">
+                                                        <label class="text-sm font-semibold text-on-surface ml-1">Full
+                                                                Name</label>
+                                                        <input class="w-full bg-surface border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                                                                type="text" value="Alex Rivera" />
+                                                </div>
+                                                <div class="space-y-1">
+                                                        <label class="text-sm font-semibold text-on-surface ml-1">Email
+                                                                Address</label>
+                                                        <input class="w-full bg-surface border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                                                                placeholder="alex@zca-engine.com" type="email" />
+                                                </div>
+                                                <div class="space-y-1">
+                                                        <label class="text-sm font-semibold text-on-surface ml-1">Access
+                                                                Password</label>
+                                                        <div class="relative">
+                                                                <input class="w-full bg-surface border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                                                                        type="password" value="••••••••" />
+                                                                <button
+                                                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                                        <span class="material-symbols-outlined text-[20px]"
+                                                                                data-icon="visibility">visibility</span>
+                                                                </button>
+                                                        </div>
+                                                </div>
+                                                <div class="space-y-1">
+                                                        <label class="text-sm font-semibold text-on-surface ml-1">Search
+                                                                Database</label>
+                                                        <div class="relative">
+                                                                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]"
+                                                                        data-icon="search">search</span>
+                                                                <input class="w-full bg-surface border-none rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+                                                                        placeholder="Start typing..." type="text" />
+                                                        </div>
+                                                </div>
+                                                <div class="space-y-1 md:col-span-2">
+                                                        <label class="text-sm font-semibold text-on-surface ml-1">Automation
+                                                                Script</label>
+                                                        <textarea
+                                                                class="w-full bg-surface border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                                                                rows="3">if (lead.score &gt; 80) { send_email("high_priority_welcome"); }</textarea>
+                                                </div>
+                                        </div>
+                                </div>
+                                <div class="bg-surface-container-low p-8 rounded-xl flex flex-col">
+                                        <h4 class="text-xl font-bold mb-6">Selection Engine</h4>
+                                        <div class="space-y-6 flex-1">
+                                                <div class="space-y-2">
+                                                        <label
+                                                                class="text-xs font-bold text-slate-500 uppercase tracking-wider">Region
+                                                                Select</label>
+                                                        <select
+                                                                class="w-full bg-surface-container-lowest border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20">
+                                                                <option>North America (East)</option>
+                                                                <option>Europe (Frankfurt)</option>
+                                                                <option>Asia (Tokyo)</option>
+                                                        </select>
+                                                </div>
+                                                <div class="space-y-2">
+                                                        <label
+                                                                class="text-xs font-bold text-slate-500 uppercase tracking-wider">Multi-Select
+                                                                Tags</label>
+                                                        <div
+                                                                class="w-full bg-surface-container-lowest rounded-xl p-2 flex flex-wrap gap-2 border border-outline-variant/10">
+                                                                <span
+                                                                        class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">VIP
+                                                                        <span class="material-symbols-outlined text-[12px]"
+                                                                                data-icon="close">close</span></span>
+                                                                <span
+                                                                        class="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">Lead
+                                                                        <span class="material-symbols-outlined text-[12px]"
+                                                                                data-icon="close">close</span></span>
+                                                                <input class="bg-transparent border-none focus:ring-0 text-sm w-12 p-0"
+                                                                        placeholder="..." type="text" />
+                                                        </div>
+                                                </div>
+                                                <div class="space-y-2">
+                                                        <label
+                                                                class="text-xs font-bold text-slate-500 uppercase tracking-wider">Autocomplete</label>
+                                                        <div class="relative">
+                                                                <input class="w-full bg-surface-container-lowest border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20"
+                                                                        type="text" value="User Ma" />
+                                                                <div
+                                                                        class="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant/10 z-10 overflow-hidden">
+                                                                        <div
+                                                                                class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm">
+                                                                                User Management</div>
+                                                                        <div
+                                                                                class="px-4 py-2 bg-slate-50 border-l-4 border-primary cursor-pointer text-sm font-semibold">
+                                                                                User Matrix</div>
+                                                                        <div
+                                                                                class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm">
+                                                                                User Mapping</div>
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                </div>
+                        </section>
+                        <!-- 3. Pickers & Selection -->
+                        <section class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div
+                                        class="md:col-span-1 space-y-6 bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm">
+                                        <h5 class="font-bold text-lg mb-4">Switches &amp; Checks</h5>
+                                        <div class="flex items-center justify-between group">
+                                                <span
+                                                        class="text-sm text-on-surface-variant font-medium">Auto-renew</span>
+                                                <button
+                                                        class="relative w-12 h-6 bg-primary rounded-full transition-all">
+                                                        <div
+                                                                class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full">
+                                                        </div>
+                                                </button>
+                                        </div>
+                                        <div class="flex items-center justify-between group">
+                                                <span class="text-sm text-on-surface-variant font-medium">Dark
+                                                        Mode</span>
+                                                <button
+                                                        class="relative w-12 h-6 bg-surface-container-highest rounded-full transition-all">
+                                                        <div
+                                                                class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm">
+                                                        </div>
+                                                </button>
+                                        </div>
+                                        <div class="space-y-3 pt-4 border-t border-outline-variant/10">
+                                                <label class="flex items-center gap-3 cursor-pointer">
+                                                        <input checked=""
+                                                                class="w-5 h-5 rounded-lg border-outline-variant text-primary focus:ring-primary/20"
+                                                                type="checkbox" />
+                                                        <span class="text-sm font-medium">Primary Agreement</span>
+                                                </label>
+                                                <label class="flex items-center gap-3 cursor-pointer">
+                                                        <input checked=""
+                                                                class="w-5 h-5 border-outline-variant text-primary focus:ring-primary/20"
+                                                                name="plan" type="radio" />
+                                                        <span class="text-sm font-medium">Cloud Pro Plan</span>
+                                                </label>
+                                        </div>
+                                </div>
+                                <div
+                                        class="md:col-span-3 bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div class="space-y-4">
+                                                <h5 class="font-bold text-lg">DateTime Pickers</h5>
+                                                <div class="relative">
+                                                        <label
+                                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Pick
+                                                                Date</label>
+                                                        <div
+                                                                class="flex items-center bg-surface-container-low rounded-xl px-4 py-3 gap-3">
+                                                                <span class="material-symbols-outlined text-slate-400"
+                                                                        data-icon="calendar_month">calendar_month</span>
+                                                                <span class="text-sm font-medium">October 24,
+                                                                        2023</span>
+                                                                <span class="material-symbols-outlined ml-auto text-slate-400 text-[18px]"
+                                                                        data-icon="keyboard_arrow_down">keyboard_arrow_down</span>
+                                                        </div>
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-4">
+                                                        <div
+                                                                class="bg-surface-container-low rounded-xl px-4 py-3 flex items-center gap-2">
+                                                                <span class="material-symbols-outlined text-slate-400 text-[18px]"
+                                                                        data-icon="schedule">schedule</span>
+                                                                <span class="text-sm font-medium">09:00 AM</span>
+                                                        </div>
+                                                        <div
+                                                                class="bg-surface-container-low rounded-xl px-4 py-3 flex items-center gap-2">
+                                                                <span class="material-symbols-outlined text-slate-400 text-[18px]"
+                                                                        data-icon="schedule">schedule</span>
+                                                                <span class="text-sm font-medium">05:00 PM</span>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                        <div class="space-y-4">
+                                                <h5 class="font-bold text-lg">Range Control</h5>
+                                                <div class="p-4 bg-primary/5 rounded-xl border border-primary/10">
+                                                        <div
+                                                                class="flex justify-between text-xs font-bold text-primary mb-2">
+                                                                <span>Start: Oct 01</span>
+                                                                <span>End: Oct 15</span>
+                                                        </div>
+                                                        <div class="relative h-1.5 bg-slate-200 rounded-full">
+                                                                <div
+                                                                        class="absolute left-[10%] right-[30%] top-0 bottom-0 bg-primary rounded-full">
+                                                                </div>
+                                                                <div
+                                                                        class="absolute left-[10%] top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-sm">
+                                                                </div>
+                                                                <div
+                                                                        class="absolute right-[30%] top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-sm">
+                                                                </div>
+                                                        </div>
+                                                        <p class="text-[10px] text-slate-500 mt-4 text-center">Selected
+                                                                period: 14 business days</p>
+                                                </div>
+                                        </div>
+                                </div>
+                        </section>
+                        <!-- 4. Status & Feedback (Grid) -->
+                        <section class="space-y-8">
+                                <div class="flex items-center gap-4">
+                                        <h4 class="text-2xl font-bold">Status &amp; Feedback</h4>
+                                        <div
+                                                class="h-[2px] flex-1 bg-gradient-to-r from-outline-variant/30 to-transparent">
+                                        </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        <!-- Badges & Tags -->
+                                        <div class="space-y-6">
+                                                <h6 class="text-sm font-bold uppercase tracking-widest text-slate-400">
+                                                        System Badges</h6>
+                                                <div class="flex flex-wrap gap-4">
+                                                        <span
+                                                                class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">Active</span>
+                                                        <span
+                                                                class="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-full">Inactive</span>
+                                                        <span
+                                                                class="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">Warning</span>
+                                                        <span
+                                                                class="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">Danger</span>
+                                                </div>
+                                                <h6
+                                                        class="text-sm font-bold uppercase tracking-widest text-slate-400 mt-8">
+                                                        Metadata Tags</h6>
+                                                <div class="flex flex-wrap gap-2">
+                                                        <div
+                                                                class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-lg text-[11px] font-semibold">
+                                                                <span class="material-symbols-outlined text-[14px]"
+                                                                        data-icon="label">label</span> Marketing
+                                                        </div>
+                                                        <div
+                                                                class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-lg text-[11px] font-semibold">
+                                                                <span class="material-symbols-outlined text-[14px]"
+                                                                        data-icon="bolt">bolt</span> Fast-track
+                                                        </div>
+                                                        <div
+                                                                class="flex items-center gap-1 bg-surface-container-low px-2 py-1 rounded-lg text-[11px] font-semibold">
+                                                                <span class="material-symbols-outlined text-[14px]"
+                                                                        data-icon="person">person</span> CRM Sync
+                                                        </div>
+                                                </div>
+                                        </div>
+                                        <!-- Feedback Elements -->
+                                        <div class="space-y-6">
+                                                <h6 class="text-sm font-bold uppercase tracking-widest text-slate-400">
+                                                        Loading Indicators</h6>
+                                                <div class="flex items-center gap-8">
+                                                        <div
+                                                                class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin">
+                                                        </div>
+                                                        <div class="flex-1 space-y-2">
+                                                                <div class="flex justify-between text-xs font-bold">
+                                                                        <span>Syncing...</span>
+                                                                        <span>65%</span>
+                                                                </div>
+                                                                <div
+                                                                        class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                                        <div class="w-[65%] h-full bg-primary"></div>
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                                <div class="relative group inline-block">
+                                                        <button
+                                                                class="bg-surface-container px-4 py-2 rounded-xl text-sm font-medium">Hover
+                                                                for Tooltip</button>
+                                                        <div
+                                                                class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 text-white text-[10px] rounded shadow-lg whitespace-nowrap hidden group-hover:block transition-all">
+                                                                Explains component logic
+                                                                <div
+                                                                        class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900">
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                        <!-- Notifications -->
+                                        <div class="space-y-4">
+                                                <h6 class="text-sm font-bold uppercase tracking-widest text-slate-400">
+                                                        Communication</h6>
+                                                <div
+                                                        class="p-4 bg-green-50 border-l-4 border-green-500 rounded-r-xl flex gap-3">
+                                                        <span class="material-symbols-outlined text-green-600"
+                                                                data-icon="check_circle">check_circle</span>
+                                                        <div>
+                                                                <p class="text-xs font-bold text-green-800">Success
+                                                                        Alert</p>
+                                                                <p class="text-[10px] text-green-700">Automation
+                                                                        sequence updated successfully.</p>
+                                                        </div>
+                                                </div>
+                                                <div
+                                                        class="p-3 bg-white shadow-xl rounded-xl border border-outline-variant/10 flex items-center gap-4">
+                                                        <div
+                                                                class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
+                                                                <span class="material-symbols-outlined text-[18px]"
+                                                                        data-icon="notifications_active">notifications_active</span>
+                                                        </div>
+                                                        <div class="flex-1">
+                                                                <p class="text-[11px] font-bold">New lead captured</p>
+                                                                <p class="text-[9px] text-slate-500">Sarah Jenkins via
+                                                                        Facebook</p>
+                                                        </div>
+                                                        <button class="text-slate-400">
+                                                                <span class="material-symbols-outlined text-[14px]"
+                                                                        data-icon="close">close</span>
+                                                        </button>
+                                                </div>
+                                        </div>
+                                </div>
+                        </section>
+                        <!-- 5. Data Display (Bento Grid KPIs) -->
+                        <section class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                                <!-- KPI Cards -->
+                                <div class="lg:col-span-1 grid grid-cols-1 gap-6">
+                                        <div
+                                                class="bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm group">
+                                                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                                        Active Nodes</p>
+                                                <h5 class="text-4xl font-bold text-primary mt-2">1,284</h5>
+                                                <div
+                                                        class="mt-4 flex items-center gap-2 text-green-600 text-[11px] font-bold">
+                                                        <span class="material-symbols-outlined text-[16px]"
+                                                                data-icon="trending_up">trending_up</span> +12% this
+                                                        week
+                                                </div>
+                                        </div>
+                                        <div class="bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm">
+                                                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                                        Failure Rate</p>
+                                                <h5 class="text-4xl font-bold text-on-surface mt-2">0.02<span
+                                                                class="text-xl">%</span></h5>
+                                                <div
+                                                        class="mt-4 flex items-center gap-2 text-slate-400 text-[11px] font-bold">
+                                                        <span class="material-symbols-outlined text-[16px]"
+                                                                data-icon="horizontal_rule">horizontal_rule</span>
+                                                        Steady from last month
+                                                </div>
+                                        </div>
+                                </div>
+                                <!-- Mini Data Table -->
+                                <div
+                                        class="lg:col-span-3 bg-white rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden flex flex-col">
+                                        <div
+                                                class="px-6 py-4 bg-slate-50 border-b border-outline-variant/10 flex justify-between items-center">
+                                                <h6 class="font-bold text-sm">Recent Automations</h6>
+                                                <button
+                                                        class="text-primary text-[11px] font-bold flex items-center gap-1">View
+                                                        Full Report <span class="material-symbols-outlined text-[14px]"
+                                                                data-icon="arrow_forward">arrow_forward</span></button>
+                                        </div>
+                                        <table class="w-full text-left">
+                                                <thead
+                                                        class="bg-slate-50/50 text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                                                        <tr>
+                                                                <th class="px-6 py-3">Sequence Name</th>
+                                                                <th class="px-6 py-3">Status</th>
+                                                                <th class="px-6 py-3">Success Rate</th>
+                                                                <th class="px-6 py-3">Last Run</th>
+                                                        </tr>
+                                                </thead>
+                                                <tbody class="text-sm divide-y divide-outline-variant/10">
+                                                        <tr class="hover:bg-surface transition-colors">
+                                                                <td class="px-6 py-4 font-semibold">Welcome Series_V2
+                                                                </td>
+                                                                <td class="px-6 py-4"><span
+                                                                                class="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded">Running</span>
+                                                                </td>
+                                                                <td class="px-6 py-4">98.5%</td>
+                                                                <td class="px-6 py-4 text-slate-500 text-xs">2 mins ago
+                                                                </td>
+                                                        </tr>
+                                                        <tr class="hover:bg-surface transition-colors">
+                                                                <td class="px-6 py-4 font-semibold">Abandoned Cart Logic
+                                                                </td>
+                                                                <td class="px-6 py-4"><span
+                                                                                class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded">Paused</span>
+                                                                </td>
+                                                                <td class="px-6 py-4">76.2%</td>
+                                                                <td class="px-6 py-4 text-slate-500 text-xs">1 day ago
+                                                                </td>
+                                                        </tr>
+                                                        <tr class="hover:bg-surface transition-colors">
+                                                                <td class="px-6 py-4 font-semibold">CRM Daily Sync</td>
+                                                                <td class="px-6 py-4"><span
+                                                                                class="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded">Running</span>
+                                                                </td>
+                                                                <td class="px-6 py-4">100.0%</td>
+                                                                <td class="px-6 py-4 text-slate-500 text-xs">Scheduled
+                                                                </td>
+                                                        </tr>
+                                                </tbody>
+                                        </table>
+                                </div>
+                        </section>
+                        <!-- 6. Advanced Components (Kanban & Timeline) -->
+                        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Mini Kanban Board -->
+                                <div class="space-y-4">
+                                        <h5 class="font-bold text-xl flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-primary"
+                                                        data-icon="view_kanban">view_kanban</span> Lead Pipeline
+                                        </h5>
+                                        <div class="grid grid-cols-2 gap-4">
+                                                <div class="bg-surface-container-low p-4 rounded-xl space-y-4">
+                                                        <div class="flex justify-between items-center px-1">
+                                                                <span
+                                                                        class="text-[10px] font-bold uppercase text-slate-500">Incoming
+                                                                        (2)</span>
+                                                                <span class="material-symbols-outlined text-[14px] text-slate-400"
+                                                                        data-icon="more_horiz">more_horiz</span>
+                                                        </div>
+                                                        <div
+                                                                class="bg-white p-3 rounded-xl shadow-sm border border-outline-variant/10 space-y-2 cursor-grab active:cursor-grabbing">
+                                                                <div class="flex justify-between">
+                                                                        <span
+                                                                                class="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">Hot
+                                                                                Lead</span>
+                                                                        <span class="text-[9px] text-slate-400">2h
+                                                                                ago</span>
+                                                                </div>
+                                                                <p class="text-xs font-bold">Marcus Thorne</p>
+                                                                <p class="text-[10px] text-slate-500">Integration Query
+                                                                </p>
+                                                        </div>
+                                                        <div
+                                                                class="bg-white p-3 rounded-xl shadow-sm border border-outline-variant/10 space-y-2 cursor-grab">
+                                                                <div class="flex justify-between">
+                                                                        <span
+                                                                                class="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">Trial</span>
+                                                                        <span class="text-[9px] text-slate-400">4h
+                                                                                ago</span>
+                                                                </div>
+                                                                <p class="text-xs font-bold">Elena Rodriguez</p>
+                                                        </div>
+                                                </div>
+                                                <div class="bg-surface-container-low p-4 rounded-xl space-y-4">
+                                                        <div class="flex justify-between items-center px-1">
+                                                                <span
+                                                                        class="text-[10px] font-bold uppercase text-slate-500">Qualified
+                                                                        (1)</span>
+                                                                <span class="material-symbols-outlined text-[14px] text-slate-400"
+                                                                        data-icon="add">add</span>
+                                                        </div>
+                                                        <div
+                                                                class="bg-white p-3 rounded-xl shadow-sm border border-outline-variant/10 space-y-2 cursor-grab border-l-4 border-green-500">
+                                                                <div class="flex justify-between">
+                                                                        <span
+                                                                                class="text-[9px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Ready</span>
+                                                                        <span class="text-[9px] text-slate-400">1d
+                                                                                ago</span>
+                                                                </div>
+                                                                <p class="text-xs font-bold">TechVanguard Corp</p>
+                                                                <div class="flex -space-x-2 mt-2">
+                                                                        <img alt="Member"
+                                                                                class="w-5 h-5 rounded-full border-2 border-white"
+                                                                                data-alt="avatar of team member 1"
+                                                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0AG2w05CsgjGD1bme1vvCi1CaPsMGcscCNUv1Yrr3hracvVk8DYsAggWgq0487LIWlaLvaXMxKxjR8BsNSMud37QKzPtQQjrq-sfYUFW12TqMQGnszDECibHOMyEyIpWadp-J7jG-LjoRwY1i62aBTopE0C8L_48zWtDqYgF5FZKOLMTa_kwhDD6FkIC7gsJIwTzRD7hy7_JWwAGm7WvqEf5cgD_lEonoWKoSPn8whZb-aF2cDOqLiQQIlLLJbfYfI9W7XNxA8SI" />
+                                                                        <img alt="Member"
+                                                                                class="w-5 h-5 rounded-full border-2 border-white"
+                                                                                data-alt="avatar of team member 2"
+                                                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuQR81KeHfbzD7L_ZEU8LVaTPZL6azIr0J54i2VQVEzJoiAbCx5PumxkHizCcFafmKA7SCxrpsVydTk7q8YSu2yfb44AAZ8x5VSMKiv5-koP-t9vubOw9wwxy_wuQVYx1kXJJKGKkbb_ycOClWhHHlqOAMLKgbA2rUu_EHkGAg2GnOXap9HXfCbgEQ0IY9TyCnxIXTkSLeZMaariSjAp3Ay79Am7PqCkfKNbhou6zzXW7t79tz17PIp8w566aQKv8Hoh9UW0IUZwQ" />
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                </div>
+                                <!-- Activity Timeline & Upload -->
+                                <div class="space-y-6">
+                                        <div class="bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm">
+                                                <h5 class="font-bold text-lg mb-6">Activity Timeline</h5>
+                                                <div
+                                                        class="relative space-y-8 before:absolute before:left-[11px] before:top-2 before:bottom-0 before:w-0.5 before:bg-slate-100">
+                                                        <div class="relative flex gap-4">
+                                                                <div
+                                                                        class="w-6 h-6 rounded-full bg-primary flex items-center justify-center ring-4 ring-white z-10">
+                                                                        <span class="material-symbols-outlined text-white text-[14px]"
+                                                                                data-icon="rocket_launch">rocket_launch</span>
+                                                                </div>
+                                                                <div class="flex-1">
+                                                                        <p class="text-xs font-bold">New Automation
+                                                                                Deployed</p>
+                                                                        <p class="text-[10px] text-slate-500">System
+                                                                                admin pushed 'Inventory Sync' to
+                                                                                production.</p>
+                                                                        <span
+                                                                                class="text-[9px] text-slate-400 uppercase mt-1 block">10:45
+                                                                                AM</span>
+                                                                </div>
+                                                        </div>
+                                                        <div class="relative flex gap-4">
+                                                                <div
+                                                                        class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center ring-4 ring-white z-10">
+                                                                        <span class="material-symbols-outlined text-slate-500 text-[14px]"
+                                                                                data-icon="mail">mail</span>
+                                                                </div>
+                                                                <div class="flex-1">
+                                                                        <p class="text-xs font-bold">Campaign Paused</p>
+                                                                        <p class="text-[10px] text-slate-500">Reached
+                                                                                daily budget limit for Facebook Ads.</p>
+                                                                        <span
+                                                                                class="text-[9px] text-slate-400 uppercase mt-1 block">08:12
+                                                                                AM</span>
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                        <div
+                                                class="bg-primary/5 border-2 border-dashed border-primary/20 p-8 rounded-xl flex flex-col items-center justify-center text-center">
+                                                <span class="material-symbols-outlined text-primary text-4xl mb-3"
+                                                        data-icon="cloud_upload">cloud_upload</span>
+                                                <h6 class="text-sm font-bold">Upload CSV Data</h6>
+                                                <p class="text-[10px] text-slate-500 mt-1">Drag and drop files here or
+                                                        <span
+                                                                class="text-primary font-bold cursor-pointer">browse</span>
+                                                </p>
+                                        </div>
+                                </div>
+                        </section>
+                        <!-- 7. Specialized Cards -->
+                        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Lead Card -->
+                                <div
+                                        class="bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                                        <div
+                                                class="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12">
+                                        </div>
+                                        <div class="flex justify-between items-start mb-4">
+                                                <div
+                                                        class="w-12 h-12 bg-surface-container rounded-xl flex items-center justify-center">
+                                                        <span class="material-symbols-outlined text-primary text-2xl"
+                                                                data-icon="store">store</span>
+                                                </div>
+                                                <span
+                                                        class="px-2 py-1 bg-amber-50 text-amber-700 text-[9px] font-bold rounded-lg border border-amber-100">Pending
+                                                        Review</span>
+                                        </div>
+                                        <h6 class="font-bold text-lg">Urban Dynamics Inc.</h6>
+                                        <p class="text-xs text-slate-500 mb-6">San Francisco, CA • B2B SaaS</p>
+                                        <div class="space-y-3">
+                                                <div class="flex justify-between text-xs">
+                                                        <span class="text-slate-400">Projected Value</span>
+                                                        <span class="font-bold">$12,400</span>
+                                                </div>
+                                                <div class="flex justify-between text-xs">
+                                                        <span class="text-slate-400">Match Score</span>
+                                                        <div class="flex items-center gap-1">
+                                                                <div
+                                                                        class="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                                        <div class="w-[85%] h-full bg-primary"></div>
+                                                                </div>
+                                                                <span class="font-bold">85%</span>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                        <button
+                                                class="w-full mt-6 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold">Open
+                                                Full Profile</button>
+                                </div>
+                                <!-- Contact Card -->
+                                <div
+                                        class="bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm flex gap-4">
+                                        <img alt="Contact" class="w-16 h-16 rounded-full object-cover"
+                                                data-alt="professional portrait of a business woman with a confident smile in a bright office setting"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-E4eHqxi_ZTBVyRDDYPGlgGOnJE0w3ooLQEooFHFXyWu_NqqZVHOje1gGTReQO_Bziu77-44gfGbvyjLVU00HzivlkfwqQlxldAeHyslavonyiYN1L9VRTlvcn6AGjeuriZtoSMfFWtDgxCzV5f15-nU0MvUmlpZH0IOt7uP1i5NvA-LCxzeSlLsQOuWUqHVwREQHijrWA4syxSgHd3EC4CIR5l4GExGJIzy_7D9li6N7HA2ABTBjlM4ov67BvvWwtN-keRDbhCM" />
+                                        <div class="flex-1">
+                                                <h6 class="font-bold text-sm">Diana Vance</h6>
+                                                <p class="text-[10px] text-slate-500">Chief Technology Officer</p>
+                                                <div class="mt-4 flex gap-2">
+                                                        <button
+                                                                class="p-1.5 bg-surface-container rounded-lg text-slate-600 hover:bg-primary/10 hover:text-primary transition-all">
+                                                                <span class="material-symbols-outlined text-[18px]"
+                                                                        data-icon="mail">mail</span>
+                                                        </button>
+                                                        <button
+                                                                class="p-1.5 bg-surface-container rounded-lg text-slate-600 hover:bg-primary/10 hover:text-primary transition-all">
+                                                                <span class="material-symbols-outlined text-[18px]"
+                                                                        data-icon="call">call</span>
+                                                        </button>
+                                                        <button
+                                                                class="p-1.5 bg-surface-container rounded-lg text-slate-600 hover:bg-primary/10 hover:text-primary transition-all">
+                                                                <span class="material-symbols-outlined text-[18px]"
+                                                                        data-icon="chat">chat</span>
+                                                        </button>
+                                                </div>
+                                        </div>
+                                </div>
+                                <!-- Interactive Slider & Description List -->
+                                <div
+                                        class="bg-white p-6 rounded-xl border border-outline-variant/10 shadow-sm flex flex-col justify-between">
+                                        <div>
+                                                <h6 class="font-bold text-sm mb-4">Automation Intensity</h6>
+                                                <input class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                                                        type="range" />
+                                                <div
+                                                        class="flex justify-between text-[10px] font-bold text-slate-400 mt-2">
+                                                        <span>Balanced</span>
+                                                        <span class="text-primary">Aggressive</span>
+                                                        <span>Critical Only</span>
+                                                </div>
+                                        </div>
+                                        <div class="space-y-3 mt-8">
+                                                <div
+                                                        class="flex justify-between border-b border-outline-variant/5 pb-2">
+                                                        <span class="text-[10px] font-bold text-slate-400 uppercase">System
+                                                                ID</span>
+                                                        <span class="text-[11px] font-mono font-bold">ZCA-993-8B</span>
+                                                </div>
+                                                <div
+                                                        class="flex justify-between border-b border-outline-variant/5 pb-2">
+                                                        <span class="text-[10px] font-bold text-slate-400 uppercase">Engine
+                                                                Ver.</span>
+                                                        <span class="text-[11px] font-bold">v4.2.1 Stable</span>
+                                                </div>
+                                        </div>
+                                </div>
+                        </section>
+                </div>
+        </main>
+        <!-- Contextual FAB (Only on specific screens) -->
+        <button
+                class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+                <span class="material-symbols-outlined text-3xl" data-icon="add">add</span>
+        </button>
+</body>
+
+</html>

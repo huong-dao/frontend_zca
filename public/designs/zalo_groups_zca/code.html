@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Zalo Groups - Project ZCA</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#004ac6",
+                        "on-surface-variant": "#434655",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "inverse-surface": "#2d3133",
+                        "surface-variant": "#e0e3e5",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-surface": "#191c1e",
+                        "on-background": "#191c1e",
+                        "on-secondary-fixed-variant": "#2d486d",
+                        "surface-dim": "#d8dadc",
+                        "surface-container": "#eceef0",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "tertiary-container": "#bc4800",
+                        "surface-tint": "#0053db",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#eeefff",
+                        "secondary-container": "#b5d0fd",
+                        "inverse-on-surface": "#eff1f3",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdbcd",
+                        "primary-fixed": "#dbe1ff",
+                        "inverse-primary": "#b4c5ff",
+                        "primary-container": "#2563eb",
+                        "tertiary": "#943700",
+                        "secondary": "#455f87",
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-low": "#f2f4f6",
+                        "secondary-fixed-dim": "#adc8f5",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "on-secondary-fixed": "#001c3b",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffede6",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7f9fb",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#737686",
+                        "background": "#f7f9fb",
+                        "on-secondary-container": "#3e5980"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#1E3A5F] flex flex-col py-6 z-50">
+<div class="px-6 mb-8">
+<h1 class="text-lg font-bold text-white tracking-tight">Project ZCA</h1>
+<p class="text-xs text-slate-400 font-medium tracking-wider uppercase mt-1">Automation Hub</p>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full bg-primary-container text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-sm">add</span>
+                New Campaign
+            </button>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter body-md tracking-normal">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-inter body-md tracking-normal">Users</span>
+</a>
+<!-- Active Tab: Zalo Groups -->
+<a class="flex items-center gap-3 text-blue-400 border-l-4 border-blue-600 pl-4 py-3 bg-blue-900/20" href="#">
+<span class="material-symbols-outlined" data-icon="groups" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-inter body-md tracking-normal">Zalo Groups</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-inter body-md tracking-normal">Zalo Accounts</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-inter body-md tracking-normal">Messages</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-inter body-md tracking-normal">Configs</span>
+</a>
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="vpn_key">vpn_key</span>
+<span class="font-inter body-md tracking-normal">API Keys</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-slate-700/50">
+<a class="flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-red-500/10 hover:text-red-400 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-inter body-md tracking-normal">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center h-16 px-8 sticky top-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-40 shadow-sm shadow-slate-200/50">
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+<input class="bg-surface-container-low border-none rounded-xl pl-10 pr-4 py-2 text-sm w-80 focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" placeholder="Search group name..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700">
+<span class="material-symbols-outlined text-[18px]">cloud_done</span>
+<span class="text-xs font-semibold uppercase tracking-wider">System Status</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-slate-500 hover:text-primary transition-all active:opacity-100 opacity-80">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-all active:opacity-100 opacity-80">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden bg-slate-200">
+<img alt="Admin User" class="h-full w-full object-cover" data-alt="professional male portrait for user profile avatar in professional tech dashboard interface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFWweYemXqPdB4eL8gi9fls2QnQVKB2I5m_grFAt2jPPV5XKjJC-70dMi2upyhI-k21lMxrPFeUBXz4VZQvhaSf7sqq8Zbe_gHrgK5RiSujgHVxeNIryd2vTPh61VLpRnlBeCRdgaxdBsfwxUDcZtJDo0UHZYFXxAo3dZ4xtEW5gDl8WeKcybeMC1HVomPMuL89hcitX_gUCuO2rcEEUcx2i7Y3uYeAfo7ER7C7amihcMs2WFeY-6EXCCNHwJJF882VnNnWUhZSS4"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<div class="p-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<nav class="flex items-center gap-2 text-xs font-medium text-slate-400 mb-2">
+<span>DASHBOARD</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary">ZALO GROUPS</span>
+</nav>
+<h2 class="text-3xl font-bold text-on-surface tracking-tight">Zalo Groups</h2>
+<p class="text-on-surface-variant mt-1">Manage and automate interactions across your Zalo group network.</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined">group_add</span>
+                    Add Group
+                </button>
+</div>
+<!-- Bento Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+<p class="text-label-sm text-slate-500 font-bold tracking-widest uppercase mb-1">Total Groups</p>
+<h3 class="text-display-lg text-primary leading-none">124</h3>
+<div class="flex items-center gap-1 text-emerald-600 text-xs font-bold mt-2">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+<span>12% from last month</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+<p class="text-label-sm text-slate-500 font-bold tracking-widest uppercase mb-1">Total Members</p>
+<h3 class="text-display-lg text-on-surface leading-none">8.2k</h3>
+<p class="text-xs text-slate-400 mt-2">Across all active groups</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+<p class="text-label-sm text-slate-500 font-bold tracking-widest uppercase mb-1">Active Messages</p>
+<h3 class="text-display-lg text-on-surface leading-none">42k</h3>
+<p class="text-xs text-slate-400 mt-2">Sent in the last 24h</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+<p class="text-label-sm text-slate-500 font-bold tracking-widest uppercase mb-1">Automation Rate</p>
+<h3 class="text-display-lg text-on-surface leading-none">94%</h3>
+<div class="w-full bg-slate-100 h-1.5 rounded-full mt-4">
+<div class="bg-primary h-full rounded-full" style="width: 94%"></div>
+</div>
+</div>
+</div>
+<!-- Main Table Container -->
+<div class="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-sm">
+<div class="px-8 py-6 flex items-center justify-between border-b border-surface-container">
+<h4 class="text-headline-sm">Groups Directory</h4>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-surface-container-low rounded-lg transition-colors text-slate-500">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="p-2 hover:bg-surface-container-low rounded-lg transition-colors text-slate-500">
+<span class="material-symbols-outlined">download</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-8 py-4 text-label-sm font-bold text-slate-500 tracking-wider">GROUP NAME</th>
+<th class="px-6 py-4 text-label-sm font-bold text-slate-500 tracking-wider">ZALO GROUP ID</th>
+<th class="px-6 py-4 text-label-sm font-bold text-slate-500 tracking-wider">MEMBERS</th>
+<th class="px-6 py-4 text-label-sm font-bold text-slate-500 tracking-wider">MESSAGES</th>
+<th class="px-6 py-4 text-label-sm font-bold text-slate-500 tracking-wider">CREATED AT</th>
+<th class="px-8 py-4 text-label-sm font-bold text-slate-500 tracking-wider text-right">ACTIONS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Table Row 1 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+</div>
+<div>
+<p class="font-semibold text-on-surface">Marketing Alpha</p>
+<p class="text-xs text-slate-500">Global Outreach</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-mono text-on-surface-variant">zg_849203841</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium">1,240</span>
+<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold">+12</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">15,842</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 12, 2023</td>
+<td class="px-8 py-5 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Table Row 2 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+</div>
+<div>
+<p class="font-semibold text-on-surface">Product Feedback</p>
+<p class="text-xs text-slate-500">Beta Testing</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-mono text-on-surface-variant">zg_772109432</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium">458</span>
+<span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md font-bold">-2</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">4,120</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Jan 05, 2024</td>
+<td class="px-8 py-5 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Table Row 3 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+</div>
+<div>
+<p class="font-semibold text-on-surface">Vietnam Tech Hub</p>
+<p class="text-xs text-slate-500">Regional Community</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-mono text-on-surface-variant">zg_110093847</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium">2,890</span>
+<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md font-bold">+84</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">98,230</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Aug 20, 2023</td>
+<td class="px-8 py-5 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Table Row 4 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-xl bg-teal-100 flex items-center justify-center text-teal-700">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+</div>
+<div>
+<p class="font-semibold text-on-surface">Internal Support</p>
+<p class="text-xs text-slate-500">HR &amp; Admin</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm font-mono text-on-surface-variant">zg_003948572</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium">85</span>
+<span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md font-bold">0</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">1,829</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Feb 28, 2024</td>
+<td class="px-8 py-5 text-right">
+<div class="flex justify-end gap-2">
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-8 py-4 border-t border-surface-container flex items-center justify-between">
+<p class="text-xs text-slate-500 font-medium">Showing 1 to 4 of 124 groups</p>
+<div class="flex items-center gap-2">
+<button class="p-1.5 hover:bg-surface-container-low rounded text-slate-400 disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="flex items-center gap-1">
+<button class="px-3 py-1 rounded bg-primary text-white text-xs font-bold">1</button>
+<button class="px-3 py-1 rounded hover:bg-surface-container-low text-on-surface text-xs font-bold">2</button>
+<button class="px-3 py-1 rounded hover:bg-surface-container-low text-on-surface text-xs font-bold">3</button>
+<span class="px-1">...</span>
+<button class="px-3 py-1 rounded hover:bg-surface-container-low text-on-surface text-xs font-bold">31</button>
+</div>
+<button class="p-1.5 hover:bg-surface-container-low rounded text-slate-400">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

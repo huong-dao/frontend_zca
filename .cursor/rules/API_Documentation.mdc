@@ -1,0 +1,1483 @@
+# API Documentation
+
+Official backend API documentation for the current NestJS project.
+This document is intended for the NextJS frontend team and is generated from the current controller, DTO, service, and guard behavior in the codebase.
+
+## Table of Contents
+- [General Conventions](#general-conventions)
+- [Authentication Model](#authentication-model)
+- [Enums](#enums)
+- [System API](#system-api)
+- [Auth API](#auth-api)
+- [Users API](#users-api)
+- [Zalo Groups API](#zalo-groups-api)
+- [Zalo Accounts API](#zalo-accounts-api)
+- [Messages API](#messages-api)
+- [Configs API](#configs-api)
+- [API Keys API](#api-keys-api)
+- [Public API](#public-api)
+
+## General Conventions
+- Base URL: use your backend host directly, for example `http://localhost:3000`
+- Global prefix: none
+- Content type: `application/json`
+- Validation:
+  - Global `ValidationPipe` is enabled
+  - Unknown body fields are rejected
+  - Query values such as `page` and `limit` are auto-converted to numbers
+- Authentication:
+  - JWT is enforced globally unless an endpoint is marked public
+  - Default auth flow for frontend uses an `HttpOnly` cookie set by `POST /auth/login`
+  - The backend still accepts `Authorization: Bearer <token>` as a fallback
+  - Frontend requests from NextJS must send `credentials: 'include'`
+- Role control:
+  - `@Roles(...)` is enforced globally by `RolesGuard`
+- Common paginated response shape:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+```
+
+## Authentication Model
+- Global guards:
+  - `JwtAuthGuard`
+  - `RolesGuard`
+- Public endpoints:
+  - `GET /`
+  - `POST /auth/login`
+  - `POST /auth/logout`
+  - `POST /public/send-message`
+- Authenticated-only endpoints:
+  - All other endpoints
+- Role-protected controllers:
+  - `users` has mixed per-method roles
+  - `zalo-groups` is ADMIN only
+  - `zalo-accounts` is ADMIN only
+  - `configs` is ADMIN only
+  - `api-keys` is ADMIN only
+- Message endpoints require JWT, but do not restrict by role
+
+## Enums
+### UserRole
+- `ADMIN`
+- `USER`
+
+### MessageStatus
+- `SENT`: sent successfully
+- `FAILED`: send attempt failed but log was still stored
+- `RECALL`: message was recalled successfully via Zalo undo API
+
+## System API
+### GET `/`
+#### Endpoint
+- Method: `GET`
+- Full path: `/`
+- Function: `AppController.getHello`
+
+#### Description
+Simple public health/hello endpoint.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+Plain string response.
+
+Example response:
+
+```json
+"Hello World!"
+```
+
+#### Error cases
+- No explicit application-level error handling
+
+#### Authentication
+- Public
+- No JWT required
+
+## Auth API
+### POST `/auth/login`
+#### Endpoint
+- Method: `POST`
+- Full path: `/auth/login`
+- Function: `AuthController.login`
+
+#### Description
+Authenticate a user by email and password, then set a JWT access token in an `HttpOnly` cookie.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `email`: `string`, required, must be a valid email
+  - `password`: `string`, required, minimum length `6`
+
+Example request:
+
+```json
+{
+  "email": "admin@zca.local",
+  "password": "Admin@123"
+}
+```
+
+#### Response
+
+```json
+{
+  "user": {
+    "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0001",
+    "email": "admin@zca.local",
+    "role": "ADMIN"
+  }
+}
+```
+
+#### Cookie behavior
+- Response sets an auth cookie, default name: `access_token`
+- Cookie options are controlled by backend env values:
+  - `AUTH_COOKIE_NAME`
+  - `AUTH_COOKIE_SECURE`
+  - `AUTH_COOKIE_SAME_SITE`
+- Frontend should not try to read the token from JavaScript
+- NextJS frontend must call this endpoint with `credentials: 'include'`
+
+#### Error cases
+- `400`: validation error
+- `401`: invalid email/password or inactive user
+- `500`: unexpected server error
+
+#### Authentication
+- Public
+- No JWT required
+
+### POST `/auth/logout`
+#### Endpoint
+- Method: `POST`
+- Full path: `/auth/logout`
+- Function: `AuthController.logout`
+
+#### Description
+Clear the authentication cookie on the current client.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "message": "Logged out successfully."
+}
+```
+
+#### Error cases
+- `500`: unexpected server error
+
+#### Authentication
+- Public
+- No JWT required
+- Intended to be called with `credentials: 'include'` so the browser sends the current cookie
+
+### GET `/auth/me`
+#### Endpoint
+- Method: `GET`
+- Full path: `/auth/me`
+- Function: `AuthController.me`
+
+#### Description
+Return the currently authenticated user resolved from the auth cookie or bearer token. This endpoint is intended for restoring frontend session state after page reload.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "user": {
+    "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0001",
+    "email": "admin@zca.local",
+    "role": "ADMIN"
+  }
+}
+```
+
+#### Error cases
+- `401`: missing/invalid/expired authentication cookie or bearer token
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`
+- Frontend should call with `credentials: 'include'`
+
+## Users API
+### GET `/users`
+#### Endpoint
+- Method: `GET`
+- Full path: `/users`
+- Function: `UsersController.findAll`
+
+#### Description
+Return all users ordered by newest first.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0001",
+    "email": "admin@zca.local",
+    "role": "ADMIN",
+    "isActive": true,
+    "createdAt": "2026-04-15T08:00:00.000Z",
+    "updatedAt": "2026-04-15T08:00:00.000Z"
+  }
+]
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### POST `/users`
+#### Endpoint
+- Method: `POST`
+- Full path: `/users`
+- Function: `UsersController.create`
+
+#### Description
+Create a new user account.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `email`: `string`, required, email format
+  - `password`: `string`, required, minimum length `6`
+  - `role`: `UserRole`, required
+
+Example request:
+
+```json
+{
+  "email": "user@zca.local",
+  "password": "User@123",
+  "role": "USER"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0002",
+  "email": "user@zca.local",
+  "role": "USER",
+  "isActive": true,
+  "createdAt": "2026-04-15T08:01:00.000Z",
+  "updatedAt": "2026-04-15T08:01:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `409`: email already exists
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### PUT `/users/change-password`
+#### Endpoint
+- Method: `PUT`
+- Full path: `/users/change-password`
+- Function: `UsersController.changePassword`
+
+#### Description
+Allow a normal authenticated user to change their own password.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `oldPassword`: `string`, required, minimum length `6`
+  - `newPassword`: `string`, required, minimum length `6`
+
+Example request:
+
+```json
+{
+  "oldPassword": "User@123",
+  "newPassword": "User@456"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Password changed successfully."
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `400`: old and new password are the same
+- `400`: old password is incorrect
+- `401`: missing/invalid JWT
+- `403`: role is not `USER`
+- `404`: current user not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `USER`
+
+### PUT `/users/:id`
+#### Endpoint
+- Method: `PUT`
+- Full path: `/users/:id`
+- Function: `UsersController.update`
+
+#### Description
+Update an existing user.
+
+#### Request
+- Params:
+  - `id`: `string`
+- Query: none
+- Body:
+  - `email`: `string`, optional, email format
+  - `role`: `UserRole`, optional
+  - `isActive`: `boolean`, optional
+
+Example request:
+
+```json
+{
+  "email": "updated-user@zca.local",
+  "role": "USER",
+  "isActive": true
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0002",
+  "email": "updated-user@zca.local",
+  "role": "USER",
+  "isActive": true,
+  "createdAt": "2026-04-15T08:01:00.000Z",
+  "updatedAt": "2026-04-15T08:10:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: user not found
+- `409`: email already exists
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### DELETE `/users/:id`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/users/:id`
+- Function: `UsersController.remove`
+
+#### Description
+Delete a user by id.
+
+#### Request
+- Params:
+  - `id`: `string`
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "message": "User deleted successfully."
+}
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: user not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+## Zalo Groups API
+### GET `/zalo-groups`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-groups`
+- Function: `ZaloGroupsController.findAll`
+
+#### Description
+Return paginated Zalo groups stored in the database.
+
+#### Request
+- Params: none
+- Query:
+  - `page`: `number`, optional, default `1`
+  - `limit`: `number`, optional, default `20`
+- Body: none
+
+Example request:
+
+```json
+{
+  "page": 1,
+  "limit": 20
+}
+```
+
+#### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "groupName": "Marketing Team",
+      "groupZaloId": "1234567890123456789",
+      "createdAt": "2026-04-15T08:20:00.000Z",
+      "updatedAt": "2026-04-15T08:20:00.000Z",
+      "_count": {
+        "accountMaps": 3,
+        "messages": 18
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### Error cases
+- `400`: invalid pagination query
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### POST `/zalo-groups`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-groups`
+- Function: `ZaloGroupsController.create`
+
+#### Description
+Create a new Zalo group record after validating the group name against Zalo data.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `group_name`: `string`, required, minimum length `1`
+
+Example request:
+
+```json
+{
+  "group_name": "Marketing Team"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "groupName": "Marketing Team",
+  "groupZaloId": "1234567890123456789",
+  "createdAt": "2026-04-15T08:20:00.000Z",
+  "updatedAt": "2026-04-15T08:20:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `400`: no usable Zalo session
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: group not found from current Zalo session
+- `409`: group already exists in database
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### PUT `/zalo-groups/:id`
+#### Endpoint
+- Method: `PUT`
+- Full path: `/zalo-groups/:id`
+- Function: `ZaloGroupsController.update`
+
+#### Description
+Update a stored Zalo group by re-validating the provided group name and replacing the mapped Zalo group id/name.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID
+- Query: none
+- Body:
+  - `group_name`: `string`, required, minimum length `1`
+
+Example request:
+
+```json
+{
+  "group_name": "Marketing Team"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "groupName": "Marketing Team",
+  "groupZaloId": "1234567890123456789",
+  "createdAt": "2026-04-15T08:20:00.000Z",
+  "updatedAt": "2026-04-15T08:25:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: invalid UUID or body validation error
+- `400`: no usable Zalo session
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: group record not found
+- `404`: provided Zalo group name not found from current Zalo session
+- `409`: another record already uses the same Zalo group
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### DELETE `/zalo-groups/:id`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/zalo-groups/:id`
+- Function: `ZaloGroupsController.remove`
+
+#### Description
+Delete a stored Zalo group by id.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "message": "Zalo group deleted successfully."
+}
+```
+
+#### Error cases
+- `400`: invalid UUID
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: group not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+## Zalo Accounts API
+### POST `/zalo-accounts`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts`
+- Function: `ZaloAccountsController.create`
+
+#### Description
+Create a standalone Zalo account record manually. The created account is always a normal account with `isMaster = false` and `masterId = null`.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `zaloId`: `string`, required
+  - `phone`: `string`, optional, digits only, length `9-15`
+  - `name`: `string`, optional
+
+Example request:
+
+```json
+{
+  "zaloId": "1122334455",
+  "phone": "0909999999",
+  "name": "Standalone Account"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120010",
+  "zaloId": "1122334455",
+  "phone": "0909999999",
+  "name": "Standalone Account",
+  "isMaster": false,
+  "masterId": null,
+  "groupCount": 0,
+  "createdAt": "2026-04-16T08:30:00.000Z",
+  "updatedAt": "2026-04-16T08:30:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `409`: `zaloId` already exists
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### GET `/zalo-accounts`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-accounts`
+- Function: `ZaloAccountsController.findAll`
+
+#### Description
+List all Zalo accounts with master and child relations.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "zaloId": "0987654321",
+    "phone": "0901234567",
+    "name": "Master Account",
+    "isMaster": true,
+    "masterId": null,
+    "groupCount": 5,
+    "createdAt": "2026-04-15T08:30:00.000Z",
+    "updatedAt": "2026-04-15T08:30:00.000Z",
+    "master": null,
+    "children": [
+      {
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+        "zaloId": "1122334455",
+        "name": "Child Account",
+        "groupCount": 2
+      }
+    ]
+  }
+]
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### GET `/zalo-accounts/:id`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-accounts/:id`
+- Function: `ZaloAccountsController.findOne`
+
+#### Description
+Get one Zalo account with full relation details.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+  "zaloId": "1122334455",
+  "phone": "0909999999",
+  "name": "Child Account",
+  "isMaster": false,
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "groupCount": 2,
+  "createdAt": "2026-04-15T08:31:00.000Z",
+  "updatedAt": "2026-04-15T08:31:00.000Z",
+  "master": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "zaloId": "0987654321",
+    "name": "Master Account",
+    "phone": "0901234567"
+  },
+  "children": [],
+  "groupMaps": [
+    {
+      "id": "7d7f702a-7827-4a19-84f0-249e73110001",
+      "joinedAt": "2026-04-15T08:40:00.000Z",
+      "group": {
+        "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+        "groupName": "Marketing Team",
+        "groupZaloId": "1234567890123456789"
+      }
+    }
+  ]
+}
+```
+
+#### Error cases
+- `400`: invalid UUID
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: Zalo account not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### POST `/zalo-accounts/sync-from-groups`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts/sync-from-groups`
+- Function: `ZaloAccountsController.syncFromGroups`
+
+#### Description
+Read Zalo group membership from an active Zalo session and return deduplicated accounts with group counts.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "zaloId": "1122334455",
+    "name": "Child Account",
+    "groupCount": 2,
+    "groups": [
+      {
+        "groupId": "1234567890123456789",
+        "groupName": "Marketing Team"
+      }
+    ]
+  }
+]
+```
+
+#### Error cases
+- `400`: no active Zalo session available
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### POST `/zalo-accounts/add-child`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts/add-child`
+- Function: `ZaloAccountsController.addChild`
+
+#### Description
+Start a QR login flow to attach a child account under a master account.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `masterId`: `string`, required
+  - `phone`: `string`, required, digits only, length `9-15`
+
+Example request:
+
+```json
+{
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "phone": "0909999999"
+}
+```
+
+#### Response
+
+```json
+{
+  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001",
+  "qrCode": "data:image/png;base64,..."
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `400`: provided `masterId` is not a master account
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: master Zalo account not found
+- `504`: QR code generation timeout
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### POST `/zalo-accounts/confirm-login`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts/confirm-login`
+- Function: `ZaloAccountsController.confirmLogin`
+
+#### Description
+Poll and finalize a QR login session. When complete, the child account is persisted and linked.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `sessionId`: `string`, required
+
+Example request:
+
+```json
+{
+  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001"
+}
+```
+
+#### Response
+Possible response while waiting:
+
+```json
+{
+  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001",
+  "status": "QR_GENERATED",
+  "qrCode": "data:image/png;base64,..."
+}
+```
+
+Possible response when confirmed:
+
+```json
+{
+  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001",
+  "status": "CONFIRMED",
+  "account": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+    "zaloId": "1122334455",
+    "phone": "0909999999",
+    "name": "Child Account",
+    "isMaster": false,
+    "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "groupCount": 0,
+    "createdAt": "2026-04-15T08:31:00.000Z",
+    "updatedAt": "2026-04-15T08:31:00.000Z"
+  },
+  "friendFlow": {
+    "status": "COMPLETED"
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `400`: `sessionId` is blank after trim
+- `400`: QR expired or declined
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: login session not found
+- `500`: unexpected login/session persistence error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### PUT `/zalo-accounts/set-master/:id`
+#### Endpoint
+- Method: `PUT`
+- Full path: `/zalo-accounts/set-master/:id`
+- Function: `ZaloAccountsController.setMaster`
+
+#### Description
+Mark an existing account as a master account.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+  "zaloId": "1122334455",
+  "phone": "0909999999",
+  "name": "Child Account",
+  "isMaster": true,
+  "masterId": null,
+  "groupCount": 2,
+  "createdAt": "2026-04-15T08:31:00.000Z",
+  "updatedAt": "2026-04-15T08:50:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: invalid UUID
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `404`: Zalo account not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+## Messages API
+### GET `/messages`
+#### Endpoint
+- Method: `GET`
+- Full path: `/messages`
+- Function: `MessagesController.findAll`
+
+#### Description
+Return paginated message logs with optional filtering by message status.
+
+#### Request
+- Params: none
+- Query:
+  - `status`: `MessageStatus`, optional, one of `SENT | FAILED | RECALL`
+  - `page`: `number`, optional, default `1`
+  - `limit`: `number`, optional, default `20`
+- Body: none
+
+Example request:
+
+```json
+{
+  "status": "SENT",
+  "page": 1,
+  "limit": 20
+}
+```
+
+#### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
+      "messageZaloId": "987654321",
+      "cliMsgId": "1713171000000",
+      "uidFrom": "1122334455",
+      "content": "Hello group",
+      "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+      "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "sentAt": "2026-04-15T09:00:00.000Z",
+      "status": "SENT",
+      "createdAt": "2026-04-15T09:00:00.000Z",
+      "sender": {
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+        "zaloId": "1122334455",
+        "name": "Child Account",
+        "phone": "0909999999"
+      },
+      "group": {
+        "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+        "groupName": "Marketing Team",
+        "groupZaloId": "1234567890123456789"
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### Error cases
+- `400`: invalid query validation
+- `401`: missing/invalid JWT
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`
+- Roles: any authenticated `ADMIN` or `USER`
+
+### POST `/messages/send`
+#### Endpoint
+- Method: `POST`
+- Full path: `/messages/send`
+- Function: `MessagesController.send`
+
+#### Description
+Send a message to a stored Zalo group using the child account with the lowest group count under the selected master account.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `masterId`: `string`, required
+  - `groupId`: `string`, required
+  - `content`: `string`, required
+
+Example request:
+
+```json
+{
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "content": "Hello group"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
+  "messageZaloId": "987654321",
+  "cliMsgId": "1713171000000",
+  "uidFrom": "1122334455",
+  "content": "Hello group",
+  "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "sentAt": "2026-04-15T09:00:00.000Z",
+  "status": "SENT",
+  "createdAt": "2026-04-15T09:00:00.000Z",
+  "sender": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+    "zaloId": "1122334455",
+    "name": "Child Account",
+    "phone": "0909999999"
+  },
+  "group": {
+    "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "groupName": "Marketing Team",
+    "groupZaloId": "1234567890123456789"
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `400`: selected master is not a master account
+- `400`: no active child Zalo session
+- `400`: selected child account is missing `zaloId`
+- `400`: anti-spam interval violation
+- `400`: message interval configuration missing/invalid
+- `400`: Zalo send or group-join failure
+- `401`: missing/invalid JWT
+- `404`: master account not found
+- `404`: group not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`
+- Roles: any authenticated `ADMIN` or `USER`
+
+### POST `/messages/recall/:id`
+#### Endpoint
+- Method: `POST`
+- Full path: `/messages/recall/:id`
+- Function: `MessagesController.recall`
+
+#### Description
+Recall a previously sent message using Zalo undo API, then mark the stored message status as `RECALL`.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID
+- Query: none
+- Body: none
+
+#### Response
+If message is already recalled:
+
+```json
+{
+  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
+  "status": "RECALL"
+}
+```
+
+If recall succeeds now:
+
+```json
+{
+  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
+  "messageZaloId": "987654321",
+  "cliMsgId": "1713171000000",
+  "uidFrom": "1122334455",
+  "content": "Hello group",
+  "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "sentAt": "2026-04-15T09:00:00.000Z",
+  "status": "RECALL",
+  "createdAt": "2026-04-15T09:00:00.000Z",
+  "undoStatus": 0
+}
+```
+
+#### Error cases
+- `400`: invalid UUID
+- `400`: only `SENT` messages can be recalled
+- `400`: stored recall data is incomplete
+- `400`: upstream Zalo undo/session failure
+- `401`: missing/invalid JWT
+- `404`: message not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`
+- Roles: any authenticated `ADMIN` or `USER`
+
+## Configs API
+### GET `/configs`
+#### Endpoint
+- Method: `GET`
+- Full path: `/configs`
+- Function: `ConfigsController.findAll`
+
+#### Description
+Return all configuration key-value pairs.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "id": "3d680e16-4b9a-4ff3-88b0-a0f2ee900001",
+    "key": "message_interval",
+    "value": "5",
+    "updatedAt": "2026-04-15T08:00:00.000Z"
+  }
+]
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### PUT `/configs/message-interval`
+#### Endpoint
+- Method: `PUT`
+- Full path: `/configs/message-interval`
+- Function: `ConfigsController.updateMessageInterval`
+
+#### Description
+Create or update the `message_interval` configuration used by the message anti-spam flow.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `minutes`: `number`, required, integer, minimum `0`
+
+Example request:
+
+```json
+{
+  "minutes": 5
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "3d680e16-4b9a-4ff3-88b0-a0f2ee900001",
+  "key": "message_interval",
+  "value": "5",
+  "updatedAt": "2026-04-15T09:10:00.000Z",
+  "minutes": 5
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+## API Keys API
+### GET `/api-keys`
+#### Endpoint
+- Method: `GET`
+- Full path: `/api-keys`
+- Function: `ApiKeysController.findAll`
+
+#### Description
+Return all active/inactive API keys stored in the system.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "id": "6d7f6a91-d3d0-4bd2-a4d1-09b6fbe40001",
+    "name": "NextJS Frontend",
+    "secretKey": "abcdef0123456789abcdef0123456789abcdef0123456789",
+    "isActive": true,
+    "createdAt": "2026-04-15T09:20:00.000Z"
+  }
+]
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### POST `/api-keys`
+#### Endpoint
+- Method: `POST`
+- Full path: `/api-keys`
+- Function: `ApiKeysController.create`
+
+#### Description
+Create a new public API key with a generated secret key.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `name`: `string`, required, minimum length `1`
+
+Example request:
+
+```json
+{
+  "name": "NextJS Frontend"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "6d7f6a91-d3d0-4bd2-a4d1-09b6fbe40001",
+  "name": "NextJS Frontend",
+  "secretKey": "abcdef0123456789abcdef0123456789abcdef0123456789",
+  "isActive": true,
+  "createdAt": "2026-04-15T09:20:00.000Z"
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `409`: could not generate a unique secret key after retrying
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+## Public API
+### POST `/public/send-message`
+#### Endpoint
+- Method: `POST`
+- Full path: `/public/send-message`
+- Function: `PublicApiController.sendMessage`
+
+#### Description
+Public endpoint for external systems. It authenticates by `x-api-key`, resolves the only master account in the system, then reuses the internal message sending flow.
+
+#### Request
+- Params: none
+- Query: none
+- Headers:
+  - `x-api-key`: `string`, required
+- Body:
+  - `groupId`: `string`, required
+  - `content`: `string`, required
+
+Example request:
+
+```json
+{
+  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "content": "Hello group from external system"
+}
+```
+
+#### Response
+Success response is the same shape as `POST /messages/send`.
+
+```json
+{
+  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0002",
+  "messageZaloId": "987654322",
+  "cliMsgId": "1713172000000",
+  "uidFrom": "1122334455",
+  "content": "Hello group from external system",
+  "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "sentAt": "2026-04-15T09:20:00.000Z",
+  "status": "SENT",
+  "createdAt": "2026-04-15T09:20:00.000Z",
+  "sender": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+    "zaloId": "1122334455",
+    "name": "Child Account",
+    "phone": "0909999999"
+  },
+  "group": {
+    "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "groupName": "Marketing Team",
+    "groupZaloId": "1234567890123456789"
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `400`: more than one master account exists, so routing cannot be resolved
+- `400`: any downstream message sending failure from internal send flow
+- `401`: missing `x-api-key`
+- `401`: invalid or inactive `x-api-key`
+- `404`: no master account configured
+- `500`: unexpected server error
+
+#### Authentication
+- Public from JWT perspective
+- No JWT required
+- Custom service-level authentication via `x-api-key`
+
+## Notes for Frontend Integration
+- Use cookie-based auth for frontend requests and send `credentials: 'include'` for login, logout, `GET /auth/me`, and all protected endpoints.
+- Frontend should restore session after reload by calling `GET /auth/me`.
+- `Authorization` header is optional for frontend cookie-based auth, but still supported as a fallback.
+- Pagination currently exists on:
+  - `GET /messages`
+  - `GET /zalo-groups`
+- Message recall does not delete the DB row; it changes `status` to `RECALL`.
+- `POST /zalo-accounts/confirm-login` should be treated as a polling endpoint until status becomes `CONFIRMED` or an error is returned.
+- `POST /public/send-message` is not JWT-based and must send `x-api-key`.

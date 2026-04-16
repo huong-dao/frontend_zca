@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>API Keys | Project ZCA</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "secondary-fixed": "#d5e3ff",
+                        "surface": "#f7f9fb",
+                        "primary-container": "#2563eb",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#191c1e",
+                        "background": "#f7f9fb",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#2d486d",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#455f87",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c3c6d7",
+                        "on-primary-container": "#eeefff",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "primary": "#004ac6",
+                        "inverse-on-surface": "#eff1f3",
+                        "tertiary-container": "#bc4800",
+                        "on-tertiary-container": "#ffede6",
+                        "surface-dim": "#d8dadc",
+                        "inverse-primary": "#b4c5ff",
+                        "on-surface-variant": "#434655",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-secondary-container": "#3e5980",
+                        "secondary-fixed-dim": "#adc8f5",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "tertiary": "#943700",
+                        "on-tertiary-fixed": "#360f00",
+                        "secondary-container": "#b5d0fd",
+                        "on-secondary-fixed": "#001c3b",
+                        "on-surface": "#191c1e",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "outline": "#737686",
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-bright": "#f7f9fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .bg-primary-gradient {
+            background: linear-gradient(135deg, #004ac6 0%, #2563eb 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#1E3A5F] flex flex-col py-8 px-4 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-white text-xl font-bold tracking-tight">Project ZCA</h1>
+<p class="text-slate-400 text-xs uppercase tracking-widest font-semibold mt-1">Command Center</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center text-slate-300 hover:text-white pl-5 transition-all py-3 rounded-lg hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined mr-3 text-xl group-hover:scale-110 transition-transform" data-icon="forum">forum</span>
+<span class="text-[0.875rem]">Messages</span>
+</a>
+<a class="flex items-center text-slate-300 hover:text-white pl-5 transition-all py-3 rounded-lg hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined mr-3 text-xl group-hover:scale-110 transition-transform" data-icon="send">send</span>
+<span class="text-[0.875rem]">Campaigns</span>
+</a>
+<a class="flex items-center text-slate-300 hover:text-white pl-5 transition-all py-3 rounded-lg hover:bg-white/5 group" href="#">
+<span class="material-symbols-outlined mr-3 text-xl group-hover:scale-110 transition-transform" data-icon="settings">settings</span>
+<span class="text-[0.875rem]">Configuration</span>
+</a>
+<a class="flex items-center text-blue-400 font-semibold border-l-4 border-blue-600 pl-4 transition-all py-3 bg-white/5 group" href="#">
+<span class="material-symbols-outlined mr-3 text-xl" data-icon="key" style="font-variation-settings: 'FILL' 1;">key</span>
+<span class="text-[0.875rem]">API Keys</span>
+</a>
+</nav>
+<div class="mt-auto pt-8 border-t border-white/10 space-y-1">
+<a class="flex items-center text-slate-300 hover:text-white pl-5 transition-all py-2 group" href="#">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="menu_book">menu_book</span>
+<span class="text-[0.8125rem]">Documentation</span>
+</a>
+<a class="flex items-center text-slate-300 hover:text-white pl-5 transition-all py-2 group" href="#">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="contact_support">contact_support</span>
+<span class="text-[0.8125rem]">Support</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="flex justify-between items-center ml-64 px-8 h-16 w-[calc(100%-16rem)] sticky top-0 z-40 bg-[#f7f9fb] dark:bg-[#191c1e]">
+<div class="flex items-center space-x-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder-slate-500" placeholder="Search keys or logs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-2 text-slate-500">
+<span class="text-[0.875rem] font-medium text-blue-700">Automation Dashboard</span>
+</div>
+<div class="flex items-center space-x-4 border-l border-slate-200 pl-6">
+<button class="text-slate-500 hover:text-blue-600 transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="flex items-center space-x-2 group">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-blue-600 transition-colors" data-icon="account_circle" style="font-variation-settings: 'opsz' 32;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 p-8 min-h-[calc(100vh-4rem)]">
+<!-- Page Header Area -->
+<div class="flex justify-between items-end mb-10">
+<div>
+<h2 class="text-[1.5rem] font-semibold text-on-surface tracking-tight leading-tight">API Keys</h2>
+<p class="text-on-surface-variant text-sm mt-1">Manage secure access tokens for external automation integrations.</p>
+</div>
+<button class="bg-primary-gradient text-white px-5 py-2.5 rounded-xl font-medium flex items-center space-x-2 shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+<span>Create API Key</span>
+</button>
+</div>
+<!-- Bento Stats Grid -->
+<div class="grid grid-cols-12 gap-6 mb-8">
+<div class="col-span-8 bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.04)] flex flex-col justify-between overflow-hidden relative group">
+<div class="relative z-10">
+<span class="text-[0.6875rem] font-bold text-slate-500 uppercase tracking-widest">Active Requests</span>
+<div class="text-[3.5rem] font-bold text-on-surface leading-none mt-2 tracking-tighter">24,812</div>
+<p class="text-primary font-semibold text-sm mt-2 flex items-center">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="trending_up">trending_up</span>
+                        +12.5% since last period
+                    </p>
+</div>
+<!-- Abstract visual element -->
+<div class="absolute right-[-20px] bottom-[-20px] opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+<span class="material-symbols-outlined text-[240px]" data-icon="key">key</span>
+</div>
+</div>
+<div class="col-span-4 space-y-6">
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center">
+<span class="text-[0.6875rem] font-bold text-slate-500 uppercase tracking-widest">Success Rate</span>
+<div class="text-2xl font-bold text-on-surface mt-1">99.98%</div>
+<div class="w-full bg-slate-200 h-1.5 rounded-full mt-3 overflow-hidden">
+<div class="bg-primary h-full w-[99.98%] rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-center">
+<span class="text-[0.6875rem] font-bold text-slate-500 uppercase tracking-widest">Avg Latency</span>
+<div class="text-2xl font-bold text-on-surface mt-1">42ms</div>
+<p class="text-on-surface-variant text-xs mt-1">Global average response time</p>
+</div>
+</div>
+</div>
+<!-- Keys Table Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.04)] overflow-hidden">
+<div class="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
+<h3 class="font-semibold text-on-surface">Manage Keys</h3>
+<div class="flex space-x-2">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="refresh">refresh</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-6 py-4 text-[0.6875rem] font-bold text-slate-500 uppercase tracking-wider">Name</th>
+<th class="px-6 py-4 text-[0.6875rem] font-bold text-slate-500 uppercase tracking-wider">Secret Key</th>
+<th class="px-6 py-4 text-[0.6875rem] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+<th class="px-6 py-4 text-[0.6875rem] font-bold text-slate-500 uppercase tracking-wider">Created At</th>
+<th class="px-6 py-4 text-[0.6875rem] font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<!-- Key Row 1 -->
+<tr class="group hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-primary-fixed/30 flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="bolt">bolt</span>
+</div>
+<span class="font-medium text-on-surface">Production Main Gateway</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center space-x-3">
+<code class="bg-surface-container-low px-2 py-1 rounded text-slate-600 font-mono text-sm tracking-widest">••••••••••••••••</code>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+</button>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700">Active</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">
+                                Oct 24, 2023
+                            </td>
+<td class="px-6 py-5 text-right space-x-2">
+<button class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Copy Key">
+<span class="material-symbols-outlined text-xl" data-icon="content_copy">content_copy</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error-container/20 rounded-lg transition-all" title="Delete Key">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+<!-- Key Row 2 -->
+<tr class="group hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-secondary-fixed/30 flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="terminal">terminal</span>
+</div>
+<span class="font-medium text-on-surface">Development Sandbox</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center space-x-3">
+<code class="bg-surface-container-low px-2 py-1 rounded text-slate-600 font-mono text-sm tracking-widest">••••••••••••••••</code>
+<button class="text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="visibility">visibility</span>
+</button>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700">Active</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">
+                                Nov 12, 2023
+                            </td>
+<td class="px-6 py-5 text-right space-x-2">
+<button class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Copy Key">
+<span class="material-symbols-outlined text-xl" data-icon="content_copy">content_copy</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error-container/20 rounded-lg transition-all" title="Delete Key">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+<!-- Key Row 3 -->
+<tr class="group hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center mr-3">
+<span class="material-symbols-outlined text-slate-400 text-sm" data-icon="history">history</span>
+</div>
+<span class="font-medium text-slate-400">Legacy CRM Sync</span>
+</div>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center space-x-3 opacity-50">
+<code class="bg-surface-container-low px-2 py-1 rounded text-slate-600 font-mono text-sm tracking-widest">••••••••••••••••</code>
+<button class="text-slate-400" disabled="">
+<span class="material-symbols-outlined text-lg" data-icon="visibility_off">visibility_off</span>
+</button>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500">Revoked</span>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">
+                                Jan 05, 2023
+                            </td>
+<td class="px-6 py-5 text-right space-x-2">
+<button class="p-2 text-slate-300 cursor-not-allowed">
+<span class="material-symbols-outlined text-xl" data-icon="content_copy">content_copy</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error-container/20 rounded-lg transition-all" title="Delete Key">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 bg-surface-container-low/30 flex justify-between items-center">
+<span class="text-xs text-on-surface-variant font-medium">Showing 3 of 3 API Keys</span>
+<div class="flex space-x-1">
+<button class="p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-primary disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-lg" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Security Section -->
+<div class="mt-8 grid grid-cols-2 gap-6">
+<div class="bg-surface-container-low/50 p-6 rounded-xl border border-outline-variant/10">
+<div class="flex items-start space-x-4">
+<div class="p-3 bg-tertiary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-tertiary" data-icon="security">security</span>
+</div>
+<div>
+<h4 class="font-semibold text-on-surface">Security Best Practices</h4>
+<p class="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                            Never share your secret keys in public code repositories or client-side code. Use environment variables to inject them into your application securely.
+                        </p>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low/50 p-6 rounded-xl border border-outline-variant/10">
+<div class="flex items-start space-x-4">
+<div class="p-3 bg-primary-container/10 rounded-lg">
+<span class="material-symbols-outlined text-primary" data-icon="settings_input_antenna">settings_input_antenna</span>
+</div>
+<div>
+<h4 class="font-semibold text-on-surface">IP Whitelisting</h4>
+<p class="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                            Restrict API key usage to specific IP addresses to add an extra layer of protection. You can configure this in the Global Network settings.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB for quick action (Optional based on rules) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary-gradient rounded-full shadow-lg flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all z-50 md:hidden">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+</body></html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Project ZCA - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e6e8ea",
+                        "on-primary-container": "#eeefff",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-secondary-fixed": "#001c3b",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-surface": "#191c1e",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "surface": "#f7f9fb",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "secondary-fixed-dim": "#adc8f5",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-fixed": "#00174b",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-tertiary-fixed": "#360f00",
+                        "primary-fixed": "#dbe1ff",
+                        "surface-container": "#eceef0",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-secondary-container": "#3e5980",
+                        "surface-container-highest": "#e0e3e5",
+                        "tertiary": "#943700",
+                        "primary": "#004ac6",
+                        "on-tertiary-container": "#ffede6",
+                        "surface-bright": "#f7f9fb",
+                        "on-secondary-fixed-variant": "#2d486d",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-container-low": "#f2f4f6",
+                        "background": "#f7f9fb",
+                        "error": "#ba1a1a",
+                        "outline": "#737686",
+                        "secondary-fixed": "#d5e3ff",
+                        "on-background": "#191c1e",
+                        "outline-variant": "#c3c6d7",
+                        "secondary-container": "#b5d0fd",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-dim": "#d8dadc",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#2563eb",
+                        "tertiary-container": "#bc4800",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#434655",
+                        "secondary": "#455f87"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar (Authority: JSON & Design System) -->
+<aside class="w-[240px] h-screen fixed left-0 top-0 bg-[#1E3A5F] flex flex-col py-6 z-50">
+<div class="px-6 mb-10">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Minimalist abstract tech logo for Project ZCA with geometric blue shapes on white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkwkGjHkCP1vu8udpUCs8Jj4oZU_1CihjK2MYOoXcMkOzxH1FhWV1Jo0Uz0OqbrkCuDa01VZ7X3mVkZ_QFEXZyYwG3M1r7i8SpfRSnuVAIAcHk2pjASVjRjyqFpzfLDiffqdJu9NtCQLFcgKDE828Gi8s9C9wEanlbC-jz4igc05IJepJQ6_h-BQExUzfYge5YQXsQu147cqAW_5mNbI5IgP3lvqW5zJEu_PV2ZVbOsAurU6_9FSGquLg98Yz_wkt-5-8-oAfHIj4"/>
+</div>
+<div>
+<h1 class="text-xl font-bold tracking-tight text-white">Project ZCA</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Command Center</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-6 py-3 text-white border-l-4 border-blue-600 bg-white/10 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter body-md tracking-normal">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-inter body-md tracking-normal">Users</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-inter body-md tracking-normal">Zalo Groups</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-inter body-md tracking-normal">Zalo Accounts</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-inter body-md tracking-normal">Messages</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-inter body-md tracking-normal">Configs</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="key">key</span>
+<span class="font-inter body-md tracking-normal">API Keys</span>
+</a>
+</nav>
+<div class="px-6 pt-6 mt-auto">
+<a class="flex items-center gap-3 py-3 text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-inter body-md tracking-normal">Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar (Authority: JSON & Design System) -->
+<header class="fixed top-0 right-0 left-[240px] h-16 bg-[#f7f9fb] flex justify-between items-center px-8 w-full z-40">
+<div class="flex items-center gap-8">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="bg-surface-container-low border-none rounded-full pl-10 pr-4 py-1.5 text-sm w-64 focus:ring-2 focus:ring-primary" placeholder="Search operations..." type="text"/>
+</div>
+<nav class="hidden md:flex gap-6">
+<a class="text-blue-700 border-b-2 border-blue-700 font-inter headline-sm font-semibold py-5" href="#">Dashboard</a>
+<a class="text-slate-500 hover:text-blue-600 transition-opacity font-inter headline-sm font-semibold py-5" href="#">Management</a>
+<a class="text-slate-500 hover:text-blue-600 transition-opacity font-inter headline-sm font-semibold py-5" href="#">Operations</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden bg-slate-200">
+<img class="w-full h-full object-cover" data-alt="Professional user portrait with soft lighting and neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAq-zRdiCuXLlz3qhFYNBjnDuJxB1Li_2GZtXc02ZY1Uc0p1TX-b5j1mkSMvcE4D1Iauv67O4EqcfVBPIC1mmgic_pRE1h-9S7EzOoGGPbMf-EYzLTceUx4ImNvlKmIg3o_6nBJPatK7qesYBXdsZCtBsJuje1Kss713h12mt5WpqTYrNbFE7ud5lx0ibnTiVkza07ncAbpQZEjjv6BnEEN8kUZB3xL3SeDDvo4iIAsl0Pbst8mgQFy-mio9SKv_bj8rjHtXj04vWc"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pl-[240px] pt-16 min-h-screen bg-surface">
+<div class="p-8 max-w-7xl mx-auto">
+<!-- Page Header -->
+<header class="mb-8 flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-bold tracking-tight text-on-surface">Dashboard</h2>
+<p class="text-slate-500 mt-1">Monday, October 23, 2023</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container-lowest text-on-surface px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="calendar_today">calendar_today</span>
+                        This Month
+                    </button>
+</div>
+</header>
+<!-- Stat Cards Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-full shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+</div>
+<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">+12%</span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">Total Zalo Groups</p>
+<p class="text-3xl font-bold tracking-tight text-on-surface">1,284</p>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-full shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="smartphone">smartphone</span>
+</div>
+<span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">+4</span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">Total Zalo Accounts</p>
+<p class="text-3xl font-bold tracking-tight text-on-surface">42</p>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-full shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+</div>
+<span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded">Daily</span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">Messages Sent Today</p>
+<p class="text-3xl font-bold tracking-tight text-on-surface">8,492</p>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest p-6 rounded-full shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="cancel">cancel</span>
+</div>
+<span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">-3%</span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">Failed Messages</p>
+<p class="text-3xl font-bold tracking-tight text-on-surface">127</p>
+</div>
+</div>
+<!-- Main Content Area: Recent Messages & Quick Actions -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Table Section (2/3 width) -->
+<div class="lg:col-span-2 space-y-6">
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="px-6 py-5 flex justify-between items-center bg-white">
+<h3 class="text-lg font-bold text-on-surface">Recent Messages</h3>
+<button class="text-primary text-sm font-semibold hover:underline">View all</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Group</th>
+<th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Sender</th>
+<th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Content</th>
+<th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+<th class="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Sent At</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high">
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">Marketing Team</td>
+<td class="px-6 py-4 text-slate-600">Admin_01</td>
+<td class="px-6 py-4 text-slate-500 truncate max-w-[150px]">Hello everyone, checking...</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">SENT</span>
+</td>
+<td class="px-6 py-4 text-slate-500 text-sm text-right">10:45 AM</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">Community Hub</td>
+<td class="px-6 py-4 text-slate-600">Bot_Alpha</td>
+<td class="px-6 py-4 text-slate-500 truncate max-w-[150px]">Update: New features live...</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">FAILED</span>
+</td>
+<td class="px-6 py-4 text-slate-500 text-sm text-right">10:42 AM</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">Tech Support</td>
+<td class="px-6 py-4 text-slate-600">Support_09</td>
+<td class="px-6 py-4 text-slate-500 truncate max-w-[150px]">Please disregard the last msg</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">RECALL</span>
+</td>
+<td class="px-6 py-4 text-slate-500 text-sm text-right">10:30 AM</td>
+</tr>
+<tr class="hover:bg-slate-50 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">Operations</td>
+<td class="px-6 py-4 text-slate-600">Admin_02</td>
+<td class="px-6 py-4 text-slate-500 truncate max-w-[150px]">Daily report generated for...</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">SENT</span>
+</td>
+<td class="px-6 py-4 text-slate-500 text-sm text-right">09:55 AM</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Quick Actions (1/3 width) -->
+<div class="space-y-6">
+<h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest px-1">Quick Actions</h3>
+<div class="bg-gradient-to-br from-primary to-primary-container p-6 rounded-xl text-white shadow-lg relative overflow-hidden group">
+<div class="relative z-10">
+<span class="material-symbols-outlined text-4xl mb-4 opacity-80" data-icon="send">send</span>
+<h4 class="text-xl font-bold mb-2">Send Message</h4>
+<p class="text-white/80 text-sm mb-6">Broadcast to multiple groups or specific contacts instantly.</p>
+<button class="bg-white text-primary px-6 py-2.5 rounded-lg text-sm font-bold shadow-md hover:scale-105 transition-transform">
+                                New Broadcast
+                            </button>
+</div>
+<span class="material-symbols-outlined text-[140px] absolute -right-8 -bottom-8 text-white/5 group-hover:rotate-12 transition-transform duration-500" data-icon="rocket">rocket</span>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-transparent hover:border-primary/20 transition-all">
+<div class="flex items-center gap-4 mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Add Zalo Account</h4>
+<p class="text-xs text-slate-500">Scale your automation</p>
+</div>
+</div>
+<button class="w-full bg-surface-container-low text-on-surface py-2 rounded-lg text-sm font-bold hover:bg-surface-container-high transition-colors">
+                            Link New Device
+                        </button>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm">
+<h4 class="font-bold text-on-surface mb-4">System Status</h4>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-600">API Health</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-xs font-semibold text-emerald-600">99.9%</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-sm text-slate-600">Avg. Response</span>
+<span class="text-xs font-semibold text-on-surface">142ms</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Asymmetric Secondary Insight Area -->
+<div class="mt-12 grid grid-cols-1 md:grid-cols-4 gap-8">
+<div class="md:col-span-3 bg-surface-container-low p-8 rounded-xl flex flex-col md:flex-row items-center gap-8">
+<div class="flex-1">
+<h3 class="text-2xl font-bold text-on-surface mb-2">Automate your workflow.</h3>
+<p class="text-slate-600 max-w-md">Connect your Project ZCA command center to external APIs and trigger sophisticated messaging flows without manual intervention.</p>
+<div class="mt-6 flex gap-4">
+<button class="bg-on-surface text-surface-container-lowest px-6 py-2 rounded-lg font-bold text-sm">Explore Automations</button>
+<button class="text-primary font-bold text-sm">Documentation →</button>
+</div>
+</div>
+<div class="w-48 h-32 rounded-xl bg-surface-container-lowest shadow-inner flex items-center justify-center p-4">
+<img class="w-full h-full object-contain opacity-60" data-alt="Stylized 3D rendering of connected digital nodes and glowing gears representing workflow automation" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSK8hgOkpvrY65HYRfbE3451bZjNcsCWqKbZbAYqqZ96R95Cc1g3RefM-0IDOfHCf1MLIHl85KVL5A8aR-jWjPR2IXnQ7YEYg3fs-Zkt9C-LmEAC_HgvaHgdDCyi9QJbeLkE--IwmRspp_0qx2Ks_39psxJsioxDdXbgD_QwMfD6-svbaf9X60vVM8BawXJPszTFdxXgcQpawYKixYCR_9zBakSJ1hSKQs-A4QIivFEK7ubgnyyy3OwGcguaGG79XuvUTpmo5yWjw"/>
+</div>
+</div>
+<div class="bg-[#1E3A5F] p-8 rounded-xl text-white flex flex-col justify-center">
+<p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Pro Tip</p>
+<p class="text-lg leading-snug">Use Zalo Groups to segment your broadcast targets for 2x engagement.</p>
+</div>
+</div>
+</div>
+</main>
+</body></html>

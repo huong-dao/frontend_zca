@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Messages | Project ZCA</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "secondary-fixed": "#d5e3ff",
+                        "surface": "#f7f9fb",
+                        "primary-container": "#2563eb",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-background": "#191c1e",
+                        "background": "#f7f9fb",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#2d486d",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#455f87",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#c3c6d7",
+                        "on-primary-container": "#eeefff",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "primary": "#004ac6",
+                        "inverse-on-surface": "#eff1f3",
+                        "tertiary-container": "#bc4800",
+                        "on-tertiary-container": "#ffede6",
+                        "surface-dim": "#d8dadc",
+                        "inverse-primary": "#b4c5ff",
+                        "on-surface-variant": "#434655",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-secondary-container": "#3e5980",
+                        "secondary-fixed-dim": "#adc8f5",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "tertiary": "#943700",
+                        "on-tertiary-fixed": "#360f00",
+                        "secondary-container": "#b5d0fd",
+                        "on-secondary-fixed": "#001c3b",
+                        "on-surface": "#191c1e",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "outline": "#737686",
+                        "on-primary-fixed": "#00174b",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-bright": "#f7f9fb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar (Shared Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#1E3A5F] flex flex-col py-8 px-4 z-50">
+<div class="mb-10 px-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-6 h-6" data-alt="minimalist geometric logo for high-tech command center in white on blue background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5sTHmUN6fMy2tHAPlOzaSPz-NDufDZzmX0UNPt3inCI6pxdJHClAcNs3tmtPBN1Nkonq9To8hKyedoambgbrcwbIknDt-4_Amk46kgAcp39gOilIdQ93Xxpni1jyOp6slLqZF4dHGB1gx5MNn7UwQB33XlafwpADlX5PlV2viSDifu8rPgjOXlzC8TYY5kWF8MRsY9JTH21fg_8Gtlt1IvO5ESXmWqTNPhuAU0qlrmBBX2mFa9NrviK6PIcK0u0xzpbeW3OdBC6Q"/>
+</div>
+<div>
+<h1 class="text-white text-xl font-bold tracking-tight">Project ZCA</h1>
+<p class="text-slate-400 text-[10px] uppercase tracking-widest font-semibold">Command Center</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Messages is Active -->
+<a class="flex items-center gap-3 py-3 text-blue-400 font-semibold border-l-4 border-blue-600 pl-4 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="forum">forum</span>
+<span class="text-[0.875rem]">Messages</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-300 hover:text-white hover:bg-white/5 pl-5 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="send">send</span>
+<span class="text-[0.875rem]">Campaigns</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-300 hover:text-white hover:bg-white/5 pl-5 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-[0.875rem]">Configuration</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-300 hover:text-white hover:bg-white/5 pl-5 transition-all scale-98 active:opacity-80" href="#">
+<span class="material-symbols-outlined" data-icon="key">key</span>
+<span class="text-[0.875rem]">API Keys</span>
+</a>
+</nav>
+<div class="mt-auto pt-8 border-t border-white/10 space-y-1">
+<a class="flex items-center gap-3 py-3 text-slate-300 hover:text-white hover:bg-white/5 pl-5 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book">menu_book</span>
+<span class="text-[0.875rem]">Documentation</span>
+</a>
+<a class="flex items-center gap-3 py-3 text-slate-300 hover:text-white hover:bg-white/5 pl-5 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+<span class="text-[0.875rem]">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Shared Component) -->
+<header class="docked full-width top-0 sticky z-40 bg-[#f7f9fb] flex justify-between items-center px-8 h-16 w-full">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-lg py-2 pl-10 pr-4 text-body-md focus:ring-2 focus:ring-primary/20 placeholder:text-slate-500" placeholder="Search automations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-blue-700 font-bold text-body-md">Automation Dashboard</span>
+<div class="flex items-center gap-4">
+<button class="text-slate-500 hover:text-blue-600 transition-colors tap-highlight-none">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-blue-600 transition-colors tap-highlight-none">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Page Header & Filters -->
+<section class="px-8 pt-8 pb-4">
+<div class="flex flex-col gap-6">
+<div class="flex items-end justify-between">
+<div>
+<h2 class="text-headline-sm text-on-surface font-semibold tracking-tight">Messages</h2>
+<p class="text-on-surface-variant text-body-md mt-1">Monitor and manage all outgoing communication logs.</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium shadow-sm active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]" data-icon="add_comment">add_comment</span>
+                        Compose New
+                    </button>
+</div>
+<!-- Bento-style Filter Form -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.04)]">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+<div class="space-y-2">
+<label class="text-label-sm text-on-surface-variant uppercase tracking-wider block">Status</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg py-2.5 px-4 text-body-md focus:ring-2 focus:ring-primary/20">
+<option>ALL STATUS</option>
+<option>SENT</option>
+<option>FAILED</option>
+<option>RECALL</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-label-sm text-on-surface-variant uppercase tracking-wider block">Group</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg py-2.5 px-4 text-body-md focus:ring-2 focus:ring-primary/20">
+<option>All Groups</option>
+<option>Marketing</option>
+<option>System Alerts</option>
+<option>Support</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-label-sm text-on-surface-variant uppercase tracking-wider block">Limit</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg py-2.5 px-4 text-body-md focus:ring-2 focus:ring-primary/20">
+<option>15 per page</option>
+<option>25 per page</option>
+<option>50 per page</option>
+<option>100 per page</option>
+</select>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 bg-surface-container-highest text-on-surface py-2.5 rounded-lg font-medium hover:bg-surface-container-high transition-colors">
+                                Reset
+                            </button>
+<button class="flex-1 bg-primary text-white py-2.5 rounded-lg font-medium hover:bg-primary-container transition-colors">
+                                Apply Filter
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Messages Table Section -->
+<section class="px-8 pb-12">
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0_8px_30px_rgba(25,28,30,0.04)]">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="py-4 px-6 text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Content</th>
+<th class="py-4 px-6 text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Sender</th>
+<th class="py-4 px-6 text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Group</th>
+<th class="py-4 px-6 text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Status</th>
+<th class="py-4 px-6 text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold text-center">Sent At</th>
+<th class="py-4 px-6 text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Message Row 1: SENT -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-5 px-6">
+<div class="max-w-xs xl:max-w-md">
+<p class="text-body-md text-on-surface font-medium truncate">Hello! Your verification code is 4492-ZCA. Please do not share this code...</p>
+<p class="text-[11px] text-slate-400 mt-0.5">ID: MSG-998231</p>
+</div>
+</td>
+<td class="py-5 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center text-[10px] text-on-secondary-container font-bold">SY</div>
+<span class="text-body-md">System Auth</span>
+</div>
+</td>
+<td class="py-5 px-6 text-body-md text-slate-600">Authentication</td>
+<td class="py-5 px-6">
+<span class="bg-primary-container/10 text-primary-container px-2.5 py-0.5 rounded-full text-[11px] font-bold">SENT</span>
+</td>
+<td class="py-5 px-6 text-body-md text-on-surface-variant text-center">
+                                Oct 24, 14:32
+                            </td>
+<td class="py-5 px-6 text-right">
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error-container/20 rounded-lg transition-all active:scale-90" title="Recall Message">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings_backup_restore">settings_backup_restore</span>
+</button>
+</td>
+</tr>
+<!-- Message Row 2: FAILED -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-5 px-6">
+<div class="max-w-xs xl:max-w-md">
+<p class="text-body-md text-on-surface font-medium truncate">FLASH SALE! Get 50% off all automation plans today only with code DASH50.</p>
+<p class="text-[11px] text-slate-400 mt-0.5">ID: MSG-998232</p>
+</div>
+</td>
+<td class="py-5 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-tertiary-container/20 flex items-center justify-center text-[10px] text-tertiary font-bold">MK</div>
+<span class="text-body-md">Marketing Bot</span>
+</div>
+</td>
+<td class="py-5 px-6 text-body-md text-slate-600">Marketing</td>
+<td class="py-5 px-6">
+<span class="bg-error-container/20 text-error px-2.5 py-0.5 rounded-full text-[11px] font-bold">FAILED</span>
+</td>
+<td class="py-5 px-6 text-body-md text-on-surface-variant text-center">
+                                Oct 24, 14:30
+                            </td>
+<td class="py-5 px-6 text-right opacity-30 cursor-not-allowed">
+<span class="material-symbols-outlined text-[20px] p-2" data-icon="settings_backup_restore">settings_backup_restore</span>
+</td>
+</tr>
+<!-- Message Row 3: RECALL -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-5 px-6">
+<div class="max-w-xs xl:max-w-md">
+<p class="text-body-md text-slate-400 font-medium truncate italic">Message content was retracted by admin command.</p>
+<p class="text-[11px] text-slate-400 mt-0.5">ID: MSG-998233</p>
+</div>
+</td>
+<td class="py-5 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-on-secondary-fixed-variant/20 flex items-center justify-center text-[10px] text-on-secondary-fixed-variant font-bold">AD</div>
+<span class="text-body-md">Admin Shell</span>
+</div>
+</td>
+<td class="py-5 px-6 text-body-md text-slate-600">Management</td>
+<td class="py-5 px-6">
+<span class="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[11px] font-bold">RECALL</span>
+</td>
+<td class="py-5 px-6 text-body-md text-on-surface-variant text-center">
+                                Oct 24, 14:15
+                            </td>
+<td class="py-5 px-6 text-right opacity-30 cursor-not-allowed">
+<span class="material-symbols-outlined text-[20px] p-2" data-icon="settings_backup_restore">settings_backup_restore</span>
+</td>
+</tr>
+<!-- Message Row 4: SENT -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-5 px-6">
+<div class="max-w-xs xl:max-w-md">
+<p class="text-body-md text-on-surface font-medium truncate">Ticket #8821 has been updated. View details in the dashboard portal.</p>
+<p class="text-[11px] text-slate-400 mt-0.5">ID: MSG-998234</p>
+</div>
+</td>
+<td class="py-5 px-6">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center text-[10px] text-on-secondary-container font-bold">CS</div>
+<span class="text-body-md">Customer Svc</span>
+</div>
+</td>
+<td class="py-5 px-6 text-body-md text-slate-600">Support</td>
+<td class="py-5 px-6">
+<span class="bg-primary-container/10 text-primary-container px-2.5 py-0.5 rounded-full text-[11px] font-bold">SENT</span>
+</td>
+<td class="py-5 px-6 text-body-md text-on-surface-variant text-center">
+                                Oct 24, 13:55
+                            </td>
+<td class="py-5 px-6 text-right">
+<button class="p-2 text-slate-400 hover:text-error hover:bg-error-container/20 rounded-lg transition-all active:scale-90" title="Recall Message">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings_backup_restore">settings_backup_restore</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination Footer -->
+<div class="bg-surface-container-low px-8 py-5 flex items-center justify-between">
+<p class="text-body-md text-on-surface-variant">
+                        Showing <span class="font-bold text-on-surface">1-15</span> of 2,482 messages
+                    </p>
+<div class="flex items-center gap-1">
+<button class="p-2 rounded hover:bg-surface-container-highest transition-colors text-slate-500 disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<div class="flex gap-1 px-2">
+<button class="w-8 h-8 rounded flex items-center justify-center bg-primary text-white text-body-md font-bold">1</button>
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant text-body-md transition-colors">2</button>
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant text-body-md transition-colors">3</button>
+<span class="w-8 h-8 flex items-center justify-center text-on-surface-variant">...</span>
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-container-highest text-on-surface-variant text-body-md transition-colors">166</button>
+</div>
+<button class="p-2 rounded hover:bg-surface-container-highest transition-colors text-slate-500">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Overview Row -->
+<section class="px-8 pb-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.04)] border-l-4 border-primary">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-widest font-semibold">Total Sent (24h)</p>
+<h3 class="text-headline-sm font-bold mt-2">12,480</h3>
+<p class="text-xs text-primary mt-1 font-medium">↑ 12% from yesterday</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.04)] border-l-4 border-error">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-widest font-semibold">Failure Rate</p>
+<h3 class="text-headline-sm font-bold mt-2">0.42%</h3>
+<p class="text-xs text-slate-500 mt-1">Within SLA threshold</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.04)] border-l-4 border-secondary">
+<p class="text-label-sm text-on-surface-variant uppercase tracking-widest font-semibold">Queued Tasks</p>
+<h3 class="text-headline-sm font-bold mt-2">82</h3>
+<p class="text-xs text-slate-500 mt-1">Estimating 1.2s delivery</p>
+</div>
+</section>
+</main>
+</body></html>

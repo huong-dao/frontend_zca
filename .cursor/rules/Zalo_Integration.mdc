@@ -1,0 +1,742 @@
+---
+alwaysApply: true
+---
+
+## Installation
+npm install zca-js
+
+## API: loginQR
+
+### Description
+Authenticate (login) a Zalo personal account using QR Code.
+
+This API initializes a login session and generates a QR code that must be scanned using the Zalo mobile app.  
+After successful scan, the system returns an authenticated API instance used for all further interactions.
+
+---
+
+### Method (zca-js)
+zalo.loginQR(options)
+
+---
+
+### Parameters
+
+- userAgent: string (optional)  
+  → Custom user agent for the login session
+
+- qrPath: string (optional)  
+  → File path to save QR code image  
+  → Default: ./qr.png
+
+---
+
+### Example
+
+```ts
+import { Zalo } from "zca-js";
+
+const zalo = new Zalo({
+    selfListen: false,
+    checkUpdate: true,
+    logging: true
+});
+
+const api = await zalo.loginQR({
+    userAgent: "",
+    qrPath: "./qr.png"
+});
+
+api.listener.start();
+```
+
+## API: getQR
+
+### Description
+Retrieve QR code(s) of Zalo user(s).
+
+This API returns the QR code associated with one or multiple Zalo user IDs.  
+QR codes can be used for identification, sharing contact, or other Zalo-related interactions.
+
+---
+
+### Method (zca-js)
+api.getQR(userId)
+
+---
+
+### Parameters
+
+- userId: string | string[] (optional)  
+  → Zalo user ID or list of user IDs  
+  → If not provided, may return QR of current account (depending on library behavior)
+
+---
+
+### Return
+{
+  [userId: string]: string; // QR code (base64 or encoded string)
+}
+
+### Example
+
+```ts
+const result = await api.getQR("user_id_here");
+console.log(result);
+```
+
+## API: getOwnId
+
+### Description
+Retrieve the Zalo ID of the currently logged-in account.
+
+This API returns the unique identifier (`zalo_id`) of the account associated with the current authenticated session.
+
+---
+
+### Method (zca-js)
+api.getOwnId()
+
+---
+
+### Parameters
+
+- None
+
+---
+
+### Return
+string
+
+---
+
+### Example
+
+```ts
+const zaloId = await api.getOwnId();
+console.log(zaloId);
+```
+
+## API: getAllGroups
+
+### Description
+Retrieve the list of all Zalo groups that the current account has joined.
+
+This API returns metadata about groups, including group IDs, which can be used to fetch detailed group information.
+
+---
+
+### Method (zca-js)
+api.getAllGroups()
+
+---
+
+### Parameters
+
+- None
+
+---
+
+### Return
+{
+  version: string;
+  gridVerMap: {
+    [groupId: string]: string;
+  };
+}
+
+---
+
+### Example
+
+```ts
+const groups = await api.getAllGroups();
+console.log(groups);
+```
+
+## API: getUserInfo
+
+### Description
+Retrieve detailed information of a Zalo user.
+
+This API returns profile data of a user, including basic information such as name and other metadata.  
+It also provides change tracking for profile updates.
+
+---
+
+### Method (zca-js)
+api.getUserInfo(userId)
+
+---
+
+### Parameters
+
+- userId: string  
+  → Zalo user ID
+
+---
+
+### Return
+{
+  unchanged_profiles: Record<string, unknown>;
+  phonebook_version: number;
+  changed_profiles: {
+    [userId: string]: ProfileInfo;
+  };
+}
+
+---
+
+### Example
+
+```ts
+const userId = "0000000000000000001";
+
+const result = await api.getUserInfo(userId);
+console.log(result);
+```
+
+## API: sendFriendRequest
+
+### Description
+Send a friend request to a Zalo user.
+
+This API allows sending a friend invitation with a custom message to a specific user by their `userId`.  
+It is commonly used after retrieving user information via phone number or group data.
+
+---
+
+### Method (zca-js)
+api.sendFriendRequest(msg, userId)
+
+---
+
+### Parameters
+
+- msg: string  
+  → Message content sent with the friend request
+
+- userId: string  
+  → Zalo user ID
+
+---
+
+### Return
+Empty string → request sent successfully
+---
+
+### Example
+
+#### Send by userId
+
+```ts
+const userId = "000000000000000001";
+const msg = "Xin chào, hãy kết bạn với tôi!";
+
+await api.sendFriendRequest(msg, userId);
+```
+
+#### Send by phone
+```ts
+const phoneNumber = "0999999999";
+
+const userInfo = await api.findUser(phoneNumber);
+const userId = userInfo.uid;
+
+const msg = "Xin chào, hãy kết bạn với tôi!";
+
+await api.sendFriendRequest(msg, userId);
+```
+
+## API: acceptFriendRequest
+
+### Description
+Accept a friend request from a Zalo user.
+
+This API allows the current account to accept a pending friend request from a specific user using their `userId`.
+
+---
+
+### Method (zca-js)
+api.acceptFriendRequest(userId)
+
+---
+
+### Parameters
+
+- userId: string  
+  → Zalo user ID who sent the friend request
+
+---
+
+### Example
+
+```ts
+const userId = "0000000000000000001";
+
+await api.acceptFriendRequest(userId);
+```
+---
+
+### Return
+- Empty string → request accepted successfully
+
+## API: addUserToGroup
+
+### Description
+Add one or multiple users to a Zalo group.
+
+This API allows adding members into a specific group using their `userId`.  
+Supports both single user and multiple users in one request.
+
+---
+
+### Method (zca-js)
+api.addUserToGroup(memberId, groupId)
+
+---
+
+### Parameters
+
+- memberId: string | string[]  
+  → Zalo user ID or list of user IDs to be added into group
+
+- groupId: string  
+  → Target group ID
+
+---
+
+### Example
+
+```ts
+const groupId = "0000000000000000000";
+
+// Add single member
+const memberId = "0000000000000000001";
+
+await api.addUserToGroup(memberId, groupId);
+
+// Add multiple members
+const memberIds = [
+    "0000000000000000001",
+    "0000000000000000002"
+];
+
+await api.addUserToGroup(memberIds, groupId);
+```
+
+---
+
+### Return
+{
+  errorMembers: string[];
+  error_data: Record<string, string[]>;
+}
+
+- errorMembers: string[]  
+  → List of userIds that failed to be added
+
+- error_data: object  
+  → Detailed error information per user
+
+---
+
+## API: sendMessage
+
+### Description
+Send a message to a Zalo user or group.
+
+This API supports sending:
+- Plain text messages
+- Formatted messages (bold, color, size, etc.)
+- Mentions
+- Quotes (reply message)
+- Attachments (files)
+- Urgent messages
+
+---
+
+### Method (zca-js)
+api.sendMessage(message, threadId[, type])
+
+---
+
+### Parameters
+
+- message: string | MessageContent  
+  → Message content (plain text or advanced object)
+
+- threadId: string  
+  → ID of user or group
+
+- type: ThreadType (optional)  
+  → Thread type (User | Group), default = User
+
+---
+
+### Example
+
+#### Send plain text to group
+
+```ts
+import { ThreadType } from "zca-js";
+
+await api.sendMessage("Xin chào", "0000000000000000", ThreadType.Group);
+```
+
+---
+
+#### Send formatted & important message
+
+```ts
+import { ThreadType, Urgency, TextStyle } from "zca-js";
+
+const text = "TIN QUAN TRỌNG!!!";
+
+await api.sendMessage(
+    {
+        msg: text,
+        urgency: Urgency.Important,
+        styles: [
+            { start: 0, len: text.length, st: TextStyle.Bold },
+            { start: 0, len: text.length, st: TextStyle.Red },
+            { start: 0, len: text.length, st: TextStyle.Big }
+        ]
+    },
+    "0000000000000000",
+    ThreadType.Group
+);
+```
+
+---
+
+#### Send message with mention
+
+```ts
+import { ThreadType } from "zca-js";
+
+await api.sendMessage(
+    {
+        msg: "Xin chào @ZCA",
+        mentions: [
+            {
+                pos: 9,
+                uid: "0000000000000000",
+                len: 4
+            }
+        ]
+    },
+    "0000000000000000",
+    ThreadType.Group
+);
+```
+
+---
+
+#### Send message with quote (reply)
+
+```ts
+api.listener.on("message", async (message) => {
+    if (!message.isSelf) {
+        await api.sendMessage(
+            {
+                msg: "ok",
+                quote: message
+            },
+            message.threadId,
+            message.type
+        );
+    }
+});
+```
+
+---
+
+#### Send attachment
+
+```ts
+import path from "path";
+
+api.listener.on("message", async (message) => {
+    const isPlainText = typeof message.data.content === "string";
+
+    if (isPlainText && message.data.content === "file") {
+        await api.sendMessage(
+            {
+                msg: "",
+                attachments: [path.resolve("./file.txt")]
+            },
+            message.threadId,
+            message.type
+        );
+    }
+});
+```
+
+---
+
+### Return
+
+```ts
+{
+  message: {
+    msgId: number;
+  } | null;
+  attachment: {
+    msgId: number;
+  }[];
+}
+```
+
+- message  
+  → Result of text message (may be null)
+
+- attachment  
+  → List of attachment results
+
+---
+
+### Usage in ZCA
+
+Used in **Message Module**:
+
+#### Send Message Flow
+
+1. Select Zalo sub account
+2. Validate:
+   - Is member of group
+   - Not spam (time config)
+3. Call `sendMessage`
+4. Save:
+   - messageId
+   - content
+   - sender
+   - group
+   - timestamp
+
+---
+
+## API: deleteMessage
+
+### Description
+Delete a message sent by yourself or a group member.
+
+This API allows removing a message from a conversation.  
+By default, the message is only deleted on the current account (local delete).
+
+---
+
+### Method (zca-js)
+api.deleteMessage(options, threadId[, type])
+
+---
+
+### Parameters
+
+- options: DeleteMessageDestination  
+  → Message identification object
+
+- onlyMe: boolean (optional)  
+  → Default = true (delete only for current user)
+
+- threadId: string  
+  → ID of user or group
+
+- type: ThreadType (optional)  
+  → Thread type (User | Group)
+
+---
+
+### Example
+
+#### Delete own message after 5 seconds
+
+```ts
+api.listener.on("message", (message) => {
+    const { content } = message.data;
+    const isTextMessage = typeof content === "string";
+    const shouldDelete = isTextMessage && content === "test";
+
+    if (message.isSelf && shouldDelete) {
+        setTimeout(() => {
+            api.deleteMessage(
+                {
+                    data: {
+                        cliMsgId: message.data.cliMsgId,
+                        msgId: message.data.msgId,
+                        uidFrom: message.data.uidFrom,
+                    },
+                    threadId: message.threadId,
+                    type: message.type
+                }
+            )
+            .then(console.log)
+            .catch(console.error);
+        }, 5000);
+    }
+});
+```
+
+---
+
+### Return
+
+```ts
+{
+  status: number;
+}
+```
+
+- status  
+  → Operation result status code
+
+---
+
+## API: getAllFriends
+
+### Description
+Retrieve the friend list of the currently logged-in Zalo account.
+
+This API returns a list of all friends associated with the authenticated account.  
+Supports pagination via `count` and `page`.
+
+---
+
+### Method (zca-js)
+api.getAllFriends()
+
+---
+
+### Parameters
+
+- count: number (optional)  
+  → Number of friends per page (default: 20000)
+
+- page: number (optional)  
+  → Page number (default: 1)
+
+---
+
+### Example
+
+```ts
+const friends = await api.getAllFriends();
+console.log(friends);
+```
+
+---
+
+### Return
+
+```ts
+User[]
+```
+
+- Array of User objects  
+  → Each item represents a Zalo friend
+
+---
+
+## API: undo
+Thu hồi tin nhắn
+```ts
+api.undo(message)
+```
+
+---
+
+### Parameters
+message UndoPayload
+
+### Return
+Promise<UndoResponse>
+
+```ts
+export type UndoPayload = {
+    msgId: string | number;
+    cliMsgId: string | number;
+};
+
+export type UndoResponse = {
+    status: number;
+};
+```
+
+### Examples
+
+```ts
+// Thu hồi tin nhắn của bản thân nếu nó có chứa từ undo
+api.listener.on("message", (message) => {
+    const { content } = message.data;
+    const isTextMessage = typeof content == "string";
+    const shouldUndo = isTextMessage && content.includes("undo");
+    if (message.isSelf && shouldUndo) {
+        api.undo(message).then(console.log).catch(console.error);
+    }
+});
+```
+
+---
+
+## API: findUser
+
+### Description
+Find a Zalo user by phone number.
+
+This API retrieves user profile information based on a phone number.  
+It is commonly used to convert a phone number into a `userId` (uid) for further operations.
+
+---
+
+### Method (zca-js)
+api.findUser(phoneNumber)
+
+---
+
+### Parameters
+
+- phoneNumber: string  
+  → Phone number of the user
+
+---
+
+### Example
+
+```ts
+const user = await api.findUser("0909090909");
+console.log(user);
+```
+
+---
+
+### Return
+
+```ts
+{
+  avatar: string;
+  cover: string;
+  status: string;
+  gender: Gender;
+  dob: number;
+  sdob: string;
+  globalId: string;
+  bizPkg: ZBusinessPackage;
+  uid: string;
+  zalo_name: string;
+  display_name: string;
+}
+```
+
+- uid  
+  → Zalo user ID (MOST IMPORTANT)
+
+- display_name / zalo_name  
+  → User name
+
+- avatar  
+  → Profile image
+
+- Other fields  
+  → Additional metadata
+
+---
