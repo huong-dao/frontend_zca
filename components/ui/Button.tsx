@@ -87,8 +87,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           isDisabled && variant === "secondary" && "hover:bg-surface-container",
           isDisabled && variant === "ghost" && "hover:bg-transparent",
           isDisabled && variant === "destructive" && "hover:bg-error/10",
-          startIcon && "gap-2",
-          endIcon && "gap-2",
+          Boolean(startIcon) && "gap-2",
+          Boolean(endIcon) && "gap-2",
           className,
         )}
         {...props}
