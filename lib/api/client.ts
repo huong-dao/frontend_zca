@@ -1,6 +1,6 @@
 import type { ApiErrorPayload } from "@/lib/api/types";
 
-const API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL = "http://221.132.21.163:3000";
 
 export class ApiError extends Error {
   status: number;

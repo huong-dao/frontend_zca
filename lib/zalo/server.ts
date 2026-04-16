@@ -116,6 +116,16 @@ function mapAccountToSessionUser(account: FetchAccountInfoResponse): ZaloSession
   };
 }
 
+function ensureLoginCredentials(
+  value: ZaloSessionCredentials | null,
+): ZaloSessionCredentials {
+  if (!value) {
+    throw new Error("Khong lay duoc thong tin session tu login QR.");
+  }
+
+  return value;
+}
+
 function serializeSession(session: ActiveZaloSession) {
   return {
     id: session.id,
@@ -232,16 +242,15 @@ async function runQrLoginFlow(loginId: string) {
       },
     );
 
-    if (!loginCredentials) {
-      throw new Error("Khong lay duoc thong tin session tu login QR.");
-    }
-
+    const resolvedLoginCredentials = ensureLoginCredentials(loginCredentials);
     const accountInfo = await api.fetchAccountInfo();
     const cookieJar = api.getCookie().serializeSync();
     const credentials: ZaloSessionCredentials = {
-      imei: loginCredentials.imei,
-      userAgent: loginCredentials.userAgent,
-      cookies: (cookieJar?.cookies as SerializedCookie[] | undefined) ?? loginCredentials.cookies,
+      imei: resolvedLoginCredentials.imei,
+      userAgent: resolvedLoginCredentials.userAgent,
+      cookies:
+        (cookieJar?.cookies as SerializedCookie[] | undefined) ??
+        resolvedLoginCredentials.cookies,
     };
     const sessionId = crypto.randomUUID();
     const timestamp = nowIso();
@@ -347,6 +356,11 @@ export async function getQrByUserId(
 ) {
   const session = requireSession(sessionId);
   const api = await createApiFromSession(session);
+
+  if (!userId) {
+    throw new Error("userId la bat buoc de lay ma QR.");
+  }
+
   const qrCodes = await api.getQR(userId);
 
   getStore().activeSessions.set(session.id, {
