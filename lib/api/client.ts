@@ -1,6 +1,6 @@
 import type { ApiErrorPayload } from "@/lib/api/types";
 
-const API_BASE_URL = "http://221.132.21.163:3000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 export class ApiError extends Error {
   status: number;
