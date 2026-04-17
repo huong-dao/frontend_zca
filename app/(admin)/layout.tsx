@@ -23,7 +23,7 @@ export default function AdminLayout({
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface text-on-surface-variant">
-        Dang tai phien dang nhap...
+        Đang tải phiên đăng nhập...
       </div>
     );
   }

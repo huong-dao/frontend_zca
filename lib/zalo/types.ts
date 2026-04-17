@@ -79,3 +79,12 @@ export interface GetQrByUserIdPayload {
 export interface GetQrByUserIdResponse {
   qrCodes: Record<string, string>;
 }
+
+export interface GetAllGroupsResult {
+  version: string;
+  gridVerMap: Record<string, string>;
+}
+
+export interface GetAllGroupsResponse {
+  groups: GetAllGroupsResult;
+}

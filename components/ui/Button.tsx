@@ -12,9 +12,10 @@ type ButtonVariant =
   | "ghost"
   | "destructive"
   | "outline"
-  | "icon";
+  | "icon"
+  | "icon_ghost";
 
-type ButtonSize = "sm" | "md" | "lg" | "icon";
+type ButtonSize = "sm" | "md" | "lg" | "icon" | "icon_ghost";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -39,6 +40,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   outline:
     "border border-outline-variant text-on-surface-variant hover:bg-surface-container",
   icon: "bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105",
+  icon_ghost: "text-on-surface-variant hover:opacity-70 active:opacity-50 shadow-none bg-transparent",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -46,6 +48,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   md: "h-11 px-6 text-sm rounded-xl",
   lg: "h-12 px-7 text-base rounded-xl",
   icon: "h-12 w-12 rounded-xl p-0",
+  icon_ghost: "h-12 w-12 rounded-xl p-0",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -53,7 +56,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     {
       className,
       variant = "primary",
-      size = variant === "icon" ? "icon" : "md",
+      size = variant === "icon" ? "icon" : variant === "icon_ghost" ? "icon_ghost" : "md",
       loading = false,
       fullWidth = false,
       startIcon,

@@ -260,6 +260,9 @@ export default function ZaloAccountsPage() {
         if (!cancelled) {
           setSaveAccountMessage("Đã lưu tài khoản Zalo vào hệ thống.");
           await loadAccounts();
+
+          // đóng Modal
+          handleCloseQrModal();
         }
       } catch (requestError) {
         if (cancelled) {
@@ -309,7 +312,7 @@ export default function ZaloAccountsPage() {
             startIcon={<HiMiniUserPlus className="h-5 w-5" />}
             onClick={() => setOpenAddAccountModal(true)}
           >
-            Thêm tài khoản
+            Thêm tài khoản Zalo
           </Button>
         }
       />

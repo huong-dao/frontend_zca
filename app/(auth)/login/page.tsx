@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
+import { HiEyeSlash, HiEye, HiOutlineEnvelope, HiOutlineLockClosed } from "react-icons/hi2";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,12 +13,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/zalo-accounts");
+      router.replace("/dashboard");
     }
   }, [loading, router, user]);
+
+  useEffect(() => {
+    if (showPassword) {
+      // show password
+      document.getElementById("password")?.setAttribute("type", "text");
+    } else {
+      // hide password
+      document.getElementById("password")?.setAttribute("type", "password");
+    }
+  }, [showPassword]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,7 +39,7 @@ export default function LoginPage() {
     try {
       await login({ email, password });
       await fetchMe();
-      router.replace("/zalo-accounts");
+      router.replace("/dashboard");
     } catch (submitError) {
       setError(
         submitError instanceof Error ? submitError.message : "Đăng nhập thất bại. Vui lòng thử lại.",
@@ -60,17 +72,22 @@ export default function LoginPage() {
             >
               Email
             </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="name@company.com"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="block w-full rounded-lg border-0 bg-surface-container-low px-4 py-3.5 text-on-surface transition-all placeholder:text-outline/60 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-fixed"
-              required
-            />
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                <HiOutlineEnvelope className="w-5 h-5" />
+              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="name@company.com"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="pl-11 block w-full rounded-lg border-0 bg-surface-container-low px-4 py-3.5 text-on-surface transition-all placeholder:text-outline/60 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-fixed"
+                required
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -80,17 +97,27 @@ export default function LoginPage() {
             >
               Mật khẩu
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="block w-full rounded-lg border-0 bg-surface-container-low px-4 py-3.5 text-on-surface transition-all placeholder:text-outline/60 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-fixed"
-              required
-            />
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                <HiOutlineLockClosed className="w-5 h-5" />
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="pl-11 pr-12 block w-full rounded-lg border-0 bg-surface-container-low px-4 py-3.5 text-on-surface transition-all placeholder:text-outline/60 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-fixed"
+                required
+              />
+              <div className="absolute inset-y-0 right-0 flex z-50 items-center text-outline group-focus-within:text-primary transition-colors">
+                <Button variant="icon_ghost" className={`text-slate-400 hover:text-slate-700 ${showPassword ? "text-slate-900" : "text-slate-400"}`} onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <HiEye /> : <HiEyeSlash />}
+                </Button>
+              </div>
+            </div>
           </div>
 
           {error ? (

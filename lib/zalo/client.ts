@@ -1,5 +1,6 @@
 import type {
   FindUserByPhoneResponse,
+  GetAllGroupsResponse,
   GetQrByUserIdResponse,
   PendingQrLoginSnapshot,
   StartQrLoginResponse,
@@ -68,6 +69,12 @@ export function getQrByUserId(userId?: string | string[]) {
   return request<GetQrByUserIdResponse>("/api/zalo/get-qr", {
     method: "POST",
     body: JSON.stringify({ userId }),
+  });
+}
+
+export function getAllGroups() {
+  return request<GetAllGroupsResponse>("/api/zalo/get-all-groups", {
+    method: "GET",
   });
 }
 

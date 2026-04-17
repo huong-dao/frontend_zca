@@ -1,7 +1,10 @@
 import "server-only";
 
 import { Zalo, LoginQRCallbackEventType } from "zca-js";
-import type { FetchAccountInfoResponse, FindUserResponse } from "zca-js";
+import type {
+  FetchAccountInfoResponse,
+  FindUserResponse,
+} from "zca-js";
 import type { SerializedCookie } from "tough-cookie";
 import type {
   ActiveZaloSession,
@@ -369,6 +372,19 @@ export async function getQrByUserId(
   });
 
   return qrCodes;
+}
+
+export async function getAllGroups(sessionId: string | undefined | null) {
+  const session = requireSession(sessionId);
+  const api = await createApiFromSession(session);
+  const groups = await api.getAllGroups();
+
+  getStore().activeSessions.set(session.id, {
+    ...session,
+    updatedAt: nowIso(),
+  });
+
+  return groups;
 }
 
 export function getPublicSession(sessionId: string | undefined | null) {
