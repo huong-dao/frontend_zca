@@ -123,7 +123,7 @@ function ensureLoginCredentials(
   value: ZaloSessionCredentials | null,
 ): ZaloSessionCredentials {
   if (!value) {
-    throw new Error("Khong lay duoc thong tin session tu login QR.");
+    throw new Error("Không lấy được thông tin session từ login QR.");
   }
 
   return value;
@@ -142,13 +142,13 @@ function requireSession(sessionId: string | undefined | null) {
   cleanupStore();
 
   if (!sessionId) {
-    throw new Error("Chua co phien Zalo dang dang nhap.");
+    throw new Error("Chưa có phiên đăng nhập Zalo.");
   }
 
   const session = getStore().activeSessions.get(sessionId);
 
   if (!session) {
-    throw new Error("Phien Zalo khong ton tai hoac da het han.");
+    throw new Error("Phiên Zalo không tồn tại hoặc đã hết hạn.");
   }
 
   return session;
@@ -219,7 +219,7 @@ async function runQrLoginFlow(loginId: string) {
           updatePendingLogin(loginId, (current) => ({
             ...current,
             status: "declined",
-            error: `QR bi tu choi (${event.data.code}).`,
+            error: `QR bị từ chối (${event.data.code}).`,
             updatedAt,
           }));
           return;
@@ -229,7 +229,7 @@ async function runQrLoginFlow(loginId: string) {
           updatePendingLogin(loginId, (current) => ({
             ...current,
             status: "expired",
-            error: "QR da het han. Vui long tao lai.",
+            error: "QR đã hết hạn. Vui lòng tạo lại.",
             updatedAt,
           }));
           return;
@@ -287,7 +287,7 @@ async function runQrLoginFlow(loginId: string) {
       return {
         ...current,
         status: "error",
-        error: error instanceof Error ? error.message : "Khong the dang nhap bang QR.",
+        error: error instanceof Error ? error.message : "Không thể đăng nhập bằng QR.",
         updatedAt: nowIso(),
       };
     });
@@ -361,7 +361,7 @@ export async function getQrByUserId(
   const api = await createApiFromSession(session);
 
   if (!userId) {
-    throw new Error("userId la bat buoc de lay ma QR.");
+    throw new Error("userId là bắt buộc để lấy mã QR.");
   }
 
   const qrCodes = await api.getQR(userId);
@@ -408,4 +408,10 @@ export function getPublicSession(sessionId: string | undefined | null) {
   }
 
   return serializeSession(session);
+}
+
+export function clearZaloSessions() {
+  const store = getStore();
+  store.activeSessions.clear();
+  store.pendingLogins.clear();
 }

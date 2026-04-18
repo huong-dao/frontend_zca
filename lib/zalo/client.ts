@@ -2,11 +2,14 @@ import type {
   FindUserByPhoneResponse,
   GetAllGroupsResponse,
   GetQrByUserIdResponse,
+  LogoutZaloResponse,
   PendingQrLoginSnapshot,
   StartQrLoginResponse,
   ZaloSessionResponse,
   getGroupInfoPayload,
 } from "@/lib/zalo/types";
+
+export const ZALO_SESSION_CHANGED_EVENT = "zca:zalo-session-changed";
 
 class ZaloClientError extends Error {
   status: number;
@@ -57,6 +60,21 @@ export function getCurrentZaloSession() {
   return request<ZaloSessionResponse>("/api/zalo/session", {
     method: "GET",
   });
+}
+
+export function notifyZaloSessionChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(ZALO_SESSION_CHANGED_EVENT));
+  }
+}
+
+export async function logoutZalo() {
+  const response = await request<LogoutZaloResponse>("/api/zalo/logout", {
+    method: "POST",
+  });
+
+  notifyZaloSessionChanged();
+  return response;
 }
 
 export function findUserByPhone(phoneNumber: string) {

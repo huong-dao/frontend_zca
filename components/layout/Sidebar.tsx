@@ -52,13 +52,12 @@ export default function Sidebar() {
                     <HiKey className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">API Keys</span>
                 </Link>
-            </nav>
-            <div className="mt-auto pt-6 border-t border-slate-700/50">
+                <div className="mt-auto border-t border-white/20"></div>
                 <button className="flex w-full items-center gap-3 pl-5 py-3 text-left text-slate-300 transition-colors hover:bg-red-500/10 hover:text-red-400" onClick={handleLogout} type="button">
                     <HiOutlineArrowRightStartOnRectangle className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Đăng xuất</span>
                 </button>
-            </div>
+            </nav>
         </aside>
     );
 }

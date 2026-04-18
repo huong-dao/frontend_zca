@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const session = getPublicSession(sessionId);
 
     if (!session) {
-      return Response.json({ message: "Chua co phien Zalo dang dang nhap." }, { status: 401 });
+      return Response.json({ message: "Chưa có phiên đăng nhập Zalo." }, { status: 401 });
     }
 
     const qrCodes = await getQrByUserId(body.userId, sessionId);
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return Response.json(
       {
-        message: error instanceof Error ? error.message : "Khong the lay ma QR theo user id.",
+        message: error instanceof Error ? error.message : "Không thể lấy mã QR theo user id.",
       },
       { status: 500 },
     );

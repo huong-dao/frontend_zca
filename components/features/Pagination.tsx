@@ -64,8 +64,8 @@ export default function Pagination({
         onClick={() => onPageChange(normalizedCurrentPage - 1)}
         disabled={!canGoPrevious}
         className={cn(
-          "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-outline-variant",
-          "bg-surface-container-lowest px-3 text-sm font-medium text-on-surface transition-colors",
+          "inline-flex h-7 w-9 items-center justify-center rounded-lg border border-outline-variant",
+          "bg-surface-container-lowest px-3 text-xs font-medium text-on-surface transition-colors",
           "hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-50",
         )}
       >
@@ -76,7 +76,7 @@ export default function Pagination({
         item === "..." ? (
           <span
             key={`ellipsis-${index}`}
-            className="inline-flex h-9 min-w-9 items-center justify-center text-sm text-on-surface-variant"
+            className="inline-flex h-9 min-w-9 items-center justify-center text-xs text-on-surface-variant"
           >
             ...
           </span>
@@ -89,10 +89,10 @@ export default function Pagination({
             onClick={() => onPageChange(item)}
             disabled={disabled}
             className={cn(
-              "inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-3 text-sm font-medium transition-colors",
+              "inline-flex h-7 min-w-7 items-center justify-center rounded-lg px-3 text-xs font-medium transition-colors",
               "border border-outline-variant hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-50",
               item === normalizedCurrentPage
-                ? "bg-primary text-white border-primary hover:bg-primary"
+                ? "bg-primary text-white border-primary hover:text-primary hover:bg-primary"
                 : "bg-surface-container-lowest text-on-surface",
             )}
           >
@@ -107,8 +107,8 @@ export default function Pagination({
         onClick={() => onPageChange(normalizedCurrentPage + 1)}
         disabled={!canGoNext}
         className={cn(
-          "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-outline-variant",
-          "bg-surface-container-lowest px-3 text-sm font-medium text-on-surface transition-colors",
+          "inline-flex h-7 w-9 items-center justify-center rounded-lg border border-outline-variant",
+          "bg-surface-container-lowest px-3 text-xs font-medium text-on-surface transition-colors",
           "hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-50",
         )}
       >

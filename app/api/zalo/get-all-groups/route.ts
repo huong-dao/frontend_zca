@@ -15,7 +15,7 @@ export async function GET() {
     const session = getPublicSession(sessionId);
 
     if (!session) {
-      return Response.json({ message: "Chua co phien Zalo dang dang nhap." }, { status: 401 });
+      return Response.json({ message: "Chưa có phiên đăng nhập Zalo." }, { status: 401 });
     }
 
     const groups = await getAllGroups(sessionId);
@@ -24,7 +24,7 @@ export async function GET() {
   } catch (error) {
     return Response.json(
       {
-        message: error instanceof Error ? error.message : "Khong the lay danh sach nhom Zalo.",
+        message: error instanceof Error ? error.message : "Không thể lấy danh sách nhóm Zalo.",
       },
       { status: 500 },
     );

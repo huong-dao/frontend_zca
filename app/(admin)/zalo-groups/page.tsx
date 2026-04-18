@@ -97,9 +97,6 @@ export default function ZaloGroupsPage() {
                 Tên nhóm
               </th>
               <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
-                Zalo Group ID
-              </th>
-              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
                 Số tài khoản
               </th>
               <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
@@ -129,10 +126,6 @@ export default function ZaloGroupsPage() {
                 <tr key={group.id} className="group transition-colors hover:bg-surface-container-low/30">
                   <td className="px-6 py-4">
                     <div className="body-md font-semibold text-on-surface">{group.groupName}</div>
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <div className="body-md text-on-surface">{group.groupZaloId}</div>
                   </td>
 
                   <td className="px-6 py-4">

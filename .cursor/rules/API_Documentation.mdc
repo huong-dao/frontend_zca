@@ -524,6 +524,8 @@ Example request:
 #### Description
 Create a new Zalo group record directly in the database.
 
+Note: `group_zalo_id` is the Zalo group identifier received from a specific account context. It is stored on the account-group mapping model, not as a global field on `ZaloGroup`.
+
 #### Request
 - Params: none
 - Query: none
@@ -546,7 +548,6 @@ Example request:
 {
   "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
   "groupName": "Marketing Team",
-  "groupZaloId": "1234567890123456789",
   "createdAt": "2026-04-15T08:20:00.000Z",
   "updatedAt": "2026-04-15T08:20:00.000Z"
 }
@@ -564,17 +565,25 @@ Example request:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
-### POST `/zalo-groups/bulk`
+### POST `/zalo-groups/bulk/:id`
 #### Endpoint
 - Method: `POST`
-- Full path: `/zalo-groups/bulk`
+- Full path: `/zalo-groups/bulk/:id`
 - Function: `ZaloGroupsController.createMultiple`
 
 #### Description
-Create multiple Zalo groups in one request. Existing groups are checked by `group_zalo_id` before insert and are skipped instead of being created again.
+Create multiple Zalo groups in one request for a specific Zalo account. The `:id` route parameter is the target `zaloAccountId`.
+
+For each new group:
+- one row is created in `ZaloGroup`
+- one row is created in `ZaloAccountGroup` to map that group to the provided Zalo account
+- the target account `groupCount` is recalculated after the transaction
+
+`group_zalo_id` here is the Zalo group identifier returned in the context of the provided account mapping. Existing mappings are checked by `group_zalo_id` before insert and are skipped instead of being created again.
 
 #### Request
-- Params: none
+- Params:
+  - `id`: `string`, UUID of the target `zaloAccountId`
 - Query: none
 - Body:
   - `groups`: `Array<{ group_name: string; group_zalo_id: string }>` required, minimum `1` item
@@ -604,7 +613,6 @@ Example request:
     {
       "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
       "groupName": "Marketing Team",
-      "groupZaloId": "1234567890123456789",
       "createdAt": "2026-04-16T08:20:00.000Z",
       "updatedAt": "2026-04-16T08:20:00.000Z"
     }
@@ -627,8 +635,10 @@ Example request:
 
 #### Error cases
 - `400`: validation error
+- `400`: duplicate `group_zalo_id` values in the same request are skipped, not inserted twice
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
+- `404`: Zalo account not found
 - `500`: unexpected server error
 
 #### Authentication
@@ -644,6 +654,8 @@ Example request:
 
 #### Description
 Update a stored Zalo group directly in the database.
+
+Note: updating this endpoint changes only the shared `ZaloGroup` record. `group_zalo_id` remains account-specific data on `ZaloAccountGroup`.
 
 #### Request
 - Params:
@@ -668,7 +680,6 @@ Example request:
 {
   "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
   "groupName": "Marketing Team",
-  "groupZaloId": "1234567890123456789",
   "createdAt": "2026-04-15T08:20:00.000Z",
   "updatedAt": "2026-04-15T08:25:00.000Z"
 }
@@ -828,6 +839,68 @@ List all Zalo accounts with master and child relations.
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
+### POST `/zalo-accounts/search`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts/search`
+- Function: `ZaloAccountsController.search`
+
+#### Description
+Search Zalo accounts by `name` or `phone`. The search is case-insensitive and returns the same relation-aware shape as the list endpoint.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `keyword`: `string`, optional, minimum length `1`
+
+Example request:
+
+```json
+{
+  "keyword": "0909"
+}
+```
+
+#### Response
+
+```json
+[
+  {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "zaloId": "0987654321",
+    "phone": "0901234567",
+    "name": "Master Account",
+    "isMaster": true,
+    "groupCount": 5,
+    "groupData": null,
+    "createdAt": "2026-04-15T08:30:00.000Z",
+    "updatedAt": "2026-04-15T08:30:00.000Z",
+    "masters": [],
+    "children": [
+      {
+        "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0002",
+        "linkedAt": "2026-04-15T08:32:00.000Z",
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+        "zaloId": "1122334455",
+        "name": "Child Account",
+        "groupCount": 2
+      }
+    ]
+  }
+]
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`, `USER`
+
 ### GET `/zalo-accounts/:id`
 #### Endpoint
 - Method: `GET`
@@ -852,25 +925,32 @@ Get one Zalo account with full relation details.
   "phone": "0909999999",
   "name": "Child Account",
   "isMaster": false,
-  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
   "groupCount": 2,
+  "groupData": null,
   "createdAt": "2026-04-15T08:31:00.000Z",
   "updatedAt": "2026-04-15T08:31:00.000Z",
-  "master": {
-    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
-    "zaloId": "0987654321",
-    "name": "Master Account",
-    "phone": "0901234567"
-  },
+  "masters": [
+    {
+      "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0001",
+      "linkedAt": "2026-04-15T08:32:00.000Z",
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+      "zaloId": "0987654321",
+      "name": "Master Account",
+      "phone": "0901234567",
+      "isMaster": true,
+      "groupCount": 5,
+      "createdAt": "2026-04-15T08:30:00.000Z"
+    }
+  ],
   "children": [],
   "groupMaps": [
     {
       "id": "7d7f702a-7827-4a19-84f0-249e73110001",
       "joinedAt": "2026-04-15T08:40:00.000Z",
+      "groupZaloId": "1234567890123456789",
       "group": {
         "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-        "groupName": "Marketing Team",
-        "groupZaloId": "1234567890123456789"
+        "groupName": "Marketing Team"
       }
     }
   ]
@@ -961,14 +1041,14 @@ This endpoint is no longer executed in the backend. QR login for attaching child
 - Query: none
 - Body:
   - `masterId`: `string`, required
-  - `phone`: `string`, required, digits only, length `9-15`
+  - `zaloId`: `string`, required
 
 Example request:
 
 ```json
 {
   "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
-  "phone": "0909999999"
+  "zaloId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
 }
 ```
 
@@ -980,14 +1060,13 @@ The backend currently returns an error for this endpoint.
 - `400`: provided `masterId` is not a master account
 - `400`: QR login for adding child accounts is handled in the frontend
 - `401`: missing/invalid JWT
-- `403`: role is not `ADMIN`
 - `404`: master Zalo account not found
 - `500`: unexpected server error
 
 #### Authentication
 - JWT required
 - Guards: `JwtAuthGuard`, `RolesGuard`
-- Required role: `ADMIN`
+- Required role: `ADMIN`, `USER`
 
 ### PUT `/zalo-accounts/set-master/:id`
 #### Endpoint
@@ -996,7 +1075,7 @@ The backend currently returns an error for this endpoint.
 - Function: `ZaloAccountsController.setMaster`
 
 #### Description
-Mark an existing account as a master account.
+Mark an existing account as a master account. The account is updated with `isMaster = true`, and any rows where it is currently a child in `ZaloAccountRelation` are removed so it no longer belongs under another master.
 
 #### Request
 - Params:
@@ -1013,10 +1092,23 @@ Mark an existing account as a master account.
   "phone": "0909999999",
   "name": "Child Account",
   "isMaster": true,
-  "masterId": null,
   "groupCount": 2,
+  "groupData": null,
   "createdAt": "2026-04-15T08:31:00.000Z",
-  "updatedAt": "2026-04-15T08:50:00.000Z"
+  "updatedAt": "2026-04-15T08:50:00.000Z",
+  "masters": [],
+  "children": [],
+  "groupMaps": [
+    {
+      "id": "7d7f702a-7827-4a19-84f0-249e73110001",
+      "joinedAt": "2026-04-15T08:40:00.000Z",
+      "groupZaloId": "1234567890123456789",
+      "group": {
+        "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+        "groupName": "Marketing Team"
+      }
+    }
+  ]
 }
 ```
 

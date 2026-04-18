@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { HiEyeSlash, HiEye, HiOutlineEnvelope, HiOutlineLockClosed } from "react-icons/hi2";
+import { useToast } from "@/components/features/Toast";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (!loading && user) {
@@ -33,6 +35,24 @@ export default function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // validate form
+    if (!email.trim()) {
+      showToast("Vui lòng nhập email.", "error");
+      return;
+    }
+
+    // validate email valid
+    if (!email.includes("@")) {
+      showToast("Email không hợp lệ.", "error");
+      return;
+    }
+
+    if (!password.trim()) {
+      showToast("Vui lòng nhập mật khẩu.", "error");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
 
@@ -41,9 +61,7 @@ export default function LoginPage() {
       await fetchMe();
       router.replace("/dashboard");
     } catch (submitError) {
-      setError(
-        submitError instanceof Error ? submitError.message : "Đăng nhập thất bại. Vui lòng thử lại.",
-      );
+      showToast("Đăng nhập thất bại. Vui lòng thử lại.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -53,10 +71,10 @@ export default function LoginPage() {
     <div className="w-full max-w-[440px] animate-in fade-in duration-700">
       <div className="mb-10 flex flex-col items-center">
         <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-container text-xl font-black text-white shadow-xl shadow-primary/20">
-          Z
+        ZCA
         </div>
         <h1 className="mb-2 text-center text-3xl font-black tracking-tight text-on-surface">
-          Đăng nhập hệ thống ZCA
+          Đăng nhập hệ thống
         </h1>
         <p className="body-md text-center text-on-surface-variant">
           Nhập thông tin đăng nhập để truy cập hệ thống
@@ -79,13 +97,12 @@ export default function LoginPage() {
               <input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 placeholder="name@company.com"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="pl-11 block w-full rounded-lg border-0 bg-surface-container-low px-4 py-3.5 text-on-surface transition-all placeholder:text-outline/60 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-fixed"
-                required
               />
             </div>
           </div>
@@ -110,7 +127,6 @@ export default function LoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 className="pl-11 pr-12 block w-full rounded-lg border-0 bg-surface-container-low px-4 py-3.5 text-on-surface transition-all placeholder:text-outline/60 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-fixed"
-                required
               />
               <div className="absolute inset-y-0 right-0 flex z-50 items-center text-outline group-focus-within:text-primary transition-colors">
                 <Button variant="icon_ghost" className={`text-slate-400 hover:text-slate-700 ${showPassword ? "text-slate-900" : "text-slate-400"}`} onClick={() => setShowPassword(!showPassword)}>

@@ -15,6 +15,13 @@ export function getZaloAccounts() {
   });
 }
 
+export function searchZaloAccounts(keyword: string) {
+  return apiRequest<ZaloAccount[]>("/zalo-accounts/search", {
+    method: "POST",
+    body: { keyword },
+  });
+}
+
 export function createZaloAccount(data: CreateZaloAccountPayload) {
   return apiRequest<CreateZaloAccountResponse>("/zalo-accounts", {
     method: "POST",

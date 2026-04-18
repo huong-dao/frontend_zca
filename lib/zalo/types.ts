@@ -64,6 +64,10 @@ export interface ZaloSessionResponse {
   } | null;
 }
 
+export interface LogoutZaloResponse {
+  success: boolean;
+}
+
 export interface FindUserByPhonePayload {
   phoneNumber: string;
 }

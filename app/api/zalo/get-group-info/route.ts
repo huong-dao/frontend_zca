@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { groupId?: string };
 
     if (!session) {
-      return Response.json({ message: "Chưa có phiên Zalo đang đăng nhập." }, { status: 401 });
+      return Response.json({ message: "Chưa có phiên đăng nhập Zalo." }, { status: 401 });
     }
 
     if (!body.groupId) {

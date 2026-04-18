@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const phoneNumber = body.phoneNumber?.trim();
 
     if (!phoneNumber) {
-      return Response.json({ message: "So dien thoai la bat buoc." }, { status: 400 });
+      return Response.json({ message: "Số điện thoại là bắt buộc." }, { status: 400 });
     }
 
     const cookieStore = await cookies();
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const session = getPublicSession(sessionId);
 
     if (!session) {
-      return Response.json({ message: "Chua co phien Zalo dang dang nhap." }, { status: 401 });
+      return Response.json({ message: "Chưa có phiên đăng nhập Zalo." }, { status: 401 });
     }
 
     const user = await findUserByPhone(phoneNumber, sessionId);
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return Response.json(
       {
-        message: error instanceof Error ? error.message : "Khong the tim user theo so dien thoai.",
+        message: error instanceof Error ? error.message : "Không thể tìm người dùng theo số điện thoại.",
       },
       { status: 500 },
     );
