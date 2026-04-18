@@ -387,6 +387,19 @@ export async function getAllGroups(sessionId: string | undefined | null) {
   return groups;
 }
 
+export async function getGroupInfo(groupId: string, sessionId: string | undefined | null) {
+  const session = requireSession(sessionId);
+  const api = await createApiFromSession(session);
+  const groupInfo = await api.getGroupInfo(groupId);
+
+  getStore().activeSessions.set(session.id, {
+    ...session,
+    updatedAt: nowIso(),
+  });
+
+  return groupInfo;
+}
+
 export function getPublicSession(sessionId: string | undefined | null) {
   const session = getActiveSession(sessionId);
 

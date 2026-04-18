@@ -7,11 +7,14 @@ interface ModalProps {
   open: boolean;
   title?: string;
   children: React.ReactNode;
-  onClose: () => void;
+  onClose?: () => void;
   onSubmit?: () => void;
   loading?: boolean;
+  loadingText?: string;
   buttonText?: string;
+  buttonIcon?: React.ReactNode;
   cancelText?: string;
+  modalWidth?: string;
 }
 
 export default function Modal({
@@ -21,14 +24,17 @@ export default function Modal({
   onClose,
   onSubmit,
   loading = false,
+  loadingText = "Đang lưu...",
   buttonText = "",
+  buttonIcon,
   cancelText = "Hủy",
+  modalWidth = "500px",
 }: ModalProps) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-inverse-surface/40 backdrop-blur-[2px]">
-      <div className="bg-surface-container-lowest w-full max-w-sm rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.12)] overflow-hidden">
+      <div className={`bg-surface-container-lowest w-[${modalWidth}] max-w-full rounded-xl shadow-[0_8px_30px_rgba(25,28,30,0.12)] overflow-hidden`}>
         
         {/* Header */}
         <div className="p-6">
@@ -37,12 +43,14 @@ export default function Modal({
               {title}
             </h3>
 
+            {onClose !== undefined ? (
             <button
               onClick={onClose}
               className="text-outline hover:text-on-surface transition-colors p-1"
             >
               <HiXMark className="w-5 h-5" />
             </button>
+            ) : null}
           </div>
 
           {/* Body */}
@@ -50,24 +58,29 @@ export default function Modal({
         </div>
 
         {/* Footer */}
+        {onClose !== undefined && onSubmit !== undefined ? (
         <div className="flex items-center justify-end gap-3 px-6 py-5 bg-surface-container-low/50">
+        {onClose !== undefined ? (
           <button
             onClick={onClose}
             className="px-5 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-highest rounded-lg transition-colors"
           >
             {cancelText}
           </button>
+          ) : null}
 
           {buttonText !== "" ? (
           <button
             onClick={onSubmit}
             disabled={loading}
-            className="px-6 py-2 text-sm font-semibold text-white bg-gradient-to-br from-primary to-primary-container rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+            className={`${buttonIcon ? 'flex items-center gap-2' : ''} px-6 py-2 text-sm font-semibold text-white bg-gradient-to-br from-primary to-primary-container rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50`}
           >
-              {loading ? "Đang lưu..." : buttonText}
+              {buttonIcon ?? null}
+              {loading ? loadingText : buttonText}
             </button>
           ) : null}
         </div>
+        ) : null}
       </div>
     </div>
   );

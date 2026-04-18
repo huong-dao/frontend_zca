@@ -15,7 +15,6 @@ This document is intended for the NextJS frontend team and is generated from the
 - [Messages API](#messages-api)
 - [Configs API](#configs-api)
 - [API Keys API](#api-keys-api)
-- [Public API](#public-api)
 
 ## General Conventions
 - Base URL: use your backend host directly, for example `http://localhost:3000`
@@ -54,7 +53,6 @@ This document is intended for the NextJS frontend team and is generated from the
   - `GET /`
   - `POST /auth/login`
   - `POST /auth/logout`
-  - `POST /public/send-message`
 - Authenticated-only endpoints:
   - All other endpoints
 - Role-protected controllers:
@@ -524,19 +522,21 @@ Example request:
 - Function: `ZaloGroupsController.create`
 
 #### Description
-Create a new Zalo group record after validating the group name against Zalo data.
+Create a new Zalo group record directly in the database.
 
 #### Request
 - Params: none
 - Query: none
 - Body:
   - `group_name`: `string`, required, minimum length `1`
+  - `group_zalo_id`: `string`, required, minimum length `1`
 
 Example request:
 
 ```json
 {
-  "group_name": "Marketing Team"
+  "group_name": "Marketing Team",
+  "group_zalo_id": "1234567890123456789"
 }
 ```
 
@@ -554,10 +554,8 @@ Example request:
 
 #### Error cases
 - `400`: validation error
-- `400`: no usable Zalo session
 - `401`: missing/invalid JWT
 - `403`: role is not `ADMIN`
-- `404`: group not found from current Zalo session
 - `409`: group already exists in database
 - `500`: unexpected server error
 
@@ -566,6 +564,78 @@ Example request:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
+### POST `/zalo-groups/bulk`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-groups/bulk`
+- Function: `ZaloGroupsController.createMultiple`
+
+#### Description
+Create multiple Zalo groups in one request. Existing groups are checked by `group_zalo_id` before insert and are skipped instead of being created again.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `groups`: `Array<{ group_name: string; group_zalo_id: string }>` required, minimum `1` item
+
+Example request:
+
+```json
+{
+  "groups": [
+    {
+      "group_name": "Marketing Team",
+      "group_zalo_id": "1234567890123456789"
+    },
+    {
+      "group_name": "Sales Team",
+      "group_zalo_id": "2234567890123456789"
+    }
+  ]
+}
+```
+
+#### Response
+
+```json
+{
+  "created": [
+    {
+      "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "groupName": "Marketing Team",
+      "groupZaloId": "1234567890123456789",
+      "createdAt": "2026-04-16T08:20:00.000Z",
+      "updatedAt": "2026-04-16T08:20:00.000Z"
+    }
+  ],
+  "skipped": {
+    "existingGroupZaloIds": [
+      "2234567890123456789"
+    ],
+    "duplicateInputGroupZaloIds": []
+  },
+  "summary": {
+    "requested": 2,
+    "uniqueRequested": 2,
+    "created": 1,
+    "skippedExisting": 1,
+    "skippedDuplicateInput": 0
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### PUT `/zalo-groups/:id`
 #### Endpoint
 - Method: `PUT`
@@ -573,7 +643,7 @@ Example request:
 - Function: `ZaloGroupsController.update`
 
 #### Description
-Update a stored Zalo group by re-validating the provided group name and replacing the mapped Zalo group id/name.
+Update a stored Zalo group directly in the database.
 
 #### Request
 - Params:
@@ -581,12 +651,14 @@ Update a stored Zalo group by re-validating the provided group name and replacin
 - Query: none
 - Body:
   - `group_name`: `string`, required, minimum length `1`
+  - `group_zalo_id`: `string`, required, minimum length `1`
 
 Example request:
 
 ```json
 {
-  "group_name": "Marketing Team"
+  "group_name": "Marketing Team",
+  "group_zalo_id": "1234567890123456789"
 }
 ```
 
@@ -604,11 +676,9 @@ Example request:
 
 #### Error cases
 - `400`: invalid UUID or body validation error
-- `400`: no usable Zalo session
 - `401`: missing/invalid JWT
 - `403`: role is not `ADMIN`
 - `404`: group record not found
-- `404`: provided Zalo group name not found from current Zalo session
 - `409`: another record already uses the same Zalo group
 - `500`: unexpected server error
 
@@ -819,48 +889,63 @@ Get one Zalo account with full relation details.
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
-### POST `/zalo-accounts/sync-from-groups`
+### PATCH `/zalo-accounts/:id/group-data`
 #### Endpoint
-- Method: `POST`
-- Full path: `/zalo-accounts/sync-from-groups`
-- Function: `ZaloAccountsController.syncFromGroups`
+- Method: `PATCH`
+- Full path: `/zalo-accounts/:id/group-data`
+- Function: `ZaloAccountsController.updateGroupDataById`
 
 #### Description
-Read Zalo group membership from an active Zalo session and return deduplicated accounts with group counts.
+Update raw Zalo group data (`groupData`) for a specific Zalo account.  
+This field is used to store the full list of groups retrieved from Zalo and is typically used as a cache layer.
 
 #### Request
-- Params: none
+- Params:
+  - `id`: `string` (UUID), required — Zalo account ID
 - Query: none
-- Body: none
+- Body:
+  - `groupData`: `object`, required — key-value map of Zalo groups
 
-#### Response
+Example request:
 
 ```json
-[
-  {
-    "zaloId": "1122334455",
-    "name": "Child Account",
-    "groupCount": 2,
-    "groups": [
-      {
-        "groupId": "1234567890123456789",
-        "groupName": "Marketing Team"
-      }
-    ]
+{
+  "groupData": {
+    "3746896464256452802": "1775032212151",
+    "3546063959657743115": "1770190076001"
   }
-]
+}
 ```
 
+#### Response
+{
+  "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "zaloId": "123456789",
+  "phone": "0909999999",
+  "name": "Nguyen Van A",
+  "isMaster": true,
+  "groupCount": 2,
+  "groupData": {
+    "3746896464256452802": "1775032212151",
+    "3546063959657743115": "1770190076001"
+  },
+  "createdAt": "2026-04-17T10:00:00.000Z",
+  "updatedAt": "2026-04-17T10:05:00.000Z"
+}
+
 #### Error cases
-- `400`: no active Zalo session available
+- `400`: validation error
+- `400`: provided `masterId` is not a master account
+- `400`: QR login for adding child accounts is handled in the frontend
 - `401`: missing/invalid JWT
 - `403`: role is not `ADMIN`
+- `404`: master Zalo account not found
 - `500`: unexpected server error
 
 #### Authentication
 - JWT required
 - Guards: `JwtAuthGuard`, `RolesGuard`
-- Required role: `ADMIN`
+- Required role: `ADMIN`, `USER`
 
 ### POST `/zalo-accounts/add-child`
 #### Endpoint
@@ -869,7 +954,7 @@ Read Zalo group membership from an active Zalo session and return deduplicated a
 - Function: `ZaloAccountsController.addChild`
 
 #### Description
-Start a QR login flow to attach a child account under a master account.
+This endpoint is no longer executed in the backend. QR login for attaching child accounts is now handled in the frontend.
 
 #### Request
 - Params: none
@@ -888,93 +973,16 @@ Example request:
 ```
 
 #### Response
-
-```json
-{
-  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001",
-  "qrCode": "data:image/png;base64,..."
-}
-```
+The backend currently returns an error for this endpoint.
 
 #### Error cases
 - `400`: validation error
 - `400`: provided `masterId` is not a master account
+- `400`: QR login for adding child accounts is handled in the frontend
 - `401`: missing/invalid JWT
 - `403`: role is not `ADMIN`
 - `404`: master Zalo account not found
-- `504`: QR code generation timeout
 - `500`: unexpected server error
-
-#### Authentication
-- JWT required
-- Guards: `JwtAuthGuard`, `RolesGuard`
-- Required role: `ADMIN`
-
-### POST `/zalo-accounts/confirm-login`
-#### Endpoint
-- Method: `POST`
-- Full path: `/zalo-accounts/confirm-login`
-- Function: `ZaloAccountsController.confirmLogin`
-
-#### Description
-Poll and finalize a QR login session. When complete, the child account is persisted and linked.
-
-#### Request
-- Params: none
-- Query: none
-- Body:
-  - `sessionId`: `string`, required
-
-Example request:
-
-```json
-{
-  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001"
-}
-```
-
-#### Response
-Possible response while waiting:
-
-```json
-{
-  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001",
-  "status": "QR_GENERATED",
-  "qrCode": "data:image/png;base64,..."
-}
-```
-
-Possible response when confirmed:
-
-```json
-{
-  "sessionId": "4b04d29a-df20-4e63-8d71-53dc1c5f0001",
-  "status": "CONFIRMED",
-  "account": {
-    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
-    "zaloId": "1122334455",
-    "phone": "0909999999",
-    "name": "Child Account",
-    "isMaster": false,
-    "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
-    "groupCount": 0,
-    "createdAt": "2026-04-15T08:31:00.000Z",
-    "updatedAt": "2026-04-15T08:31:00.000Z"
-  },
-  "friendFlow": {
-    "status": "COMPLETED"
-  }
-}
-```
-
-#### Error cases
-- `400`: validation error
-- `400`: `sessionId` is blank after trim
-- `400`: QR expired or declined
-- `401`: missing/invalid JWT
-- `403`: role is not `ADMIN`
-- `404`: login session not found
-- `500`: unexpected login/session persistence error
 
 #### Authentication
 - JWT required
@@ -1107,7 +1115,7 @@ Example request:
 - Function: `MessagesController.send`
 
 #### Description
-Send a message to a stored Zalo group using the child account with the lowest group count under the selected master account.
+This endpoint is no longer executed in the backend. Message sending is now handled in the frontend.
 
 #### Request
 - Params: none
@@ -1128,44 +1136,12 @@ Example request:
 ```
 
 #### Response
-
-```json
-{
-  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
-  "messageZaloId": "987654321",
-  "cliMsgId": "1713171000000",
-  "uidFrom": "1122334455",
-  "content": "Hello group",
-  "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
-  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "sentAt": "2026-04-15T09:00:00.000Z",
-  "status": "SENT",
-  "createdAt": "2026-04-15T09:00:00.000Z",
-  "sender": {
-    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
-    "zaloId": "1122334455",
-    "name": "Child Account",
-    "phone": "0909999999"
-  },
-  "group": {
-    "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-    "groupName": "Marketing Team",
-    "groupZaloId": "1234567890123456789"
-  }
-}
-```
+The backend currently returns an error for this endpoint.
 
 #### Error cases
 - `400`: validation error
-- `400`: selected master is not a master account
-- `400`: no active child Zalo session
-- `400`: selected child account is missing `zaloId`
-- `400`: anti-spam interval violation
-- `400`: message interval configuration missing/invalid
-- `400`: Zalo send or group-join failure
+- `400`: sending messages is handled in the frontend
 - `401`: missing/invalid JWT
-- `404`: master account not found
-- `404`: group not found
 - `500`: unexpected server error
 
 #### Authentication
@@ -1180,7 +1156,7 @@ Example request:
 - Function: `MessagesController.recall`
 
 #### Description
-Recall a previously sent message using Zalo undo API, then mark the stored message status as `RECALL`.
+This endpoint is no longer executed in the backend. Message recall is now handled in the frontend.
 
 #### Request
 - Params:
@@ -1189,38 +1165,11 @@ Recall a previously sent message using Zalo undo API, then mark the stored messa
 - Body: none
 
 #### Response
-If message is already recalled:
-
-```json
-{
-  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
-  "status": "RECALL"
-}
-```
-
-If recall succeeds now:
-
-```json
-{
-  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
-  "messageZaloId": "987654321",
-  "cliMsgId": "1713171000000",
-  "uidFrom": "1122334455",
-  "content": "Hello group",
-  "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
-  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "sentAt": "2026-04-15T09:00:00.000Z",
-  "status": "RECALL",
-  "createdAt": "2026-04-15T09:00:00.000Z",
-  "undoStatus": 0
-}
-```
+The backend currently returns an error for this endpoint.
 
 #### Error cases
 - `400`: invalid UUID
-- `400`: only `SENT` messages can be recalled
-- `400`: stored recall data is incomplete
-- `400`: upstream Zalo undo/session failure
+- `400`: recalling messages is handled in the frontend
 - `401`: missing/invalid JWT
 - `404`: message not found
 - `500`: unexpected server error
@@ -1400,84 +1349,12 @@ Example request:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
-## Public API
-### POST `/public/send-message`
-#### Endpoint
-- Method: `POST`
-- Full path: `/public/send-message`
-- Function: `PublicApiController.sendMessage`
-
-#### Description
-Public endpoint for external systems. It authenticates by `x-api-key`, resolves the only master account in the system, then reuses the internal message sending flow.
-
-#### Request
-- Params: none
-- Query: none
-- Headers:
-  - `x-api-key`: `string`, required
-- Body:
-  - `groupId`: `string`, required
-  - `content`: `string`, required
-
-Example request:
-
-```json
-{
-  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "content": "Hello group from external system"
-}
-```
-
-#### Response
-Success response is the same shape as `POST /messages/send`.
-
-```json
-{
-  "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0002",
-  "messageZaloId": "987654322",
-  "cliMsgId": "1713172000000",
-  "uidFrom": "1122334455",
-  "content": "Hello group from external system",
-  "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
-  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "sentAt": "2026-04-15T09:20:00.000Z",
-  "status": "SENT",
-  "createdAt": "2026-04-15T09:20:00.000Z",
-  "sender": {
-    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
-    "zaloId": "1122334455",
-    "name": "Child Account",
-    "phone": "0909999999"
-  },
-  "group": {
-    "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-    "groupName": "Marketing Team",
-    "groupZaloId": "1234567890123456789"
-  }
-}
-```
-
-#### Error cases
-- `400`: validation error
-- `400`: more than one master account exists, so routing cannot be resolved
-- `400`: any downstream message sending failure from internal send flow
-- `401`: missing `x-api-key`
-- `401`: invalid or inactive `x-api-key`
-- `404`: no master account configured
-- `500`: unexpected server error
-
-#### Authentication
-- Public from JWT perspective
-- No JWT required
-- Custom service-level authentication via `x-api-key`
-
 ## Notes for Frontend Integration
 - Use cookie-based auth for frontend requests and send `credentials: 'include'` for login, logout, `GET /auth/me`, and all protected endpoints.
 - Frontend should restore session after reload by calling `GET /auth/me`.
 - `Authorization` header is optional for frontend cookie-based auth, but still supported as a fallback.
+- Backend no longer performs `zca-js` interactions; those flows now belong to the frontend.
+- Backend does not keep Zalo login sessions.
 - Pagination currently exists on:
   - `GET /messages`
   - `GET /zalo-groups`
-- Message recall does not delete the DB row; it changes `status` to `RECALL`.
-- `POST /zalo-accounts/confirm-login` should be treated as a polling endpoint until status becomes `CONFIRMED` or an error is returned.
-- `POST /public/send-message` is not JWT-based and must send `x-api-key`.

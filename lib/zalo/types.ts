@@ -1,5 +1,5 @@
 import type { SerializedCookie } from "tough-cookie";
-import type { FindUserResponse } from "zca-js";
+import type { FindUserResponse, GroupInfoResponse } from "zca-js";
 
 export type ZaloSerializedCookie = SerializedCookie;
 
@@ -87,4 +87,8 @@ export interface GetAllGroupsResult {
 
 export interface GetAllGroupsResponse {
   groups: GetAllGroupsResult;
+}
+
+export interface getGroupInfoPayload {
+  groupInfo: GroupInfoResponse;
 }

@@ -5,6 +5,7 @@ import type {
   PendingQrLoginSnapshot,
   StartQrLoginResponse,
   ZaloSessionResponse,
+  getGroupInfoPayload,
 } from "@/lib/zalo/types";
 
 class ZaloClientError extends Error {
@@ -75,6 +76,13 @@ export function getQrByUserId(userId?: string | string[]) {
 export function getAllGroups() {
   return request<GetAllGroupsResponse>("/api/zalo/get-all-groups", {
     method: "GET",
+  });
+}
+
+export function getGroupInfo(groupId: string) {
+  return request<getGroupInfoPayload>("/api/zalo/get-group-info", {
+    method: "POST",
+    body: JSON.stringify({ groupId }),
   });
 }
 

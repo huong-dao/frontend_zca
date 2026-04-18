@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Dang nhap | ZCA Admin System",
-  description: "He thong quan ly noi bo",
+  title: "Đăng nhập | ZCA Admin System",
+  description: "Hệ thống quản lý nội bộ",
 };
 
 export default function AuthLayout({

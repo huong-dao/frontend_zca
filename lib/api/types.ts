@@ -47,6 +47,7 @@ export interface ZaloAccount {
   isMaster: boolean;
   masterId: string | null;
   groupCount: number;
+  groupData: Record<string, string>;
   createdAt: string;
   updatedAt: string;
   master: ZaloAccountMaster | null;
@@ -67,6 +68,68 @@ export interface CreateZaloAccountResponse {
   isMaster: boolean;
   masterId: string | null;
   groupCount: number;
+  groupData: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SetZaloAccountMasterPayload {
+  id: string;
+}
+
+export interface SetZaloAccountMasterResponse {
+  id: string;
+  zaloId: string;
+  phone: string;
+  name: string;
+  isMaster: boolean;
+  masterId: string | null;
+  groupCount: number;
+  groupData: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+export interface ZaloGroupCounts {
+  accountMaps: number;
+  messages: number;
+}
+
+export interface ZaloGroup {
+  id: string;
+  groupName: string;
+  groupZaloId: string;
+  createdAt: string;
+  updatedAt: string;
+  _count: ZaloGroupCounts;
+}
+
+export interface UpdateZaloAccountGroupDataPayload {
+  id: string;
+  groupData: Record<string, string>;
+}
+
+export interface UpdateZaloAccountGroupDataResponse {
+  id: string;
+  zaloId: string;
+  phone: string;
+  name: string;
+  isMaster: boolean;
+  masterId: string | null;
+  groupCount: number;
+  groupData: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }

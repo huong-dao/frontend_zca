@@ -6,13 +6,16 @@ import { getCurrentZaloSession } from "@/lib/zalo/client";
 import { HiBell, HiQuestionMarkCircle, HiMagnifyingGlass, HiUser  } from "react-icons/hi2";
 
 export default function Header() {
-    const [zaloUserAvatar, setZaloUserAvatar] = useState<string | undefined>(undefined);
+    const [zaloUserAvatar, setZaloUserAvatar] = useState<string | undefined>("");
+    const [zaloUserDisplayName, setZaloUserDisplayName] = useState<string | undefined>("");
+
     useEffect(() => {
         async function loadZaloSession() {
             const zaloSession = await getCurrentZaloSession();
             const zaloUserAvatar = zaloSession.session?.user?.avatar;
             if (zaloUserAvatar) {
                 setZaloUserAvatar(zaloUserAvatar);
+                setZaloUserDisplayName(zaloSession.session?.user?.displayName);
             }
         }
 
@@ -35,15 +38,17 @@ export default function Header() {
                     <button className="text-slate-500 hover:text-primary transition-all active:opacity-100 opacity-80">
                         <HiQuestionMarkCircle className="w-5 h-5" />
                     </button>
-                    <div className="h-8 w-8 rounded-full overflow-hidden bg-slate-200">
-                        {zaloUserAvatar ? (
-                            <Image alt="Admin User" className="h-full w-full object-cover" src={zaloUserAvatar} width={32} height={32} unoptimized />
-                        ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                                <HiUser className="w-5 h-5" />
-                            </div>
-                        )}
+                    {zaloUserAvatar !== "" &&
+                    <div className="flex gap-2">
+                        <div className="h-8 w-8 rounded-full overflow-hidden bg-slate-200">
+                            <Image alt="Admin User" className="h-full w-full object-cover" src={zaloUserAvatar ?? ""} width={32} height={32} unoptimized />
+                        </div>
+                        <div>
+                            <p className="text-xs font-normal text-black">Zalo đang đăng nhập</p>
+                            <p className="text-xs font-medium text-[#004ac6]">{zaloUserDisplayName ?? "Admin"}</p>
+                        </div>
                     </div>
+                    }
                 </div>
             </div>
         </header>

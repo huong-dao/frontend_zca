@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { HiHome, HiMiniUserCircle, HiMiniUsers, HiMiniUserGroup, HiChatBubbleLeftRight, HiCog, HiKey, HiOutlineArrowRightStartOnRectangle } from "react-icons/hi2";
@@ -23,34 +24,34 @@ export default function Sidebar() {
                 <p className="text-xs text-slate-400 font-medium tracking-wider uppercase mt-1">Automation Hub</p>
             </div>
             <nav className="flex-1 space-y-1">
-                <a className={`${isActive('/dashboard') ? activeClass : inactiveClass}`} href="/dashboard">
+                <Link className={`${isActive('/dashboard') ? activeClass : inactiveClass}`} href="/dashboard">
                     <HiHome className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Dashboard</span>
-                </a>
-                <a className={`${isActive('/users') ? activeClass : inactiveClass}`} href="/users">
+                </Link>
+                <Link className={`${isActive('/users') ? activeClass : inactiveClass}`} href="/users">
                     <HiMiniUserCircle className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Người dùng</span>
-                </a>
-                <a className={`${isActive('/zalo-groups') ? activeClass : inactiveClass}`} href="/zalo-groups">
+                </Link>
+                <Link className={`${isActive('/zalo-groups') ? activeClass : inactiveClass}`} href="/zalo-groups">
                     <HiMiniUserGroup className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Nhóm Zalo</span>
-                </a>
-                <a className={`${isActive('/zalo-accounts') ? activeClass : inactiveClass}`} href="/zalo-accounts">
+                </Link>
+                <Link className={`${isActive('/zalo-accounts') ? activeClass : inactiveClass}`} href="/zalo-accounts">
                     <HiMiniUsers className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Tài khoản Zalo</span>
-                </a>
-                <a className={`${isActive('/messages') ? activeClass : inactiveClass}`} href="/messages">
+                </Link>
+                <Link className={`${isActive('/messages') ? activeClass : inactiveClass}`} href="/messages">
                     <HiChatBubbleLeftRight className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Tin nhắn</span>
-                </a>
-                <a className={`${isActive('/configs') ? activeClass : inactiveClass}`} href="/configs">
+                </Link>
+                <Link className={`${isActive('/configs') ? activeClass : inactiveClass}`} href="/configs">
                     <HiCog className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Cấu hình</span>
-                </a>
-                <a className={`${isActive('/api-keys') ? activeClass : inactiveClass}`} href="/api-keys">
+                </Link>
+                <Link className={`${isActive('/api-keys') ? activeClass : inactiveClass}`} href="/api-keys">
                     <HiKey className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">API Keys</span>
-                </a>
+                </Link>
             </nav>
             <div className="mt-auto pt-6 border-t border-slate-700/50">
                 <button className="flex w-full items-center gap-3 pl-5 py-3 text-left text-slate-300 transition-colors hover:bg-red-500/10 hover:text-red-400" onClick={handleLogout} type="button">

@@ -2,16 +2,23 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HiMiniUserPlus, HiArrowPath } from "react-icons/hi2";
+import { HiMiniUserPlus, HiArrowPath, HiMiniQrCode, HiOutlineUserGroup, HiMiniEye } from "react-icons/hi2";
 import Modal from "@/components/features/Modal";
 import PageHeader from "@/components/features/PageHeader";
+import Pagination from "@/components/features/Pagination";
 import Button from "@/components/ui/Button";
+import FormError from "@/components/ui/FormError";
+import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { createZaloAccount, getZaloAccounts } from "@/lib/api/zalo-accounts";
+import { createZaloAccount, getZaloAccounts, setZaloAccountMaster, updateZaloAccountGroupData } from "@/lib/api/zalo-accounts";
 import { ApiError } from "@/lib/api/client";
 import type { ZaloAccount } from "@/lib/api/types";
-import { getQrLoginStatus, startQrLogin } from "@/lib/zalo/client";
+import { getQrLoginStatus, startQrLogin, getAllGroups } from "@/lib/zalo/client";
 import type { PendingQrLoginSnapshot } from "@/lib/zalo/types";
+import { HiOutlineUserCircle, HiOutlineExclamationTriangle } from "react-icons/hi2";
+import ActionMenu from "@/components/features/ActionMenu";
+
+const PAGE_SIZE = 20;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
@@ -72,6 +79,7 @@ export default function ZaloAccountsPage() {
   const { user, loading: authLoading } = useAuth();
   const [openAddAccountModal, setOpenAddAccountModal] = useState(false);
   const [accounts, setAccounts] = useState<ZaloAccount[]>([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
@@ -84,6 +92,8 @@ export default function ZaloAccountsPage() {
   const [qrLogin, setQrLogin] = useState<PendingQrLoginSnapshot | null>(null);
   const [savingAccount, setSavingAccount] = useState(false);
   const [saveAccountMessage, setSaveAccountMessage] = useState("");
+  const [openModalScanningGroups, setOpenModalScanningGroups] = useState(false);
+  const [scanGroupMessage, setScanGroupMessage] = useState("");
 
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const persistedSessionIdRef = useRef<string | null>(null);
@@ -261,8 +271,11 @@ export default function ZaloAccountsPage() {
           setSaveAccountMessage("Đã lưu tài khoản Zalo vào hệ thống.");
           await loadAccounts();
 
-          // đóng Modal
+          // đóng Modal quét QR
           handleCloseQrModal();
+
+          // lấy danh sách nhóm
+          // const groups = await getAllGroups();
         }
       } catch (requestError) {
         if (cancelled) {
@@ -271,6 +284,10 @@ export default function ZaloAccountsPage() {
 
         if (requestError instanceof ApiError && requestError.status === 409) {
           setSaveAccountMessage("Tài khoản Zalo đã tồn tại trong hệ thống.");
+          
+          // đóng Modal quét QR
+          handleCloseQrModal();
+
           await loadAccounts();
           return;
         }
@@ -294,19 +311,86 @@ export default function ZaloAccountsPage() {
     };
   }, [loadAccounts, qrLogin, requestedPhoneNumber]);
 
-  const accountCountLabel = useMemo(() => {
-    if (loading) {
-      return "Đang tải dữ liệu...";
+  const totalPages = useMemo(() => {
+    if (accounts.length === 0) {
+      return 1;
     }
 
-    return `${accounts.length} tài khoản`;
-  }, [accounts.length, loading]);
+    return Math.ceil(accounts.length / PAGE_SIZE);
+  }, [accounts.length]);
+
+  const paginatedAccounts = useMemo(() => {
+    const startIndex = (page - 1) * PAGE_SIZE;
+
+    return accounts.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [accounts, page]);
+
+  const pageSummary = useMemo(() => {
+    if (accounts.length === 0) {
+      return "Chưa có dữ liệu";
+    }
+
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end = Math.min(page * PAGE_SIZE, accounts.length);
+
+    return `Hiển thị ${start}-${end} / ${accounts.length} tài khoản`;
+  }, [accounts.length, page]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const handleSetMaster = async (accountId: string) => {
+    try {
+      await setZaloAccountMaster({ id: accountId });
+  
+      // reload lại danh sách
+      await loadAccounts();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể đặt tài khoản chính."
+      );
+    }
+  };
+
+  const handleScanGroups = async (accountId: string) => {
+    setScanGroupMessage("Đang quét tất cả nhóm Zalo...");
+    setOpenModalScanningGroups(true);
+    // setLoading(true);
+
+    try {
+      const response = await getAllGroups();
+      const groupData = response.groups.gridVerMap;
+
+      // set message đã quét xong
+      setScanGroupMessage("Đã quét xong!\nĐang cập nhật dữ liệu nhóm cho tài khoản zalo hiện tại...");
+
+      // update zalo account group data
+      await updateZaloAccountGroupData({ id: accountId, groupData: groupData });
+
+      // set message đã cập nhật dữ liệu nhóm
+      setScanGroupMessage("Đã cập nhật dữ liệu nhóm cho tài khoản zalo hiện tại!\nTự động đóng popup sau 3 giây...");
+
+      // đóng popup sau 3 giây
+      setTimeout(() => {
+        setOpenModalScanningGroups(false);
+        setScanGroupMessage("");
+      }, 3000);
+      
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Không thể quét nhóm Zalo.");
+    }
+  };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="flex-1 p-8">
       <PageHeader
         title="Danh sách tài khoản Zalo"
-        description={accountCountLabel}
+        description="Quản lý toàn bộ tài khoản Zalo trong hệ thống"
         actions={
           <Button
             startIcon={<HiMiniUserPlus className="h-5 w-5" />}
@@ -317,7 +401,7 @@ export default function ZaloAccountsPage() {
         }
       />
 
-      <div className="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
+      <div className="rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
         {error ? (
           <div className="border-b border-error/20 bg-error/10 px-6 py-4 text-sm text-error">
             {error}
@@ -327,21 +411,22 @@ export default function ZaloAccountsPage() {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-surface-container-low/50">
-              <th className="px-6 py-4 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
                 Tên
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
-                Số điện thoại / ID
+              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
+                Số điện thoại
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
                 Loại tài khoản
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
                 Số nhóm
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
                 Ngày tạo
               </th>
+              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant"></th>
             </tr>
           </thead>
 
@@ -359,7 +444,7 @@ export default function ZaloAccountsPage() {
                 </td>
               </tr>
             ) : (
-              accounts.map((account) => (
+              paginatedAccounts.map((account) => (
                 <tr
                   key={account.id}
                   className="group transition-colors hover:bg-surface-container-low/30"
@@ -374,21 +459,15 @@ export default function ZaloAccountsPage() {
                   </td>
 
                   <td className="px-6 py-4">
-                    <div className="body-md text-on-surface">{account.phone || "-"}</div>
-                    <div className="text-xs text-outline">{account.zaloId}</div>
+                    <div className="body-md text-[#004ac6]">{account.phone || "-"}</div>
                   </td>
 
                   <td className="px-6 py-4">
-                    <span
-                      className={[
-                        "rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-tight",
-                        account.isMaster
-                          ? "bg-primary/10 text-primary"
-                          : "bg-secondary-container/30 text-secondary",
-                      ].join(" ")}
-                    >
-                      {account.isMaster ? "Master" : "Child"}
-                    </span>
+                    {account.isMaster ? (
+                      <Badge variant="error">Master</Badge>
+                    ) : (
+                      <Badge variant="warning">Child</Badge>
+                    )}               
                   </td>
 
                   <td className="px-6 py-4">
@@ -400,20 +479,55 @@ export default function ZaloAccountsPage() {
                       {formatDate(account.createdAt)}
                     </div>
                   </td>
+
+                  <td className="px-6 py-4 text-right">
+                    <ActionMenu
+                      items={[
+                        {
+                          label: "Set Master",
+                          icon: <HiOutlineUserCircle />,
+                          onClick: () => handleSetMaster(account.id),
+                        },
+                        {
+                          label: "Quét nhóm Zalo",
+                          icon: <HiOutlineUserGroup />,
+                          onClick: () => handleScanGroups(account.id),
+                        },
+                        {
+                          label: "Xem chi tiết",
+                          icon: <HiMiniEye />,
+                          onClick: () => console.log("view logs"),
+                        },
+                      ]}
+                    />
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+
+        <div className="flex flex-col gap-4 border-t border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-on-surface-variant">{pageSummary}</div>
+
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={loading}
+          />
+        </div>
       </div>
 
       <Modal
         open={openAddAccountModal}
         buttonText="Tạo mã QR"
+        buttonIcon={<HiMiniQrCode className="h-5 w-5" />}
         title="Thêm tài khoản Zalo"
         onClose={handleCloseAddAccountModal}
         onSubmit={() => void handleSubmitPhoneNumber(phoneNumberRef.current?.value ?? "")}
         loading={creatingQr}
+        loadingText="Đang tạo mã QR..."
       >
         <label className="mb-1.5 block text-sm font-medium text-on-surface-variant">
           Số điện thoại
@@ -427,7 +541,7 @@ export default function ZaloAccountsPage() {
             placeholder="Nhập số điện thoại"
             type="text"
           />
-          {phoneNumberError ? <div className="mt-1 text-sm text-error">{phoneNumberError}</div> : null}
+          {phoneNumberError ? <FormError message={phoneNumberError} /> : null}
         </div>
       </Modal>
 
@@ -515,6 +629,14 @@ export default function ZaloAccountsPage() {
             {reloadingQr ? "Đang tải lại..." : "Tải lại QR Code"}
           </button>
         </div>
+      </Modal>
+
+      <Modal
+        open={openModalScanningGroups}
+        title="Scan nhóm Zalo"
+      >
+        <div className="text-sm text-on-surface-variant">{scanGroupMessage}</div>
+        <Badge variant="warning" icon={<HiOutlineExclamationTriangle />}>Vui lòng không đóng trang cho đến khi quét xong...</Badge>
       </Modal>
     </div>
   );
