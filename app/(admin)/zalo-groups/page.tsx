@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import { useAuth } from "@/contexts/AuthContext";
+import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
 import { getZaloGroups } from "@/lib/api/zalo-groups";
 import type { PaginationMeta, ZaloGroup } from "@/lib/api/types";
 
@@ -26,6 +27,7 @@ function formatDate(value: string) {
 
 export default function ZaloGroupsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { currentBatchSize, isSyncing, lastCompletedAt, lastError, pendingCount } = useZaloGroupNameSync();
   const [groups, setGroups] = useState<ZaloGroup[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(EMPTY_META);
   const [page, setPage] = useState(1);
@@ -67,6 +69,14 @@ export default function ZaloGroupsPage() {
     void loadGroups(page);
   }, [authLoading, loadGroups, page, user]);
 
+  useEffect(() => {
+    if (!lastCompletedAt || authLoading || !user) {
+      return;
+    }
+
+    void loadGroups(page);
+  }, [authLoading, lastCompletedAt, loadGroups, page, user]);
+
   const pageSummary = useMemo(() => {
     if (meta.total === 0) {
       return "Chưa có dữ liệu";
@@ -86,6 +96,19 @@ export default function ZaloGroupsPage() {
       />
 
       <div className="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
+        {isSyncing ? (
+          <div className="border-b border-primary/10 bg-primary/5 px-6 py-4 text-sm text-primary">
+            Đang cập nhật tên nhóm... Đợt này xử lý {currentBatchSize} nhóm, còn khoảng{" "}
+            {Math.max(pendingCount - currentBatchSize, 0)} nhóm chưa cập nhật.
+          </div>
+        ) : null}
+
+        {!isSyncing && lastError ? (
+          <div className="border-b border-outline-variant/10 bg-surface-container-low px-6 py-4 text-sm text-on-surface-variant">
+            Đợt cập nhật tên nhóm gần nhất có lỗi: {lastError}
+          </div>
+        ) : null}
+
         {error ? (
           <div className="border-b border-error/20 bg-error/10 px-6 py-4 text-sm text-error">{error}</div>
         ) : null}
@@ -93,16 +116,16 @@ export default function ZaloGroupsPage() {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-surface-container-low/50">
-              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
+              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Tên nhóm
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
+              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Số tài khoản
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
+              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Số tin nhắn
               </th>
-              <th className="px-6 py-4 text-label-sm font-bold tracking-wider text-on-surface-variant">
+              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Ngày tạo
               </th>
             </tr>
@@ -124,19 +147,19 @@ export default function ZaloGroupsPage() {
             ) : (
               groups.map((group) => (
                 <tr key={group.id} className="group transition-colors hover:bg-surface-container-low/30">
-                  <td className="px-6 py-4">
-                    <div className="body-md font-semibold text-on-surface">{group.groupName}</div>
+                  <td className="px-6 py-3">
+                    <div className="body-md font-semibold text-on-surface text-sm">{group.groupName}</div>
                   </td>
 
-                  <td className="px-6 py-4">
-                    <span className="font-medium text-on-surface">{group._count.accountMaps}</span>
+                  <td className="px-6 py-3">
+                    <span className="font-medium text-on-surface text-sm">{group._count.accountMaps}</span>
                   </td>
 
-                  <td className="px-6 py-4">
-                    <span className="font-medium text-on-surface">{group._count.messages}</span>
+                  <td className="px-6 py-3">
+                    <span className="font-medium text-on-surface text-sm">{group._count.messages}</span>
                   </td>
 
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <div className="text-sm text-on-surface-variant">{formatDate(group.createdAt)}</div>
                   </td>
                 </tr>

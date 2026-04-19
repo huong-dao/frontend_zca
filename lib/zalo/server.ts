@@ -374,6 +374,65 @@ export async function getQrByUserId(
   return qrCodes;
 }
 
+export async function sendFriendRequest(
+  userId: string,
+  message: string | undefined,
+  sessionId: string | undefined | null,
+) {
+  const session = requireSession(sessionId);
+  const api = await createApiFromSession(session);
+
+  if (!userId.trim()) {
+    throw new Error("userId là bắt buộc để gửi lời mời kết bạn.");
+  }
+
+  await api.sendFriendRequest(message?.trim() || "Xin chào, hãy kết bạn với tôi!", userId);
+
+  getStore().activeSessions.set(session.id, {
+    ...session,
+    updatedAt: nowIso(),
+  });
+
+  return { success: true as const };
+}
+
+export async function getFriendRequestStatus(
+  friendId: string,
+  sessionId: string | undefined | null,
+) {
+  const session = requireSession(sessionId);
+  const api = await createApiFromSession(session);
+
+  if (!friendId.trim()) {
+    throw new Error("friendId là bắt buộc để lấy trạng thái kết bạn.");
+  }
+
+  const friendStatus = await api.getFriendRequestStatus(friendId);
+
+  getStore().activeSessions.set(session.id, {
+    ...session,
+    updatedAt: nowIso(),
+  });
+
+  return friendStatus;
+}
+
+export async function removeFriend(friendId: string, sessionId: string | undefined | null) {
+  const session = requireSession(sessionId);
+  const api = await createApiFromSession(session);
+
+  if (!friendId.trim()) {
+    throw new Error("friendId là bắt buộc để hủy kết bạn.");
+  }
+
+  await api.removeFriend(friendId);
+
+  getStore().activeSessions.set(session.id, {
+    ...session,
+    updatedAt: nowIso(),
+  });
+}
+
 export async function getAllGroups(sessionId: string | undefined | null) {
   const session = requireSession(sessionId);
   const api = await createApiFromSession(session);

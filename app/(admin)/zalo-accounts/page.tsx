@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   HiMiniUserPlus,
@@ -24,9 +25,10 @@ import Button from "@/components/ui/Button";
 import FormError from "@/components/ui/FormError";
 import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
-import { createZaloAccount, getZaloAccounts, searchZaloAccounts, setZaloAccountMaster, updateZaloAccountGroupData } from "@/lib/api/zalo-accounts";
+import { createZaloGroupsBulk } from "@/lib/api/zalo-groups";
+import { addChildZaloAccounts, createZaloAccount, filterZaloAccountsByType, getZaloAccounts, searchZaloAccounts, setZaloAccountMaster, updateZaloAccountGroupData } from "@/lib/api/zalo-accounts";
 import { ApiError } from "@/lib/api/client";
-import type { ZaloAccount } from "@/lib/api/types";
+import type { BulkCreateZaloGroupInput, ZaloAccount, ZaloAccountFilterType } from "@/lib/api/types";
 import {
   findUserByPhone,
   getAllGroups,
@@ -41,14 +43,17 @@ import {
 import type { PendingQrLoginSnapshot, PendingQrLoginStatus } from "@/lib/zalo/types";
 
 const PAGE_SIZE = 20;
-const TABLE_COLUMN_COUNT = 7;
+const TABLE_COLUMN_COUNT = 8;
 const QR_FINISHED_STATUSES: PendingQrLoginStatus[] = [
   "authenticated",
   "expired",
   "declined",
   "error",
 ];
+const BULK_ACTION_ADD_CHILD = "add_child";
 
+// SECTION: SHARED HELPERS
+// Các helper bên dưới được dùng lại ở nhiều flow như render bảng, login QR và validate dữ liệu.
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
@@ -117,10 +122,14 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function ZaloAccountsPage() {
+  // SECTION: PAGE STATE
+  // Gom toàn bộ state của trang để dễ tìm nhanh phần điều khiển modal, bảng dữ liệu và QR login.
+  const router = useRouter();
   const { showToast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const [openAddAccountModal, setOpenAddAccountModal] = useState(false);
   const [accounts, setAccounts] = useState<ZaloAccount[]>([]);
+  const [masterAccountOptions, setMasterAccountOptions] = useState<ZaloAccount[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [phoneNumberError, setPhoneNumberError] = useState("");
@@ -135,13 +144,21 @@ export default function ZaloAccountsPage() {
   const [scanGroupMessage, setScanGroupMessage] = useState("");
   const [checkingZaloSession, setCheckingZaloSession] = useState(false);
   const [submittingAddAccount, setSubmittingAddAccount] = useState(false);
+  const [allowBootstrapQrLogin, setAllowBootstrapQrLogin] = useState(false);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedBulkAction, setSelectedBulkAction] = useState("");
+  const [selectedMasterAccountId, setSelectedMasterAccountId] = useState("");
+  const [submittingBulkAction, setSubmittingBulkAction] = useState(false);
+  const [accountFilter, setAccountFilter] = useState<ZaloAccountFilterType>("all");
 
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const persistedSessionIdRef = useRef<string | null>(null);
+  const selectAllVisibleCheckboxRef = useRef<HTMLInputElement>(null);
   const [zaloLoggedId, setZaloLoggedId] = useState<string | null>(null);
 
   const [keywordSearch, setKeywordSearch] = useState("");
 
+  // SECTION: FORM / MODAL RESET HELPERS
   const resetAddAccountForm = useCallback(() => {
     setPhoneNumberError("");
     if (phoneNumberRef.current) {
@@ -159,6 +176,8 @@ export default function ZaloAccountsPage() {
     persistedSessionIdRef.current = null;
   }, []);
 
+  // SECTION: CURRENT ZALO SESSION
+  // Đồng bộ phiên Zalo hiện tại để biết tài khoản nào đang đăng nhập ở client.
   const syncZaloSession = useCallback(async () => {
     const response = await getCurrentZaloSession();
     const session = response.session;
@@ -182,19 +201,66 @@ export default function ZaloAccountsPage() {
     setQrModalError("");
   }, []);
 
+  // SECTION: LOAD ACCOUNT LIST
   const loadAccounts = useCallback(async () => {
     setLoading(true);
 
     try {
-      const response = await getZaloAccounts();
+      const response =
+        accountFilter === "all"
+          ? await getZaloAccounts()
+          : await filterZaloAccountsByType(accountFilter);
       setAccounts(response);
     } catch (requestError) {
       showToast(getErrorMessage(requestError, "Không thể tải danh sách tài khoản Zalo."), "error");
     } finally {
       setLoading(false);
     }
+  }, [accountFilter, showToast]);
+
+  const loadMasterAccountOptions = useCallback(async () => {
+    try {
+      const response = await filterZaloAccountsByType("master");
+      setMasterAccountOptions(response);
+    } catch (requestError) {
+      showToast(
+        getErrorMessage(requestError, "Không thể tải danh sách tài khoản master."),
+        "error",
+      );
+    }
   }, [showToast]);
 
+  // SECTION: MASTER ACCOUNT CHECK
+  // Luôn kiểm tra từ danh sách đầy đủ trên server thay vì lấy từ bảng hiện tại,
+  // vì bảng có thể đang ở trạng thái search/filter và không chứa tài khoản master.
+  const checkHasMasterAccount = useCallback(async () => {
+    const accountList = await getZaloAccounts();
+    return accountList.some((account) => account.isMaster);
+  }, []);
+
+  const handleCloseScanGroupsModal = useCallback(() => {
+    setOpenModalScanningGroups(false);
+    setScanGroupMessage("");
+  }, []);
+
+  const closeScanGroupsModalAfterDelay = useCallback(() => {
+    window.setTimeout(() => {
+      handleCloseScanGroupsModal();
+    }, 3000);
+  }, [handleCloseScanGroupsModal]);
+
+  // SECTION: SCAN GROUPS - MASTER BULK CREATE
+  // Với tài khoản master, dùng trực tiếp groupData vừa quét để bulk-create nhóm,
+  // tránh gọi thêm nhiều request tới Zalo và làm tăng rủi ro bị giới hạn.
+  const buildBulkCreateGroupsPayload = useCallback(async (groupData: Record<string, string>) => {
+    return Object.entries(groupData).map(([groupId, groupName]) => ({
+      group_name: groupName.trim() || `Nhóm ${groupId}`,
+      group_zalo_id: groupId,
+    }) satisfies BulkCreateZaloGroupInput);
+  }, []);
+
+  // SECTION: SESSION CHANGE LISTENER
+  // Lắng nghe event để refresh trạng thái đăng nhập Zalo khi nơi khác trong app thay đổi session.
   useEffect(() => {
     void syncZaloSession().catch(() => {
       setZaloLoggedId(null);
@@ -212,6 +278,8 @@ export default function ZaloAccountsPage() {
     };
   }, [syncZaloSession]);
 
+  // SECTION: QR LOGIN FLOW - START
+  // Điểm bắt đầu của flow login QR: validate số, mở modal và gọi API lấy QR.
   const beginQrLogin = async (phoneNumber: string, isReload = false) => {
     const normalizedPhoneNumber = normalizePhoneForApi(phoneNumber);
 
@@ -244,6 +312,9 @@ export default function ZaloAccountsPage() {
     }
   };
 
+  // SECTION: ADD ACCOUNT BY PHONE
+  // Nếu hệ thống chưa có master thì submit số điện thoại sẽ đi tiếp sang flow QR login.
+  // Nếu đã có master thì giữ flow cũ: bắt buộc phải có sẵn session Zalo rồi mới add tài khoản.
   const handleSubmitPhoneNumber = async (phoneNumber: string) => {
     setPhoneNumberError("");
 
@@ -257,6 +328,11 @@ export default function ZaloAccountsPage() {
     setSubmittingAddAccount(true);
 
     try {
+      if (allowBootstrapQrLogin) {
+        await beginQrLogin(normalizedPhoneNumber);
+        return;
+      }
+
       const zaloSession = await syncZaloSession();
 
       if (!zaloSession) {
@@ -295,17 +371,29 @@ export default function ZaloAccountsPage() {
     }
   };
 
+  // SECTION: ADD ACCOUNT MODAL
   const handleCloseAddAccountModal = useCallback(() => {
     setOpenAddAccountModal(false);
     setSubmittingAddAccount(false);
+    setAllowBootstrapQrLogin(false);
     resetAddAccountForm();
   }, [resetAddAccountForm]);
 
   const handleOpenAddAccountModal = async () => {
     resetAddAccountForm();
-    setCheckingZaloSession(true);
+    setAllowBootstrapQrLogin(false);
 
     try {
+      const hasMasterAccount = await checkHasMasterAccount();
+
+      if (!hasMasterAccount) {
+        // Bootstrap flow: chưa có master nên cho phép nhập số rồi login QR để tạo tài khoản đầu tiên.
+        setAllowBootstrapQrLogin(true);
+        setOpenAddAccountModal(true);
+        return;
+      }
+
+      setCheckingZaloSession(true);
       const zaloSession = await syncZaloSession();
 
       if (!zaloSession) {
@@ -321,6 +409,8 @@ export default function ZaloAccountsPage() {
     }
   };
 
+  // SECTION: QR LOGIN FLOW - MODAL ACTIONS
+  // Các thao tác phụ trợ quanh modal QR: đóng modal, reload QR, bấm bắt đầu login, logout.
   const handleCloseQrModal = useCallback(() => {
     setOpenQrModal(false);
     resetQrModalState();
@@ -356,6 +446,8 @@ export default function ZaloAccountsPage() {
     }
   };
 
+  // SECTION: QR LOGIN FLOW - POLL STATUS
+  // Poll trạng thái QR liên tục cho tới khi login thành công hoặc QR kết thúc.
   useEffect(() => {
     if (!openQrModal || !qrLogin?.id) {
       return;
@@ -385,8 +477,12 @@ export default function ZaloAccountsPage() {
     }
 
     void loadAccounts();
-  }, [authLoading, loadAccounts, user]);
+    void loadMasterAccountOptions();
+  }, [authLoading, loadAccounts, loadMasterAccountOptions, user]);
 
+  // SECTION: QR LOGIN FLOW - SAVE AUTHENTICATED ACCOUNT
+  // Đây là đoạn "kết thúc" flow login QR:
+  // khi Zalo xác thực xong thì lưu tài khoản vào hệ thống, refresh session và đóng modal.
   useEffect(() => {
     if (!qrLogin?.sessionId || !qrLogin.sessionUser || qrLogin.status !== "authenticated") {
       return;
@@ -453,6 +549,7 @@ export default function ZaloAccountsPage() {
     };
   }, [handleCloseQrModal, loadAccounts, qrLogin, requestedPhoneNumber, showToast, syncZaloSession]);
 
+  // SECTION: PAGINATION / DERIVED STATE
   const totalPages = useMemo(() => {
     if (accounts.length === 0) {
       return 1;
@@ -466,6 +563,21 @@ export default function ZaloAccountsPage() {
 
     return accounts.slice(startIndex, startIndex + PAGE_SIZE);
   }, [accounts, page]);
+
+  const visibleAccountIds = useMemo(
+    () => paginatedAccounts.map((account) => account.id),
+    [paginatedAccounts],
+  );
+
+  const selectedAccounts = useMemo(
+    () => accounts.filter((account) => selectedAccountIds.includes(account.id)),
+    [accounts, selectedAccountIds],
+  );
+
+  const allVisibleSelected =
+    visibleAccountIds.length > 0 && visibleAccountIds.every((id) => selectedAccountIds.includes(id));
+  const someVisibleSelected =
+    visibleAccountIds.some((id) => selectedAccountIds.includes(id)) && !allVisibleSelected;
 
   const pageSummary = useMemo(() => {
     if (accounts.length === 0) {
@@ -484,6 +596,37 @@ export default function ZaloAccountsPage() {
     }
   }, [page, totalPages]);
 
+  useEffect(() => {
+    const accountIds = new Set(accounts.map((account) => account.id));
+
+    setSelectedAccountIds((currentSelectedIds) =>
+      currentSelectedIds.filter((accountId) => accountIds.has(accountId)),
+    );
+  }, [accounts]);
+
+  useEffect(() => {
+    if (selectedAccountIds.length === 0) {
+      setSelectedBulkAction("");
+      setSelectedMasterAccountId("");
+    }
+  }, [selectedAccountIds.length]);
+
+  useEffect(() => {
+    if (
+      selectedMasterAccountId &&
+      !masterAccountOptions.some((account) => account.id === selectedMasterAccountId)
+    ) {
+      setSelectedMasterAccountId("");
+    }
+  }, [masterAccountOptions, selectedMasterAccountId]);
+
+  useEffect(() => {
+    if (selectAllVisibleCheckboxRef.current) {
+      selectAllVisibleCheckboxRef.current.indeterminate = someVisibleSelected;
+    }
+  }, [someVisibleSelected]);
+
+  // SECTION: ACCOUNT ACTIONS
   const handleSetMaster = async (accountId: string) => {
     try {
       await setZaloAccountMaster({ id: accountId });
@@ -494,7 +637,10 @@ export default function ZaloAccountsPage() {
     }
   };
 
-  const handleScanGroups = async (accountId: string) => {
+  // SECTION: SCAN GROUPS
+  // Quét danh sách nhóm từ phiên Zalo hiện tại rồi cập nhật lại vào account trong hệ thống.
+  // Nếu account đang quét là master thì tiếp tục tạo/cập nhật Zalo groups bằng API bulk.
+  const handleScanGroups = useCallback(async (accountId: string) => {
     const zaloSession = await syncZaloSession();
 
     if (!zaloSession) {
@@ -513,21 +659,138 @@ export default function ZaloAccountsPage() {
 
       await updateZaloAccountGroupData({ id: accountId, groupData: groupData });
 
-      setScanGroupMessage("Đã cập nhật dữ liệu nhóm cho tài khoản zalo hiện tại!\nTự động đóng popup sau 3 giây...");
+      setScanGroupMessage("Đã cập nhật dữ liệu nhóm.\nĐang kiểm tra tài khoản đang quét có phải master hay không...");
+
+      const latestAccounts = await getZaloAccounts();
+      const currentAccount = latestAccounts.find((account) => account.id === accountId);
+      const isMasterAccount = currentAccount?.isMaster ?? false;
+
+      if (!isMasterAccount) {
+        setScanGroupMessage("Đã cập nhật dữ liệu nhóm cho tài khoản hiện tại!\nTự động đóng popup sau 3 giây...");
+
+        await loadAccounts();
+        showToast("Đã cập nhật dữ liệu nhóm Zalo.", "success");
+        closeScanGroupsModalAfterDelay();
+        return;
+      }
+
+      const scannedGroupIds = Object.keys(groupData);
+
+      if (scannedGroupIds.length === 0) {
+        setScanGroupMessage("Đây là tài khoản master nhưng hiện chưa có nhóm nào để tạo.\nTự động đóng popup sau 3 giây...");
+
+        await loadAccounts();
+        showToast("Đã cập nhật dữ liệu nhóm Zalo. Không có nhóm mới để tạo.", "success");
+        closeScanGroupsModalAfterDelay();
+        return;
+      }
+
+      setScanGroupMessage("Đã xác nhận tài khoản master.\nĐang chuẩn bị dữ liệu nhóm Zalo để tạo trong hệ thống...");
+
+      const groups = await buildBulkCreateGroupsPayload(groupData);
+
+      setScanGroupMessage("Đang tạo nhóm Zalo trong hệ thống từ dữ liệu vừa quét...\nVui lòng chờ hoàn tất.");
+
+      const bulkCreateResponse = await createZaloGroupsBulk(accountId, { groups });
+
+      setScanGroupMessage(
+        `Đã tạo nhóm Zalo xong!\nTạo mới: ${bulkCreateResponse.summary.created}, đã có sẵn: ${bulkCreateResponse.summary.skippedExisting}.\nTự động đóng popup sau 3 giây...`,
+      );
 
       await loadAccounts();
-      showToast("Đã cập nhật dữ liệu nhóm Zalo.", "success");
-
-      setTimeout(() => {
-        setOpenModalScanningGroups(false);
-        setScanGroupMessage("");
-      }, 3000);
-      
+      showToast("Đã quét và tạo nhóm Zalo cho tài khoản master.", "success");
+      closeScanGroupsModalAfterDelay();
     } catch (requestError) {
+      setScanGroupMessage("Quá trình quét hoặc tạo nhóm Zalo thất bại. Bạn có thể đóng popup và thử lại.");
       showToast(getErrorMessage(requestError, "Không thể quét nhóm Zalo."), "error");
+    }
+  }, [buildBulkCreateGroupsPayload, closeScanGroupsModalAfterDelay, loadAccounts, showToast, syncZaloSession]);
+
+  // SECTION: BULK ACTIONS
+  // Checkbox đầu bảng dùng để chọn nhanh các row đang hiển thị, phục vụ các thao tác hàng loạt như add child.
+  const handleToggleAccountSelection = (accountId: string) => {
+    setSelectedAccountIds((currentSelectedIds) =>
+      currentSelectedIds.includes(accountId)
+        ? currentSelectedIds.filter((currentId) => currentId !== accountId)
+        : [...currentSelectedIds, accountId],
+    );
+  };
+
+  const handleToggleSelectAllVisible = () => {
+    const visibleAccountIdSet = new Set(visibleAccountIds);
+
+    setSelectedAccountIds((currentSelectedIds) => {
+      if (allVisibleSelected) {
+        return currentSelectedIds.filter((accountId) => !visibleAccountIdSet.has(accountId));
+      }
+
+      return Array.from(new Set([...currentSelectedIds, ...visibleAccountIds]));
+    });
+  };
+
+  const handleClearBulkSelection = () => {
+    setSelectedAccountIds([]);
+    setSelectedBulkAction("");
+    setSelectedMasterAccountId("");
+  };
+
+  const handleApplyBulkAction = async () => {
+    if (selectedBulkAction !== BULK_ACTION_ADD_CHILD) {
+      return;
+    }
+
+    if (!selectedMasterAccountId) {
+      showToast("Vui lòng chọn tài khoản master để thêm child.", "error");
+      return;
+    }
+
+    if (selectedAccounts.length === 0) {
+      showToast("Vui lòng chọn ít nhất một tài khoản.", "error");
+      return;
+    }
+
+    if (selectedAccounts.some((account) => account.isMaster)) {
+      showToast("Danh sách child không được chứa tài khoản master.", "error");
+      return;
+    }
+
+    if (selectedAccountIds.includes(selectedMasterAccountId)) {
+      showToast("Tài khoản master không thể đồng thời nằm trong danh sách child.", "error");
+      return;
+    }
+
+    setSubmittingBulkAction(true);
+
+    try {
+      const response = await addChildZaloAccounts({
+        masterId: selectedMasterAccountId,
+        childIds: selectedAccounts.map((account) => account.id),
+      });
+
+      showToast(
+        `Đã thêm ${response.summary.linked} child. Bỏ qua ${response.summary.skippedExisting} tài khoản đã tồn tại.`,
+        "success",
+      );
+      handleClearBulkSelection();
+      await loadAccounts();
+    } catch (requestError) {
+      showToast(getErrorMessage(requestError, "Không thể thêm các tài khoản child."), "error");
+    } finally {
+      setSubmittingBulkAction(false);
     }
   };
 
+  const handleChangeAccountFilter = (nextFilter: ZaloAccountFilterType) => {
+    setAccountFilter(nextFilter);
+    setPage(1);
+  };
+
+  const handleOpenAccountDetails = (accountId: string) => {
+    router.push(`/zalo-accounts/${accountId}`);
+  };
+
+  // SECTION: ROW ACTION MENU
+  // Tập trung toàn bộ action hiển thị ở mỗi dòng để dễ tìm nơi thêm / bớt menu thao tác.
   const getActionItems = (account: ZaloAccount): ActionItem[] => {
     const items: ActionItem[] = [
       {
@@ -562,7 +825,7 @@ export default function ZaloAccountsPage() {
         {
           label: "Xem chi tiết",
           icon: <HiMiniEye />,
-          onClick: () => console.log("view logs"),
+          onClick: () => handleOpenAccountDetails(account.id),
         },
       );
     }
@@ -570,15 +833,28 @@ export default function ZaloAccountsPage() {
     return items;
   };
 
-  const handleSearch = async () => {
+  // SECTION: SEARCH
+  const handleSearch = useCallback(async () => {
     try {
+      if (!keywordSearch.trim()) {
+        await loadAccounts();
+        return;
+      }
+
       const response = await searchZaloAccounts(keywordSearch);
-      setAccounts(response);
+      setAccounts(
+        accountFilter === "all"
+          ? response
+          : response.filter((account) =>
+              accountFilter === "master" ? account.isMaster : !account.isMaster,
+            ),
+      );
     } catch (requestError) {
       showToast(getErrorMessage(requestError, "Không thể tìm kiếm tài khoản Zalo."), "error");
     }
-  };
+  }, [accountFilter, keywordSearch, loadAccounts, showToast]);
 
+  // SECTION: RENDER
   return (
     <div className="flex-1 p-8">
       <PageHeader
@@ -595,9 +871,31 @@ export default function ZaloAccountsPage() {
         }
       />
 
+      {/* SECTION: SEARCH BAR + ACCOUNTS TABLE */}
       <div className="rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
         <div className="bg-surface-container-lowest pl-6 pr-6 py-4 rounded-xl">
-          <div className="flex items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {(["all", "master", "child"] as const).map((type) => {
+              const labels: Record<ZaloAccountFilterType, string> = {
+                all: "Tất cả",
+                master: "Master",
+                child: "Child",
+              };
+
+              return (
+                <Button
+                  key={type}
+                  size="sm"
+                  variant={accountFilter === type ? "primary" : "outline"}
+                  onClick={() => handleChangeAccountFilter(type)}
+                >
+                  {labels[type]}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
             <input
               className="w-80 rounded-xl border-none bg-surface-container-low py-2 pl-4 pr-4 text-sm transition-all placeholder:text-black focus:bg-white focus:ring-2 focus:ring-primary/20"
               placeholder="Tìm theo Tên / Số điện thoại"
@@ -619,9 +917,77 @@ export default function ZaloAccountsPage() {
             </Button> 
           </div>
         </div>
+
+        {selectedAccountIds.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-3 border-t border-outline-variant/10 bg-surface-container-low px-6 py-4">
+            <Badge variant="info" className="text-xs">
+              Đã chọn {selectedAccountIds.length} tài khoản
+            </Badge>
+
+            <select
+              className="h-10 min-w-[180px] rounded-lg border border-outline-variant/20 bg-white px-3 text-sm text-on-surface focus:border-primary focus:outline-none"
+              value={selectedBulkAction}
+              onChange={(event) => {
+                setSelectedBulkAction(event.target.value);
+                setSelectedMasterAccountId("");
+              }}
+            >
+              <option value="">Chọn hành động</option>
+              <option value={BULK_ACTION_ADD_CHILD}>Add child</option>
+            </select>
+
+            {selectedBulkAction === BULK_ACTION_ADD_CHILD ? (
+              <select
+                className="h-10 min-w-[220px] rounded-lg border border-outline-variant/20 bg-white px-3 text-sm text-on-surface focus:border-primary focus:outline-none"
+                value={selectedMasterAccountId}
+                onChange={(event) => setSelectedMasterAccountId(event.target.value)}
+              >
+                <option value="">Chọn tài khoản master</option>
+                {masterAccountOptions.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name} {account.phone ? `- ${account.phone}` : ""}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+
+            <Button
+              size="sm"
+              loading={submittingBulkAction}
+              disabled={
+                selectedBulkAction === "" ||
+                masterAccountOptions.length === 0 ||
+                (selectedBulkAction === BULK_ACTION_ADD_CHILD && selectedMasterAccountId === "")
+              }
+              onClick={() => void handleApplyBulkAction()}
+            >
+              Thực hiện
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={submittingBulkAction}
+              onClick={handleClearBulkSelection}
+            >
+              Bỏ chọn
+            </Button>
+          </div>
+        ) : null}
+
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-surface-container-low/50">
+              <th className="px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+                <input
+                  ref={selectAllVisibleCheckboxRef}
+                  checked={allVisibleSelected}
+                  className="h-4 w-4 rounded border-outline-variant/30 text-primary focus:ring-primary"
+                  type="checkbox"
+                  aria-label="Chọn tất cả tài khoản đang hiển thị"
+                  onChange={handleToggleSelectAllVisible}
+                />
+              </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Tên
               </th>
@@ -664,6 +1030,15 @@ export default function ZaloAccountsPage() {
                   key={account.id}
                   className="group transition-colors hover:bg-surface-container-low/30"
                 >
+                  <td className="px-6 py-3">
+                    <input
+                      checked={selectedAccountIds.includes(account.id)}
+                      className="h-4 w-4 rounded border-outline-variant/30 text-primary focus:ring-primary"
+                      type="checkbox"
+                      aria-label={`Chọn tài khoản ${account.name}`}
+                      onChange={() => handleToggleAccountSelection(account.id)}
+                    />
+                  </td>
                   <td className="px-6 py-3">
                     <div className="body-md font-semibold text-on-surface text-sm">{account.name}</div>
                     {zaloLoggedId === account.zaloId ? (
@@ -733,6 +1108,7 @@ export default function ZaloAccountsPage() {
         </div>
       </div>
 
+      {/* SECTION: ADD ACCOUNT MODAL */}
       <Modal
         open={openAddAccountModal}
         buttonText="Thêm tài khoản"
@@ -759,6 +1135,7 @@ export default function ZaloAccountsPage() {
         </div>
       </Modal>
 
+      {/* SECTION: QR LOGIN MODAL */}
       <Modal open={openQrModal} buttonText="" title="Mã QR" onClose={handleCloseQrModal}>
         <div className="flex flex-col items-center px-8 pb-8">
           <div className="relative aspect-square w-full max-w-[280px] rounded-2xl bg-surface-container-lowest p-6">
@@ -842,9 +1219,11 @@ export default function ZaloAccountsPage() {
         </div>
       </Modal>
 
+      {/* SECTION: SCAN GROUPS MODAL */}
       <Modal
         open={openModalScanningGroups}
         title="Scan nhóm Zalo"
+        onClose={handleCloseScanGroupsModal}
       >
         <div className="text-sm text-on-surface-variant">{scanGroupMessage}</div>
         <Badge variant="warning" icon={<HiOutlineExclamationTriangle />}>Vui lòng không đóng trang cho đến khi quét xong...</Badge>

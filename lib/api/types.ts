@@ -32,6 +32,18 @@ export interface ZaloAccountChild {
   groupCount: number;
 }
 
+export interface ZaloAccountFriend {
+  status: "PENDING" | "APPROVE" | "CANCEL";
+  relationId: string;
+  linkedAt: string;
+  id: string;
+  zaloId: string;
+  phone: string;
+  name: string;
+  isMaster: boolean;
+  groupCount: number;
+}
+
 export interface ZaloAccountMaster {
   id: string;
   zaloId: string;
@@ -52,6 +64,80 @@ export interface ZaloAccount {
   updatedAt: string;
   master: ZaloAccountMaster | null;
   children: ZaloAccountChild[];
+  friends: ZaloAccountFriend[];
+}
+
+export type ZaloAccountFilterType = "all" | "master" | "child";
+
+export interface AddChildZaloAccountsPayload {
+  masterId: string;
+  childIds: string[];
+}
+
+export interface AddChildZaloAccountsResponse {
+  linkedChildIds: string[];
+  skippedExistingChildIds: string[];
+  duplicateInputChildIds: string[];
+  summary: {
+    requested: number;
+    uniqueRequested: number;
+    linked: number;
+    skippedExisting: number;
+    skippedDuplicateInput: number;
+  };
+}
+
+export interface MakeFriendZaloAccountsPayload {
+  masterId: string;
+  friendId: string;
+}
+
+export interface MakeFriendZaloAccountsResponse {
+  id: string;
+  createdAt: string;
+  status: "PENDING";
+  master: {
+    id: string;
+    zaloId: string;
+    phone: string;
+    name: string;
+    isMaster: boolean;
+  };
+  friend: {
+    id: string;
+    zaloId: string;
+    phone: string;
+    name: string;
+    isMaster: boolean;
+  };
+}
+
+export interface UpdateFriendZaloAccountsPayload {
+  masterId: string;
+  friendId: string;
+}
+
+export interface UpdateFriendZaloAccountsResponse {
+  message: string;
+  updated: {
+    id: string;
+    createdAt: string;
+    status: "APPROVE" | "CANCEL";
+    master: {
+      id: string;
+      zaloId: string;
+      phone: string;
+      name: string;
+      isMaster: boolean;
+    };
+    friend: {
+      id: string;
+      zaloId: string;
+      phone: string;
+      name: string;
+      isMaster: boolean;
+    };
+  };
 }
 
 export interface CreateZaloAccountPayload {
@@ -111,9 +197,57 @@ export interface ZaloGroup {
   id: string;
   groupName: string;
   groupZaloId: string;
+  isUpdateName: boolean;
   createdAt: string;
   updatedAt: string;
   _count: ZaloGroupCounts;
+}
+
+export interface BulkCreateZaloGroupInput {
+  group_name: string;
+  group_zalo_id: string;
+}
+
+export interface BulkCreateZaloGroupsPayload {
+  groups: BulkCreateZaloGroupInput[];
+}
+
+export interface BulkCreateZaloGroupsCreatedItem {
+  id: string;
+  groupName: string;
+  isUpdateName: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BulkCreateZaloGroupsResponse {
+  created: BulkCreateZaloGroupsCreatedItem[];
+  skipped: {
+    existingGroupZaloIds: string[];
+    duplicateInputGroupZaloIds: string[];
+  };
+  summary: {
+    requested: number;
+    uniqueRequested: number;
+    created: number;
+    skippedExisting: number;
+    skippedDuplicateInput: number;
+  };
+}
+
+export type PendingNameUpdateZaloGroupsResponse = ZaloGroup[];
+
+export interface UpdateZaloGroupPayload {
+  group_name: string;
+  group_zalo_id: string;
+}
+
+export interface UpdateZaloGroupResponse {
+  id: string;
+  groupName: string;
+  isUpdateName: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UpdateZaloAccountGroupDataPayload {

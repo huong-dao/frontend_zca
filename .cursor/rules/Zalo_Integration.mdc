@@ -248,6 +248,84 @@ const msg = "Xin chào, hãy kết bạn với tôi!";
 await api.sendFriendRequest(msg, userId);
 ```
 
+## API: getFriendRequestStatus
+
+### Description
+Lấy thông tin trạng thái kết bạn giữa tài khoản Zalo hiện đang đăng nhập và một người dùng Zalo cụ thể.
+
+API này hữu ích khi cần kiểm tra lời mời kết bạn đã được chấp nhận chưa mà không phải gọi danh sách bạn bè toàn cục.
+
+---
+
+### Method (zca-js)
+api.getFriendRequestStatus(friendId)
+
+---
+
+### Parameters
+
+- friendId: string  
+  → Zalo user ID cần kiểm tra trạng thái kết bạn
+
+---
+
+### Return
+
+```ts
+export type GetFriendRequestStatusResponse = {
+    addFriendPrivacy: number;
+    isSeenFriendReq: boolean;
+    is_friend: number;
+    is_requested: number;
+    is_requesting: number;
+};
+```
+
+---
+
+### Example
+
+```ts
+api.getFriendRequestStatus("000000000000000")
+    .then(console.log)
+    .catch(console.error);
+```
+
+## API: removeFriend
+
+### Description
+Hủy kết bạn với một người dùng Zalo (theo `friendId` là Zalo user ID).
+
+---
+
+### Method (zca-js)
+api.removeFriend(friendId)
+
+---
+
+### Parameters
+
+- friendId: string  
+  → Zalo user ID của người cần hủy kết bạn
+
+---
+
+### Return
+
+```ts
+export type RemoveFriendResponse = "";
+```
+
+---
+
+### Example
+
+```ts
+api.removeFriend("0000000000000000000")
+    .then(console.log)
+    .catch(console.error);
+```
+
 ## API: acceptFriendRequest
 
 ### Description

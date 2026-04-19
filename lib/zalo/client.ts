@@ -1,9 +1,12 @@
 import type {
   FindUserByPhoneResponse,
+  GetFriendRequestStatusResponse,
   GetAllGroupsResponse,
   GetQrByUserIdResponse,
   LogoutZaloResponse,
   PendingQrLoginSnapshot,
+  RemoveFriendResponse,
+  SendFriendRequestResponse,
   StartQrLoginResponse,
   ZaloSessionResponse,
   getGroupInfoPayload,
@@ -88,6 +91,27 @@ export function getQrByUserId(userId?: string | string[]) {
   return request<GetQrByUserIdResponse>("/api/zalo/get-qr", {
     method: "POST",
     body: JSON.stringify({ userId }),
+  });
+}
+
+export function sendFriendRequest(userId: string, message?: string) {
+  return request<SendFriendRequestResponse>("/api/zalo/send-friend-request", {
+    method: "POST",
+    body: JSON.stringify({ userId, message }),
+  });
+}
+
+export function getFriendRequestStatus(friendId: string) {
+  return request<GetFriendRequestStatusResponse>("/api/zalo/get-friend-request-status", {
+    method: "POST",
+    body: JSON.stringify({ friendId }),
+  });
+}
+
+export function removeFriend(friendId: string) {
+  return request<{ result: RemoveFriendResponse }>("/api/zalo/remove-friend", {
+    method: "POST",
+    body: JSON.stringify({ friendId }),
   });
 }
 

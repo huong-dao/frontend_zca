@@ -84,6 +84,26 @@ export interface GetQrByUserIdResponse {
   qrCodes: Record<string, string>;
 }
 
+export interface SendFriendRequestPayload {
+  userId: string;
+  message?: string;
+}
+
+export interface SendFriendRequestResponse {
+  success: true;
+}
+
+export interface GetFriendRequestStatusResponse {
+  addFriendPrivacy: number;
+  isSeenFriendReq: boolean;
+  is_friend: number;
+  is_requested: number;
+  is_requesting: number;
+}
+
+/** Kết quả từ zca-js `api.removeFriend` (theo tài liệu). */
+export type RemoveFriendResponse = "";
+
 export interface GetAllGroupsResult {
   version: string;
   gridVerMap: Record<string, string>;

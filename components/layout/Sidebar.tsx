@@ -8,7 +8,7 @@ export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const { logout } = useAuth();
-    const isActive = (path: string) => pathname === path;
+    const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
     const activeClass = 'flex items-center gap-3 text-blue-400 border-l-4 border-blue-600 pl-4 py-3 bg-blue-900/20';
     const inactiveClass = 'flex items-center gap-3 text-slate-300 pl-5 py-3 hover:bg-blue-800/30 hover:text-white transition-colors';
 

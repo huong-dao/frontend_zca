@@ -487,6 +487,7 @@ Example request:
       "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
       "groupName": "Marketing Team",
       "groupZaloId": "1234567890123456789",
+      "isUpdateName": false,
       "createdAt": "2026-04-15T08:20:00.000Z",
       "updatedAt": "2026-04-15T08:20:00.000Z",
       "_count": {
@@ -514,6 +515,105 @@ Example request:
 - JWT required
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
+
+### GET `/zalo-groups/pending-name-update`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-groups/pending-name-update`
+- Function: `ZaloGroupsController.findAllPendingNameUpdate`
+
+#### Description
+Return all Zalo groups whose `isUpdateName` is `false`, meaning the group name has not been updated yet. Each item also includes one `groupZaloId` taken from any related `ZaloAccountGroup` mapping so the frontend can use it directly.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "groupName": "Marketing Team",
+    "groupZaloId": "1234567890123456789",
+    "isUpdateName": false,
+    "createdAt": "2026-04-15T08:20:00.000Z",
+    "updatedAt": "2026-04-15T08:20:00.000Z",
+    "_count": {
+      "accountMaps": 3,
+      "messages": 18
+    }
+  }
+]
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### GET `/zalo-groups/account/:id`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-groups/account/:id`
+- Function: `ZaloGroupsController.findAllByZaloAccountId`
+
+#### Description
+Return paginated Zalo groups linked to a specific Zalo account. Each item has the shared group data plus the real `groupZaloId` stored on that account-group mapping.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID of the target `zaloAccountId`
+- Query:
+  - `page`: `number`, optional, default `1`, minimum `1`
+  - `limit`: `number`, optional, default `20`, minimum `1`
+- Body: none
+
+#### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "groupName": "Marketing Team",
+      "groupZaloId": "1234567890123456789",
+      "isUpdateName": false,
+      "createdAt": "2026-04-15T08:20:00.000Z",
+      "updatedAt": "2026-04-15T08:20:00.000Z",
+      "_count": {
+        "accountMaps": 3,
+        "messages": 18
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### Error cases
+- `400`: invalid UUID or pagination query
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: Zalo account not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
 
 ### POST `/zalo-groups`
 #### Endpoint
@@ -548,6 +648,7 @@ Example request:
 {
   "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
   "groupName": "Marketing Team",
+  "isUpdateName": false,
   "createdAt": "2026-04-15T08:20:00.000Z",
   "updatedAt": "2026-04-15T08:20:00.000Z"
 }
@@ -613,6 +714,7 @@ Example request:
     {
       "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
       "groupName": "Marketing Team",
+      "isUpdateName": false,
       "createdAt": "2026-04-16T08:20:00.000Z",
       "updatedAt": "2026-04-16T08:20:00.000Z"
     }
@@ -653,7 +755,7 @@ Example request:
 - Function: `ZaloGroupsController.update`
 
 #### Description
-Update a stored Zalo group directly in the database.
+Update a stored Zalo group directly in the database and mark `isUpdateName` as `true`.
 
 Note: updating this endpoint changes only the shared `ZaloGroup` record. `group_zalo_id` remains account-specific data on `ZaloAccountGroup`.
 
@@ -680,6 +782,7 @@ Example request:
 {
   "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
   "groupName": "Marketing Team",
+  "isUpdateName": true,
   "createdAt": "2026-04-15T08:20:00.000Z",
   "updatedAt": "2026-04-15T08:25:00.000Z"
 }
@@ -795,7 +898,7 @@ Example request:
 - Function: `ZaloAccountsController.findAll`
 
 #### Description
-List all Zalo accounts with master and child relations.
+List all Zalo accounts with master, child, and friend relations.
 
 #### Request
 - Params: none
@@ -824,6 +927,19 @@ List all Zalo accounts with master and child relations.
         "name": "Child Account",
         "groupCount": 2
       }
+    ],
+    "friends": [
+      {
+        "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+        "linkedAt": "2026-04-16T08:45:00.000Z",
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120003",
+        "zaloId": "5566778899",
+        "phone": "0908888888",
+        "name": "Friend Account",
+        "isMaster": false,
+        "status": "APPROVE",
+        "groupCount": 1
+      }
     ]
   }
 ]
@@ -839,6 +955,74 @@ List all Zalo accounts with master and child relations.
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
+### GET `/zalo-accounts/filter`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-accounts/filter`
+- Function: `ZaloAccountsController.filterByType`
+
+#### Description
+Filter Zalo accounts by account type. Use `master` to return master accounts or `child` to return non-master accounts. The response also includes friend relationships.
+
+#### Request
+- Params: none
+- Query:
+  - `type`: `"master" | "child"`, required
+- Body: none
+
+#### Response
+
+```json
+[
+  {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "zaloId": "0987654321",
+    "phone": "0901234567",
+    "name": "Master Account",
+    "isMaster": true,
+    "groupCount": 5,
+    "groupData": null,
+    "createdAt": "2026-04-15T08:30:00.000Z",
+    "updatedAt": "2026-04-15T08:30:00.000Z",
+    "masters": [],
+    "children": [
+      {
+        "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0002",
+        "linkedAt": "2026-04-15T08:32:00.000Z",
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+        "zaloId": "1122334455",
+        "name": "Child Account",
+        "groupCount": 2
+      }
+    ],
+    "friends": [
+      {
+        "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+        "linkedAt": "2026-04-16T08:45:00.000Z",
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120003",
+        "zaloId": "5566778899",
+        "phone": "0908888888",
+        "name": "Friend Account",
+        "isMaster": false,
+        "status": "APPROVE",
+        "groupCount": 1
+      }
+    ]
+  }
+]
+```
+
+#### Error cases
+- `400`: missing or invalid `type`
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### POST `/zalo-accounts/search`
 #### Endpoint
 - Method: `POST`
@@ -846,7 +1030,7 @@ List all Zalo accounts with master and child relations.
 - Function: `ZaloAccountsController.search`
 
 #### Description
-Search Zalo accounts by `name` or `phone`. The search is case-insensitive and returns the same relation-aware shape as the list endpoint.
+Search Zalo accounts by `name` or `phone`. The search is case-insensitive and returns the same relation-aware shape as the list endpoint, including friend relationships.
 
 #### Request
 - Params: none
@@ -886,6 +1070,19 @@ Example request:
         "name": "Child Account",
         "groupCount": 2
       }
+    ],
+    "friends": [
+      {
+        "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+        "linkedAt": "2026-04-16T08:45:00.000Z",
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120003",
+        "zaloId": "5566778899",
+        "phone": "0908888888",
+        "name": "Friend Account",
+        "isMaster": false,
+        "status": "APPROVE",
+        "groupCount": 1
+      }
     ]
   }
 ]
@@ -901,6 +1098,260 @@ Example request:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`, `USER`
 
+### POST `/zalo-accounts/make-friend`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts/make-friend`
+- Function: `ZaloAccountsController.createFriend`
+
+#### Description
+Create a friend relationship between two Zalo accounts using the `ZaloAccountFriend` model. A newly created relationship always starts with status `PENDING`. If a matching relationship already exists with status `CANCEL`, the backend reuses that record and changes its status back to `PENDING` instead of creating a duplicate row.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `masterId`: `string`, required, UUID of the source account
+  - `friendId`: `string`, required, UUID of the friend account
+
+Example request:
+
+```json
+{
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "friendId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
+}
+```
+
+#### Response
+
+```json
+{
+  "id": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+  "createdAt": "2026-04-16T08:45:00.000Z",
+  "status": "PENDING",
+  "master": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "zaloId": "0987654321",
+    "phone": "0901234567",
+    "name": "Master Account",
+    "isMaster": true
+  },
+  "friend": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+    "zaloId": "1122334455",
+    "phone": "0909999999",
+    "name": "Child Account",
+    "isMaster": false
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error or both IDs are the same
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: one of the Zalo accounts was not found
+- `409`: friend relationship already exists in either direction with status other than `CANCEL`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### DELETE `/zalo-accounts/un-friend`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/zalo-accounts/un-friend`
+- Function: `ZaloAccountsController.removeFriend`
+
+#### Description
+Remove an existing friend relationship between two Zalo accounts from the `ZaloAccountFriend` model. The relationship is removed even if the two account IDs are provided in reverse order.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `masterId`: `string`, required, UUID of one account in the relationship
+  - `friendId`: `string`, required, UUID of the other account in the relationship
+
+Example request:
+
+```json
+{
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "friendId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Friend relationship removed successfully.",
+  "deleted": {
+    "id": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+    "createdAt": "2026-04-16T08:45:00.000Z",
+    "status": "CANCEL",
+    "master": {
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+      "zaloId": "0987654321",
+      "phone": "0901234567",
+      "name": "Master Account",
+      "isMaster": true
+    },
+    "friend": {
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+      "zaloId": "1122334455",
+      "phone": "0909999999",
+      "name": "Child Account",
+      "isMaster": false
+    }
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error or both IDs are the same
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: friend relationship not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### PATCH `/zalo-accounts/approve-friend`
+#### Endpoint
+- Method: `PATCH`
+- Full path: `/zalo-accounts/approve-friend`
+- Function: `ZaloAccountsController.approveFriend`
+
+#### Description
+Update an existing friend relationship status to `APPROVE`.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `masterId`: `string`, required, UUID of one account in the relationship
+  - `friendId`: `string`, required, UUID of the other account in the relationship
+
+Example request:
+
+```json
+{
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "friendId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Friend relationship approved successfully.",
+  "updated": {
+    "id": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+    "createdAt": "2026-04-16T08:45:00.000Z",
+    "status": "APPROVE",
+    "master": {
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+      "zaloId": "0987654321",
+      "phone": "0901234567",
+      "name": "Master Account",
+      "isMaster": true
+    },
+    "friend": {
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+      "zaloId": "1122334455",
+      "phone": "0909999999",
+      "name": "Child Account",
+      "isMaster": false
+    }
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error or both IDs are the same
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: friend relationship not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### PATCH `/zalo-accounts/cancel-friend`
+#### Endpoint
+- Method: `PATCH`
+- Full path: `/zalo-accounts/cancel-friend`
+- Function: `ZaloAccountsController.cancelFriend`
+
+#### Description
+Update an existing friend relationship status to `CANCEL`.
+
+#### Request
+- Params: none
+- Query: none
+- Body:
+  - `masterId`: `string`, required, UUID of one account in the relationship
+  - `friendId`: `string`, required, UUID of the other account in the relationship
+
+Example request:
+
+```json
+{
+  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "friendId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Friend relationship cancelled successfully.",
+  "updated": {
+    "id": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+    "createdAt": "2026-04-16T08:45:00.000Z",
+    "status": "CANCEL",
+    "master": {
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+      "zaloId": "0987654321",
+      "phone": "0901234567",
+      "name": "Master Account",
+      "isMaster": true
+    },
+    "friend": {
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+      "zaloId": "1122334455",
+      "phone": "0909999999",
+      "name": "Child Account",
+      "isMaster": false
+    }
+  }
+}
+```
+
+#### Error cases
+- `400`: validation error or both IDs are the same
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: friend relationship not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### GET `/zalo-accounts/:id`
 #### Endpoint
 - Method: `GET`
@@ -908,7 +1359,7 @@ Example request:
 - Function: `ZaloAccountsController.findOne`
 
 #### Description
-Get one Zalo account with full relation details.
+Get one Zalo account with full relation details, including friend relationships.
 
 #### Request
 - Params:
@@ -943,6 +1394,19 @@ Get one Zalo account with full relation details.
     }
   ],
   "children": [],
+  "friends": [
+    {
+      "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0010",
+      "linkedAt": "2026-04-16T08:45:00.000Z",
+      "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120003",
+      "zaloId": "5566778899",
+      "phone": "0908888888",
+      "name": "Friend Account",
+      "isMaster": false,
+      "status": "APPROVE",
+      "groupCount": 1
+    }
+  ],
   "groupMaps": [
     {
       "id": "7d7f702a-7827-4a19-84f0-249e73110001",
@@ -1034,32 +1498,83 @@ Example request:
 - Function: `ZaloAccountsController.addChild`
 
 #### Description
-This endpoint is no longer executed in the backend. QR login for attaching child accounts is now handled in the frontend.
+Attach multiple existing Zalo accounts as child accounts to one master account by creating rows in `ZaloAccountRelation`.
 
 #### Request
 - Params: none
 - Query: none
 - Body:
-  - `masterId`: `string`, required
-  - `zaloId`: `string`, required
+  - `masterId`: `string`, required, UUID of the master account
+  - `childIds`: `string[]`, required, array of child account UUIDs, minimum `1` item
 
 Example request:
 
 ```json
 {
   "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
-  "zaloId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
+  "childIds": [
+    "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+    "7c13f32f-90eb-483f-b5e0-c3b7fa120003"
+  ]
 }
 ```
 
 #### Response
-The backend currently returns an error for this endpoint.
+
+```json
+{
+  "master": {
+    "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "zaloId": "0987654321",
+    "phone": "0901234567",
+    "name": "Master Account",
+    "isMaster": true,
+    "groupCount": 5,
+    "groupData": null,
+    "createdAt": "2026-04-15T08:30:00.000Z",
+    "updatedAt": "2026-04-15T08:30:00.000Z",
+    "masters": [],
+    "children": [
+      {
+        "relationId": "4df1ab59-8f3c-4c28-9b36-8b0c95de0002",
+        "linkedAt": "2026-04-15T08:32:00.000Z",
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+        "zaloId": "1122334455",
+        "phone": "0909999999",
+        "name": "Child Account",
+        "isMaster": false,
+        "groupCount": 2,
+        "groupData": null,
+        "createdAt": "2026-04-15T08:31:00.000Z",
+        "updatedAt": "2026-04-15T08:31:00.000Z"
+      }
+    ],
+    "groupMaps": []
+  },
+  "linkedChildIds": [
+    "7c13f32f-90eb-483f-b5e0-c3b7fa120002"
+  ],
+  "skippedExistingChildIds": [
+    "7c13f32f-90eb-483f-b5e0-c3b7fa120003"
+  ],
+  "duplicateInputChildIds": [],
+  "summary": {
+    "requested": 2,
+    "uniqueRequested": 2,
+    "linked": 1,
+    "skippedExisting": 1,
+    "skippedDuplicateInput": 0
+  }
+}
+```
 
 #### Error cases
 - `400`: validation error
 - `400`: provided `masterId` is not a master account
-- `400`: QR login for adding child accounts is handled in the frontend
+- `400`: `masterId` appears in `childIds`
+- `400`: one or more selected accounts are master accounts
 - `401`: missing/invalid JWT
+- `404`: one or more child Zalo accounts were not found
 - `404`: master Zalo account not found
 - `500`: unexpected server error
 
