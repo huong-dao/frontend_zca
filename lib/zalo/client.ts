@@ -65,6 +65,14 @@ export function getCurrentZaloSession() {
   });
 }
 
+/** Gắn cookie zca_zalo_* trên server (dùng sau khi QR thành công, khi Set-Cookie có thể bị mất). */
+export function bakeZaloSessionCookies(sessionId: string) {
+  return request<{ ok: true }>("/api/zalo/session/bake-cookies", {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
+  });
+}
+
 export function setActiveZaloSession(sessionId: string) {
   return request<{ success: boolean; activeSessionId: string }>("/api/zalo/session/active", {
     method: "POST",

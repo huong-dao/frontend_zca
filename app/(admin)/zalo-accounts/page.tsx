@@ -30,6 +30,7 @@ import { addChildZaloAccounts, createZaloAccount, filterZaloAccountsByType, getZ
 import { ApiError } from "@/lib/api/client";
 import type { BulkCreateZaloGroupInput, ZaloAccount, ZaloAccountFilterType } from "@/lib/api/types";
 import {
+  bakeZaloSessionCookies,
   getAllGroups,
   getCurrentZaloSession,
   getQrLoginStatus,
@@ -300,6 +301,15 @@ export default function ZaloAccountsPage() {
     try {
       const response = await startQrLogin();
       applyQrSnapshot(response);
+
+      if (response.status === "authenticated" && response.sessionId) {
+        try {
+          await bakeZaloSessionCookies(response.sessionId);
+          notifyZaloSessionChanged();
+        } catch {
+          //
+        }
+      }
     } catch (requestError) {
       setQrModalError(getErrorMessage(requestError, "Không thể tạo mã QR đăng nhập."));
     } finally {
@@ -405,6 +415,15 @@ export default function ZaloAccountsPage() {
       try {
         const nextStatus = await getQrLoginStatus(qrLogin.id);
         applyQrSnapshot(nextStatus);
+
+        if (nextStatus.status === "authenticated" && nextStatus.sessionId) {
+          try {
+            await bakeZaloSessionCookies(nextStatus.sessionId);
+            notifyZaloSessionChanged();
+          } catch {
+            // Cookie có thể đã có từ GET; bỏ qua nếu bake thất bại.
+          }
+        }
       } catch (requestError) {
         setQrModalError(getErrorMessage(requestError, "Không thể cập nhật trạng thái QR."));
       }
