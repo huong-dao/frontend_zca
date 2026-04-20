@@ -9,21 +9,13 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const merged = mergeCookieAndClientHeaderPayload(cookieStore, request);
   const { sessions: backendSessions } = await fetchZaloSessionsList();
-  console.log(backendSessions);
-  const backendIds = new Set(backendSessions.map((s) => s.id));
-  let ids =
-    merged.ids.length > 0 ? merged.ids.filter((id) => backendIds.has(id)) : backendSessions.map((s) => s.id);
 
-  if (ids.length === 0) {
-    ids = backendSessions.map((s) => s.id);
-  }
+  // Luôn trả về đủ phiên từ backend; cookie/header chỉ dùng để chọn phiên đang active.
+  const sessions = backendSessions;
+  const ids = sessions.map((s) => s.id);
 
-  let activeId =
+  const activeId =
     merged.active && ids.includes(merged.active) ? merged.active : ids[0] ?? null;
-
-  const sessions = ids
-    .map((id) => backendSessions.find((s) => s.id === id))
-    .filter((s): s is NonNullable<typeof s> => s !== undefined);
 
   writeZaloSessionsCookie(cookieStore, { ids: sessions.map((s) => s.id), active: activeId });
 
