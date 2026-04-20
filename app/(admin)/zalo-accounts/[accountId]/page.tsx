@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { HiArrowLongLeft, HiMiniUserMinus, HiMiniUserPlus } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
@@ -9,26 +9,11 @@ import Pagination from "@/components/features/Pagination";
 import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import {
-  approveFriendZaloAccounts,
-  cancelFriendZaloAccounts,
-  getZaloAccounts,
-  makeFriendZaloAccounts,
-} from "@/lib/api/zalo-accounts";
+import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
 import { getZaloGroupsByAccountId } from "@/lib/api/zalo-groups";
-import {
-  getCurrentZaloSession,
-  getFriendRequestStatus,
-  removeFriend,
-  sendFriendRequest,
-  ZALO_SESSION_CHANGED_EVENT,
-  ZaloClientError,
-} from "@/lib/zalo/client";
 import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@/lib/api/types";
 
 const TABLE_PAGE_SIZE = 10;
-const DEFAULT_FRIEND_REQUEST_MESSAGE = "Xin chào, hãy kết bạn với tôi!";
-
 const EMPTY_META: PaginationMeta = {
   page: 1,
   limit: TABLE_PAGE_SIZE,
@@ -61,44 +46,6 @@ export default function ZaloAccountDetailsPage() {
   const [groupsError, setGroupsError] = useState("");
   const [submittingFriendChildId, setSubmittingFriendChildId] = useState<string | null>(null);
   const [submittingFriendAction, setSubmittingFriendAction] = useState<"make" | "unfriend" | null>(null);
-  const syncingPendingFriendsRef = useRef(false);
-  const checkedPendingFriendIdsRef = useRef<string>("");
-  const [masterZaloSessionId, setMasterZaloSessionId] = useState<string | null>(null);
-
-  const syncMasterZaloSessionId = useCallback(async () => {
-    if (!account?.zaloId) {
-      setMasterZaloSessionId(null);
-      return;
-    }
-
-    try {
-      const response = await getCurrentZaloSession();
-      const list =
-        response.sessions.length > 0
-          ? response.sessions
-          : response.session
-            ? [response.session]
-            : [];
-      const match = list.find((session) => session.user.uid === account.zaloId);
-      setMasterZaloSessionId(match?.id ?? null);
-    } catch {
-      setMasterZaloSessionId(null);
-    }
-  }, [account?.zaloId]);
-
-  useEffect(() => {
-    void syncMasterZaloSessionId();
-  }, [syncMasterZaloSessionId]);
-
-  useEffect(() => {
-    const handler = () => {
-      void syncMasterZaloSessionId();
-    };
-    window.addEventListener(ZALO_SESSION_CHANGED_EVENT, handler);
-    return () => {
-      window.removeEventListener(ZALO_SESSION_CHANGED_EVENT, handler);
-    };
-  }, [syncMasterZaloSessionId]);
 
   const loadAccountDetails = useCallback(async () => {
     if (!accountId) {
@@ -243,66 +190,6 @@ export default function ZaloAccountDetailsPage() {
   }, [accountId]);
 
   const getFriendStatus = (childId: string) => friendStatusById.get(childId) ?? null;
-  const pendingChildAccounts = useMemo(
-    () => childAccounts.filter((child) => friendStatusById.get(child.id) === "PENDING"),
-    [childAccounts, friendStatusById],
-  );
-
-  const syncPendingFriendStatuses = useCallback(async () => {
-    if (
-      !account?.isMaster ||
-      pendingChildAccounts.length === 0 ||
-      syncingPendingFriendsRef.current ||
-      !masterZaloSessionId
-    ) {
-      return;
-    }
-
-    const pendingChildIdsKey = pendingChildAccounts
-      .map((child) => `${child.id}:${child.zaloId}`)
-      .sort()
-      .join("|");
-
-    if (checkedPendingFriendIdsRef.current === pendingChildIdsKey) {
-      return;
-    }
-
-    syncingPendingFriendsRef.current = true;
-    checkedPendingFriendIdsRef.current = pendingChildIdsKey;
-
-    try {
-      let approvedCount = 0;
-
-      for (const child of pendingChildAccounts) {
-        const friendStatus = await getFriendRequestStatus(child.zaloId, masterZaloSessionId);
-
-        if (friendStatus.is_friend) {
-          await approveFriendZaloAccounts({
-            masterId: account.id,
-            friendId: child.id,
-          });
-          approvedCount += 1;
-        }
-      }
-
-      if (approvedCount > 0) {
-        await loadAccountDetails();
-      }
-    } catch (requestError) {
-      if (requestError instanceof ZaloClientError && requestError.status === 401) {
-        checkedPendingFriendIdsRef.current = "";
-        return;
-      }
-
-      checkedPendingFriendIdsRef.current = "";
-    } finally {
-      syncingPendingFriendsRef.current = false;
-    }
-  }, [account, loadAccountDetails, masterZaloSessionId, pendingChildAccounts]);
-
-  useEffect(() => {
-    void syncPendingFriendStatuses();
-  }, [syncPendingFriendStatuses]);
 
   const handleMakeFriend = async (child: ZaloAccountChild) => {
     if (!account) {
@@ -325,55 +212,10 @@ export default function ZaloAccountDetailsPage() {
     setSubmittingFriendAction("make");
 
     try {
-      if (!masterZaloSessionId) {
-        showToast("Chưa có phiên Zalo cho tài khoản master. Vui lòng đăng nhập Zalo (QR) trước.", "error");
-        return;
-      }
-
       const response = await makeFriendZaloAccounts({
         masterId: account.id,
         friendId: child.id,
       });
-
-      let sendFriendError: unknown = null;
-
-      try {
-        await sendFriendRequest(
-          child.zaloId,
-          account.name
-            ? `Xin chào, mình là ${account.name}. Kết bạn nhé!`
-            : DEFAULT_FRIEND_REQUEST_MESSAGE,
-          masterZaloSessionId,
-        );
-      } catch (requestError) {
-        sendFriendError = requestError;
-      }
-
-      let zaloFriendStatus: Awaited<ReturnType<typeof getFriendRequestStatus>> | null = null;
-      try {
-        zaloFriendStatus = await getFriendRequestStatus(child.zaloId, masterZaloSessionId);
-      } catch {
-        zaloFriendStatus = null;
-      }
-
-      // Hai phía đã là bạn trên Zalo: lưu quan hệ (make-friend đã tạo PENDING) rồi chuyển APPROVE.
-      if (zaloFriendStatus?.is_friend) {
-        await approveFriendZaloAccounts({
-          masterId: account.id,
-          friendId: child.id,
-        });
-        showToast(`Đã đồng bộ: ${child.name} đã là bạn bè trên Zalo.`, "success");
-        await loadAccountDetails();
-        return;
-      }
-
-      if (sendFriendError) {
-        await cancelFriendZaloAccounts({
-          masterId: account.id,
-          friendId: child.id,
-        });
-        throw sendFriendError;
-      }
 
       showToast(
         response.status === "PENDING"
@@ -409,14 +251,6 @@ export default function ZaloAccountDetailsPage() {
     setSubmittingFriendAction("unfriend");
 
     try {
-      if (friendStatus === "APPROVE") {
-        if (!masterZaloSessionId) {
-          showToast("Chưa có phiên Zalo cho tài khoản master. Vui lòng đăng nhập Zalo (QR) trước.", "error");
-          return;
-        }
-        await removeFriend(child.zaloId, masterZaloSessionId);
-      }
-
       await cancelFriendZaloAccounts({
         masterId: account.id,
         friendId: child.id,
