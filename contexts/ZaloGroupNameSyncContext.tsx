@@ -18,7 +18,7 @@ import {
 import { getCurrentZaloSession, getGroupInfo } from "@/lib/zalo/client";
 
 // Đổi cờ này thành false nếu muốn tạm tắt toàn bộ đồng bộ tên nhóm.
-const ENABLE_ZALO_GROUP_NAME_SYNC = true;
+const ENABLE_ZALO_GROUP_NAME_SYNC = false;
 const SYNC_INTERVAL_MS = 3 * 60 * 1000;
 const SYNC_BATCH_SIZE = 10;
 const GROUP_REQUEST_DELAY_MS = 2000;
@@ -131,7 +131,10 @@ export function ZaloGroupNameSyncProvider({ children }: { children: ReactNode })
         const group = pendingBatch[index];
 
         try {
-          const groupInfoResponse = await getGroupInfo(group.groupZaloId);
+          const groupInfoResponse = await getGroupInfo(
+            group.groupZaloId,
+            sessionResponse.session?.id,
+          );
           const updatedGroupName =
             extractGroupNameFromGroupInfo(group.groupZaloId, groupInfoResponse.groupInfo) ??
             group.groupName;

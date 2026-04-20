@@ -1,18 +1,16 @@
-import { cookies } from "next/headers";
 import {
   getAllGroups,
   getPublicSession,
-  ZALO_SESSION_COOKIE_NAME,
 } from "@/lib/zalo/server";
+import { getZaloSessionIdFromGetRequest } from "@/lib/zalo/request-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get(ZALO_SESSION_COOKIE_NAME)?.value;
-    const session = getPublicSession(sessionId);
+    const sessionId = await getZaloSessionIdFromGetRequest(request);
+    const session = await getPublicSession(sessionId);
 
     if (!session) {
       return Response.json({ message: "Chưa có phiên đăng nhập Zalo." }, { status: 401 });

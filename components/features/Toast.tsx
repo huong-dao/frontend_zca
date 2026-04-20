@@ -39,7 +39,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
 
     setTimeout(() => {
       removeToast(id);
-    }, 3000);
+    }, 5000);
   }, [removeToast]);
 
   const contextValue = useMemo(() => ({ showToast }), [showToast]);

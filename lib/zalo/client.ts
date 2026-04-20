@@ -65,66 +65,75 @@ export function getCurrentZaloSession() {
   });
 }
 
+export function setActiveZaloSession(sessionId: string) {
+  return request<{ success: boolean; activeSessionId: string }>("/api/zalo/session/active", {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
+  });
+}
+
 export function notifyZaloSessionChanged() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(ZALO_SESSION_CHANGED_EVENT));
   }
 }
 
-export async function logoutZalo() {
+export async function logoutZalo(sessionId?: string) {
   const response = await request<LogoutZaloResponse>("/api/zalo/logout", {
     method: "POST",
+    body: JSON.stringify(sessionId ? { sessionId } : {}),
   });
 
   notifyZaloSessionChanged();
   return response;
 }
 
-export function findUserByPhone(phoneNumber: string) {
+export function findUserByPhone(phoneNumber: string, sessionId?: string) {
   return request<FindUserByPhoneResponse>("/api/zalo/find-user", {
     method: "POST",
-    body: JSON.stringify({ phoneNumber }),
+    body: JSON.stringify({ phoneNumber, sessionId }),
   });
 }
 
-export function getQrByUserId(userId?: string | string[]) {
+export function getQrByUserId(userId?: string | string[], sessionId?: string) {
   return request<GetQrByUserIdResponse>("/api/zalo/get-qr", {
     method: "POST",
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({ userId, sessionId }),
   });
 }
 
-export function sendFriendRequest(userId: string, message?: string) {
+export function sendFriendRequest(userId: string, message?: string, sessionId?: string) {
   return request<SendFriendRequestResponse>("/api/zalo/send-friend-request", {
     method: "POST",
-    body: JSON.stringify({ userId, message }),
+    body: JSON.stringify({ userId, message, sessionId }),
   });
 }
 
-export function getFriendRequestStatus(friendId: string) {
+export function getFriendRequestStatus(friendId: string, sessionId?: string) {
   return request<GetFriendRequestStatusResponse>("/api/zalo/get-friend-request-status", {
     method: "POST",
-    body: JSON.stringify({ friendId }),
+    body: JSON.stringify({ friendId, sessionId }),
   });
 }
 
-export function removeFriend(friendId: string) {
+export function removeFriend(friendId: string, sessionId?: string) {
   return request<{ result: RemoveFriendResponse }>("/api/zalo/remove-friend", {
     method: "POST",
-    body: JSON.stringify({ friendId }),
+    body: JSON.stringify({ friendId, sessionId }),
   });
 }
 
-export function getAllGroups() {
-  return request<GetAllGroupsResponse>("/api/zalo/get-all-groups", {
+export function getAllGroups(sessionId?: string) {
+  const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : "";
+  return request<GetAllGroupsResponse>(`/api/zalo/get-all-groups${query}`, {
     method: "GET",
   });
 }
 
-export function getGroupInfo(groupId: string) {
+export function getGroupInfo(groupId: string, sessionId?: string) {
   return request<getGroupInfoPayload>("/api/zalo/get-group-info", {
     method: "POST",
-    body: JSON.stringify({ groupId }),
+    body: JSON.stringify({ groupId, sessionId }),
   });
 }
 

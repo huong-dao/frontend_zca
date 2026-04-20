@@ -13,19 +13,23 @@ import type {
   ZaloSessionCredentials,
   ZaloSessionUser,
 } from "@/lib/zalo/types";
+import {
+  deleteAllZaloSessionsOnBackend,
+  deleteZaloSessionOnBackend,
+  fetchFullZaloSessionFromBackend,
+  touchZaloSessionOnBackend,
+  upsertZaloSessionToBackend,
+} from "@/lib/api/zalo-sessions";
 
-export const ZALO_SESSION_COOKIE_NAME = "zca_zalo_session";
+export { ZALO_SESSION_COOKIE_NAME, ZALO_SESSIONS_COOKIE_NAME } from "@/lib/zalo/session-cookie";
 
 const QR_READY_TIMEOUT_MS = 15_000;
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
 
 type PendingQrLoginInternal = PendingQrLoginSnapshot;
-type PendingQrLoginStoreItem = PendingQrLoginInternal & {
-  previousSessionId?: string | null;
-};
+type PendingQrLoginStoreItem = PendingQrLoginInternal;
 
 type ZaloStore = {
   activeSessions: Map<string, ActiveZaloSession>;
@@ -59,14 +63,6 @@ function cleanupStore() {
   const store = getStore();
   const now = Date.now();
 
-  for (const [id, session] of store.activeSessions) {
-    const updatedAt = new Date(session.updatedAt).getTime();
-
-    if (now - updatedAt > SESSION_TTL_MS) {
-      store.activeSessions.delete(id);
-    }
-  }
-
   for (const [id, pending] of store.pendingLogins) {
     const updatedAt = new Date(pending.updatedAt).getTime();
 
@@ -76,7 +72,7 @@ function cleanupStore() {
   }
 }
 
-function createPendingLogin(id: string, previousSessionId?: string | null): PendingQrLoginStoreItem {
+function createPendingLogin(id: string): PendingQrLoginStoreItem {
   const timestamp = nowIso();
 
   return {
@@ -89,7 +85,6 @@ function createPendingLogin(id: string, previousSessionId?: string | null): Pend
     sessionUser: null,
     createdAt: timestamp,
     updatedAt: timestamp,
-    previousSessionId: previousSessionId ?? null,
   };
 }
 
@@ -138,17 +133,39 @@ function serializeSession(session: ActiveZaloSession) {
   };
 }
 
-function requireSession(sessionId: string | undefined | null) {
+function scheduleTouchSession(sessionId: string) {
+  void touchZaloSessionOnBackend(sessionId).catch(() => {});
+}
+
+async function resolveSession(sessionId: string | undefined | null): Promise<ActiveZaloSession | null> {
   cleanupStore();
 
   if (!sessionId) {
-    throw new Error("Chưa có phiên đăng nhập Zalo.");
+    return null;
   }
 
-  const session = getStore().activeSessions.get(sessionId);
+  const store = getStore();
+  const cached = store.activeSessions.get(sessionId);
+
+  if (cached) {
+    return cached;
+  }
+
+  const hydrated = await fetchFullZaloSessionFromBackend(sessionId);
+
+  if (hydrated) {
+    store.activeSessions.set(hydrated.id, hydrated);
+    return hydrated;
+  }
+
+  return null;
+}
+
+async function requireSession(sessionId: string | undefined | null): Promise<ActiveZaloSession> {
+  const session = await resolveSession(sessionId);
 
   if (!session) {
-    throw new Error("Phiên Zalo không tồn tại hoặc đã hết hạn.");
+    throw new Error("Chưa có phiên đăng nhập Zalo.");
   }
 
   return session;
@@ -267,8 +284,10 @@ async function runQrLoginFlow(loginId: string) {
 
     store.activeSessions.set(sessionId, session);
 
-    if (pending.previousSessionId && pending.previousSessionId !== sessionId) {
-      store.activeSessions.delete(pending.previousSessionId);
+    try {
+      await upsertZaloSessionToBackend(session);
+    } catch {
+      // Phiên vẫn dùng được trong RAM; chỉ không persist được DB.
     }
 
     updatePendingLogin(loginId, (current) => ({
@@ -294,11 +313,11 @@ async function runQrLoginFlow(loginId: string) {
   }
 }
 
-export async function startQrLogin(previousSessionId?: string | null): Promise<StartQrLoginResponse> {
+export async function startQrLogin(): Promise<StartQrLoginResponse> {
   cleanupStore();
 
   const id = crypto.randomUUID();
-  const pending = createPendingLogin(id, previousSessionId);
+  const pending = createPendingLogin(id);
 
   getStore().pendingLogins.set(id, pending);
   void runQrLoginFlow(id);
@@ -327,28 +346,25 @@ export function getQrLoginStatus(loginId: string) {
   return getStore().pendingLogins.get(loginId) ?? null;
 }
 
-export function getActiveSession(sessionId: string | undefined | null) {
-  cleanupStore();
-
-  if (!sessionId) {
-    return null;
-  }
-
-  return getStore().activeSessions.get(sessionId) ?? null;
+export async function getActiveSession(sessionId: string | undefined | null): Promise<ActiveZaloSession | null> {
+  return resolveSession(sessionId);
 }
 
 export async function findUserByPhone(
   phoneNumber: string,
   sessionId: string | undefined | null,
 ): Promise<FindUserResponse> {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
   const user = await api.findUser(phoneNumber);
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 
   return user;
 }
@@ -357,7 +373,7 @@ export async function getQrByUserId(
   userId: string | string[] | undefined,
   sessionId: string | undefined | null,
 ) {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
 
   if (!userId) {
@@ -366,10 +382,13 @@ export async function getQrByUserId(
 
   const qrCodes = await api.getQR(userId);
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 
   return qrCodes;
 }
@@ -379,7 +398,7 @@ export async function sendFriendRequest(
   message: string | undefined,
   sessionId: string | undefined | null,
 ) {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
 
   if (!userId.trim()) {
@@ -388,10 +407,13 @@ export async function sendFriendRequest(
 
   await api.sendFriendRequest(message?.trim() || "Xin chào, hãy kết bạn với tôi!", userId);
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 
   return { success: true as const };
 }
@@ -400,7 +422,7 @@ export async function getFriendRequestStatus(
   friendId: string,
   sessionId: string | undefined | null,
 ) {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
 
   if (!friendId.trim()) {
@@ -409,16 +431,19 @@ export async function getFriendRequestStatus(
 
   const friendStatus = await api.getFriendRequestStatus(friendId);
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 
   return friendStatus;
 }
 
 export async function removeFriend(friendId: string, sessionId: string | undefined | null) {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
 
   if (!friendId.trim()) {
@@ -427,40 +452,49 @@ export async function removeFriend(friendId: string, sessionId: string | undefin
 
   await api.removeFriend(friendId);
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 }
 
 export async function getAllGroups(sessionId: string | undefined | null) {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
   const groups = await api.getAllGroups();
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 
   return groups;
 }
 
 export async function getGroupInfo(groupId: string, sessionId: string | undefined | null) {
-  const session = requireSession(sessionId);
+  const session = await requireSession(sessionId);
   const api = await createApiFromSession(session);
   const groupInfo = await api.getGroupInfo(groupId);
 
-  getStore().activeSessions.set(session.id, {
+  const nextSession: ActiveZaloSession = {
     ...session,
     updatedAt: nowIso(),
-  });
+  };
+
+  getStore().activeSessions.set(session.id, nextSession);
+  scheduleTouchSession(session.id);
 
   return groupInfo;
 }
 
-export function getPublicSession(sessionId: string | undefined | null) {
-  const session = getActiveSession(sessionId);
+export async function getPublicSession(sessionId: string | undefined | null) {
+  const session = await resolveSession(sessionId);
 
   if (!session) {
     return null;
@@ -469,8 +503,24 @@ export function getPublicSession(sessionId: string | undefined | null) {
   return serializeSession(session);
 }
 
-export function clearZaloSessions() {
+export async function removeZaloSession(sessionId: string) {
+  getStore().activeSessions.delete(sessionId);
+
+  try {
+    await deleteZaloSessionOnBackend(sessionId);
+  } catch {
+    // Đã xóa khỏi RAM; backend có thể đã xóa trước đó.
+  }
+}
+
+export async function clearAllZaloSessions() {
   const store = getStore();
   store.activeSessions.clear();
   store.pendingLogins.clear();
+
+  try {
+    await deleteAllZaloSessionsOnBackend();
+  } catch {
+    //
+  }
 }

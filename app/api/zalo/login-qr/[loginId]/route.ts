@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { getQrLoginStatus, ZALO_SESSION_COOKIE_NAME } from "@/lib/zalo/server";
+import { getQrLoginStatus } from "@/lib/zalo/server";
+import { addSessionToSessionsCookie } from "@/lib/zalo/session-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,12 +18,7 @@ export async function GET(
 
   if (login.sessionId) {
     const cookieStore = await cookies();
-    cookieStore.set(ZALO_SESSION_COOKIE_NAME, login.sessionId, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-    });
+    addSessionToSessionsCookie(cookieStore, login.sessionId);
   }
 
   return Response.json(login);

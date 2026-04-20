@@ -30,7 +30,6 @@ import { addChildZaloAccounts, createZaloAccount, filterZaloAccountsByType, getZ
 import { ApiError } from "@/lib/api/client";
 import type { BulkCreateZaloGroupInput, ZaloAccount, ZaloAccountFilterType } from "@/lib/api/types";
 import {
-  findUserByPhone,
   getAllGroups,
   getCurrentZaloSession,
   getQrLoginStatus,
@@ -38,9 +37,8 @@ import {
   notifyZaloSessionChanged,
   startQrLogin,
   ZALO_SESSION_CHANGED_EVENT,
-  ZaloClientError,
 } from "@/lib/zalo/client";
-import type { PendingQrLoginSnapshot, PendingQrLoginStatus } from "@/lib/zalo/types";
+import type { PendingQrLoginSnapshot, PendingQrLoginStatus, ZaloSessionPublic } from "@/lib/zalo/types";
 
 const PAGE_SIZE = 20;
 const TABLE_COLUMN_COUNT = 8;
@@ -113,8 +111,8 @@ function isFinalQrStatus(status: PendingQrLoginStatus) {
   return QR_FINISHED_STATUSES.includes(status);
 }
 
-function hasGroupData(groupData: Record<string, string>) {
-  return Object.keys(groupData).length > 0;
+function hasGroupData(groupData?: Record<string, string>, accountId?: string) {
+  return !!groupData && Object.keys(groupData).length > 0;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -142,9 +140,7 @@ export default function ZaloAccountsPage() {
   const [savingAccount, setSavingAccount] = useState(false);
   const [openModalScanningGroups, setOpenModalScanningGroups] = useState(false);
   const [scanGroupMessage, setScanGroupMessage] = useState("");
-  const [checkingZaloSession, setCheckingZaloSession] = useState(false);
   const [submittingAddAccount, setSubmittingAddAccount] = useState(false);
-  const [allowBootstrapQrLogin, setAllowBootstrapQrLogin] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [selectedBulkAction, setSelectedBulkAction] = useState("");
   const [selectedMasterAccountId, setSelectedMasterAccountId] = useState("");
@@ -154,7 +150,8 @@ export default function ZaloAccountsPage() {
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const persistedSessionIdRef = useRef<string | null>(null);
   const selectAllVisibleCheckboxRef = useRef<HTMLInputElement>(null);
-  const [zaloLoggedId, setZaloLoggedId] = useState<string | null>(null);
+  const [zaloSessions, setZaloSessions] = useState<ZaloSessionPublic[]>([]);
+  const [zaloLoggedIds, setZaloLoggedIds] = useState<Set<string>>(() => new Set());
 
   const [keywordSearch, setKeywordSearch] = useState("");
 
@@ -177,12 +174,18 @@ export default function ZaloAccountsPage() {
   }, []);
 
   // SECTION: CURRENT ZALO SESSION
-  // Đồng bộ phiên Zalo hiện tại để biết tài khoản nào đang đăng nhập ở client.
+  // Đồng bộ toàn bộ phiên Zalo (đa tài khoản) để highlight dòng và đăng xuất đúng session.
   const syncZaloSession = useCallback(async () => {
     const response = await getCurrentZaloSession();
-    const session = response.session;
-    setZaloLoggedId(session?.user?.uid ?? null);
-    return session;
+    const list =
+      response.sessions.length > 0
+        ? response.sessions
+        : response.session
+          ? [response.session]
+          : [];
+    setZaloSessions(list);
+    setZaloLoggedIds(new Set(list.map((session) => session.user.uid)));
+    return response.session;
   }, []);
 
   const applyQrSnapshot = useCallback((snapshot: PendingQrLoginSnapshot) => {
@@ -230,14 +233,6 @@ export default function ZaloAccountsPage() {
     }
   }, [showToast]);
 
-  // SECTION: MASTER ACCOUNT CHECK
-  // Luôn kiểm tra từ danh sách đầy đủ trên server thay vì lấy từ bảng hiện tại,
-  // vì bảng có thể đang ở trạng thái search/filter và không chứa tài khoản master.
-  const checkHasMasterAccount = useCallback(async () => {
-    const accountList = await getZaloAccounts();
-    return accountList.some((account) => account.isMaster);
-  }, []);
-
   const handleCloseScanGroupsModal = useCallback(() => {
     setOpenModalScanningGroups(false);
     setScanGroupMessage("");
@@ -263,12 +258,14 @@ export default function ZaloAccountsPage() {
   // Lắng nghe event để refresh trạng thái đăng nhập Zalo khi nơi khác trong app thay đổi session.
   useEffect(() => {
     void syncZaloSession().catch(() => {
-      setZaloLoggedId(null);
+      setZaloSessions([]);
+      setZaloLoggedIds(new Set());
     });
 
     const handleSessionChanged = () => {
       void syncZaloSession().catch(() => {
-        setZaloLoggedId(null);
+        setZaloSessions([]);
+        setZaloLoggedIds(new Set());
       });
     };
 
@@ -313,8 +310,7 @@ export default function ZaloAccountsPage() {
   };
 
   // SECTION: ADD ACCOUNT BY PHONE
-  // Nếu hệ thống chưa có master thì submit số điện thoại sẽ đi tiếp sang flow QR login.
-  // Nếu đã có master thì giữ flow cũ: bắt buộc phải có sẵn session Zalo rồi mới add tài khoản.
+  // Luôn mở flow QR sau khi nhập số (đa phiên Zalo đồng thời, không phân biệt master/child).
   const handleSubmitPhoneNumber = async (phoneNumber: string) => {
     setPhoneNumberError("");
 
@@ -328,43 +324,10 @@ export default function ZaloAccountsPage() {
     setSubmittingAddAccount(true);
 
     try {
-      if (allowBootstrapQrLogin) {
-        await beginQrLogin(normalizedPhoneNumber);
-        return;
-      }
-
-      const zaloSession = await syncZaloSession();
-
-      if (!zaloSession) {
-        setPhoneNumberError("Chưa có phiên đăng nhập Zalo");
-        return;
-      }
-
-      const response = await findUserByPhone(normalizedPhoneNumber);
-      const zaloUser = response.user;
-
-      await createZaloAccount({
-        zaloId: zaloUser.uid,
-        phone: normalizedPhoneNumber,
-        name: zaloUser.display_name || zaloUser.zalo_name || undefined,
-      });
-
-      showToast("Đã thêm tài khoản Zalo vào hệ thống.", "success");
-      await loadAccounts();
-      handleCloseAddAccountModal();
+      await beginQrLogin(normalizedPhoneNumber);
     } catch (requestError) {
-      if (requestError instanceof ZaloClientError && requestError.status === 401) {
-        setPhoneNumberError("Chưa có phiên đăng nhập Zalo");
-        return;
-      }
-
-      if (requestError instanceof ApiError && requestError.status === 409) {
-        setPhoneNumberError("Tài khoản Zalo đã tồn tại trong hệ thống.");
-        return;
-      }
-
       setPhoneNumberError(
-        requestError instanceof Error ? requestError.message : "Không thể thêm tài khoản Zalo.",
+        requestError instanceof Error ? requestError.message : "Không thể mở đăng nhập QR Zalo.",
       );
     } finally {
       setSubmittingAddAccount(false);
@@ -375,38 +338,12 @@ export default function ZaloAccountsPage() {
   const handleCloseAddAccountModal = useCallback(() => {
     setOpenAddAccountModal(false);
     setSubmittingAddAccount(false);
-    setAllowBootstrapQrLogin(false);
     resetAddAccountForm();
   }, [resetAddAccountForm]);
 
-  const handleOpenAddAccountModal = async () => {
+  const handleOpenAddAccountModal = () => {
     resetAddAccountForm();
-    setAllowBootstrapQrLogin(false);
-
-    try {
-      const hasMasterAccount = await checkHasMasterAccount();
-
-      if (!hasMasterAccount) {
-        // Bootstrap flow: chưa có master nên cho phép nhập số rồi login QR để tạo tài khoản đầu tiên.
-        setAllowBootstrapQrLogin(true);
-        setOpenAddAccountModal(true);
-        return;
-      }
-
-      setCheckingZaloSession(true);
-      const zaloSession = await syncZaloSession();
-
-      if (!zaloSession) {
-        showToast("Chưa có phiên đăng nhập Zalo. Vui lòng đăng nhập Zalo trước.", "error");
-        return;
-      }
-
-      setOpenAddAccountModal(true);
-    } catch (requestError) {
-      showToast(getErrorMessage(requestError, "Không thể kiểm tra phiên đăng nhập Zalo."), "error");
-    } finally {
-      setCheckingZaloSession(false);
-    }
+    setOpenAddAccountModal(true);
   };
 
   // SECTION: QR LOGIN FLOW - MODAL ACTIONS
@@ -435,12 +372,19 @@ export default function ZaloAccountsPage() {
     await beginQrLogin(normalizedPhoneNumber);
   };
 
-  const handleLogoutZalo = async () => {
+  const handleLogoutZaloForAccount = async (account: ZaloAccount) => {
+    const session = zaloSessions.find((item) => item.user.uid === account.zaloId);
+
+    if (!session) {
+      showToast("Không tìm thấy phiên đăng nhập Zalo cho tài khoản này.", "error");
+      return;
+    }
+
     try {
-      await logoutZalo();
-      setZaloLoggedId(null);
-      handleCloseQrModal();
-      showToast("Đăng xuất Zalo thành công.", "success");
+      await logoutZalo(session.id);
+      await syncZaloSession();
+      notifyZaloSessionChanged();
+      showToast("Đã đăng xuất phiên Zalo của tài khoản này.", "success");
     } catch (requestError) {
       showToast(getErrorMessage(requestError, "Không thể đăng xuất Zalo."), "error");
     }
@@ -641,10 +585,26 @@ export default function ZaloAccountsPage() {
   // Quét danh sách nhóm từ phiên Zalo hiện tại rồi cập nhật lại vào account trong hệ thống.
   // Nếu account đang quét là master thì tiếp tục tạo/cập nhật Zalo groups bằng API bulk.
   const handleScanGroups = useCallback(async (accountId: string) => {
-    const zaloSession = await syncZaloSession();
+    const sessionResponse = await getCurrentZaloSession();
+    const sessionList =
+      sessionResponse.sessions.length > 0
+        ? sessionResponse.sessions
+        : sessionResponse.session
+          ? [sessionResponse.session]
+          : [];
 
-    if (!zaloSession) {
-      showToast("Chưa có phiên đăng nhập Zalo. Vui lòng đăng nhập Zalo trước.", "error");
+    const latestAccounts = await getZaloAccounts();
+    const targetAccount = latestAccounts.find((item) => item.id === accountId);
+
+    if (!targetAccount) {
+      showToast("Không tìm thấy tài khoản Zalo.", "error");
+      return;
+    }
+
+    const matchingSession = sessionList.find((session) => session.user.uid === targetAccount.zaloId);
+
+    if (!matchingSession) {
+      showToast("Chưa có phiên Zalo cho tài khoản này. Vui lòng đăng nhập Zalo (QR) trước.", "error");
       return;
     }
 
@@ -652,7 +612,7 @@ export default function ZaloAccountsPage() {
     setOpenModalScanningGroups(true);
 
     try {
-      const response = await getAllGroups();
+      const response = await getAllGroups(matchingSession.id);
       const groupData = response.groups.gridVerMap;
 
       setScanGroupMessage("Đã quét xong!\nĐang cập nhật dữ liệu nhóm cho tài khoản zalo hiện tại...");
@@ -704,7 +664,7 @@ export default function ZaloAccountsPage() {
       setScanGroupMessage("Quá trình quét hoặc tạo nhóm Zalo thất bại. Bạn có thể đóng popup và thử lại.");
       showToast(getErrorMessage(requestError, "Không thể quét nhóm Zalo."), "error");
     }
-  }, [buildBulkCreateGroupsPayload, closeScanGroupsModalAfterDelay, loadAccounts, showToast, syncZaloSession]);
+  }, [buildBulkCreateGroupsPayload, closeScanGroupsModalAfterDelay, loadAccounts, showToast]);
 
   // SECTION: BULK ACTIONS
   // Checkbox đầu bảng dùng để chọn nhanh các row đang hiển thị, phục vụ các thao tác hàng loạt như add child.
@@ -798,6 +758,18 @@ export default function ZaloAccountsPage() {
         icon: <HiOutlineUserGroup />,
         onClick: () => handleScanGroups(account.id),
       },
+      zaloLoggedIds.has(account.zaloId)
+        ? {
+            label: "Đăng xuất Zalo",
+            icon: <HiOutlineArrowRightOnRectangle />,
+            danger: true,
+            onClick: () => void handleLogoutZaloForAccount(account),
+          }
+        : {
+            label: "Đăng nhập Zalo",
+            icon: <HiMiniQrCode />,
+            onClick: () => void handleBeginQrLogin(account.phone),
+          },
     ];
 
     if (!account.isMaster) {
@@ -809,25 +781,11 @@ export default function ZaloAccountsPage() {
     }
 
     if (account.isMaster) {
-      items.push(
-        zaloLoggedId === account.zaloId
-          ? {
-              label: "Đăng xuất Zalo",
-              icon: <HiOutlineArrowRightOnRectangle />,
-              danger: true,
-              onClick: () => void handleLogoutZalo(),
-            }
-          : {
-              label: "Đăng nhập Zalo",
-              icon: <HiMiniQrCode />,
-              onClick: () => void handleBeginQrLogin(account.phone),
-            },
-        {
-          label: "Xem chi tiết",
-          icon: <HiMiniEye />,
-          onClick: () => handleOpenAccountDetails(account.id),
-        },
-      );
+      items.push({
+        label: "Xem chi tiết",
+        icon: <HiMiniEye />,
+        onClick: () => handleOpenAccountDetails(account.id),
+      });
     }
 
     return items;
@@ -862,9 +820,8 @@ export default function ZaloAccountsPage() {
         description="Quản lý toàn bộ tài khoản Zalo trong hệ thống"
         actions={
           <Button
-            loading={checkingZaloSession}
             startIcon={<HiMiniUserPlus className="h-5 w-5" />}
-            onClick={() => void handleOpenAddAccountModal()}
+            onClick={() => handleOpenAddAccountModal()}
           >
             Thêm tài khoản Zalo
           </Button>
@@ -1041,7 +998,7 @@ export default function ZaloAccountsPage() {
                   </td>
                   <td className="px-6 py-3">
                     <div className="body-md font-semibold text-on-surface text-sm">{account.name}</div>
-                    {zaloLoggedId === account.zaloId ? (
+                    {zaloLoggedIds.has(account.zaloId) ? (
                       <Badge variant="success" className="mt-1 text-xs" icon={<HiMiniFaceSmile />}>
                         Đang đăng nhập
                       </Badge>
@@ -1067,7 +1024,7 @@ export default function ZaloAccountsPage() {
 
                   <td className="px-6 py-3">
                     <div className="text-sm text-on-surface-variant">
-                      {hasGroupData(account.groupData) ? (
+                      {hasGroupData(account.groupData, account.id) ? (
                         <Badge className="text-xs" variant="success" icon={<HiOutlineCheckCircle />}>
                           Đã quét
                         </Badge>
