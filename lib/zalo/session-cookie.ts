@@ -11,16 +11,50 @@ export interface ZaloSessionsPayload {
   active: string | null;
 }
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-};
+/**
+ * Cookie có `Secure` sẽ không được trình duyệt lưu khi site chỉ chạy HTTP (vd: http://IP:3001).
+ * - Production HTTPS: mặc định secure=true (hoặc COOKIE_SECURE=true).
+ * - Production HTTP: đặt COOKIE_SECURE=false, hoặc để NEXT_PUBLIC_* URL bắt đầu bằng http:// (tự suy ra).
+ */
+function zaloSessionCookieSecure(): boolean {
+  const explicit = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (explicit === "false" || explicit === "0" || explicit === "no") {
+    return false;
+  }
+  if (explicit === "true" || explicit === "1" || explicit === "yes") {
+    return true;
+  }
+
+  const publicUrls = [process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_API_BASE_URL].filter(
+    Boolean,
+  ) as string[];
+
+  if (publicUrls.length > 0) {
+    const allHttp = publicUrls.every((url) => url.startsWith("http://"));
+    const anyHttps = publicUrls.some((url) => url.startsWith("https://"));
+    if (allHttp && !anyHttps) {
+      return false;
+    }
+    if (anyHttps) {
+      return true;
+    }
+  }
+
+  return process.env.NODE_ENV === "production";
+}
+
+function getCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: zaloSessionCookieSecure(),
+    path: "/",
+  };
+}
 
 export type ZaloCookieStore = {
   get: (name: string) => { value: string } | undefined;
-  set: (name: string, value: string, options: typeof COOKIE_OPTIONS) => void;
+  set: (name: string, value: string, options: ReturnType<typeof getCookieOptions>) => void;
   delete: (name: string) => void;
 };
 
@@ -66,10 +100,12 @@ export function writeZaloSessionsCookie(cookieStore: ZaloCookieStore, payload: Z
 
   const normalized: ZaloSessionsPayload = { ids, active };
 
-  cookieStore.set(ZALO_SESSIONS_COOKIE_NAME, JSON.stringify(normalized), COOKIE_OPTIONS);
+  const opts = getCookieOptions();
+
+  cookieStore.set(ZALO_SESSIONS_COOKIE_NAME, JSON.stringify(normalized), opts);
 
   if (active) {
-    cookieStore.set(ZALO_SESSION_COOKIE_NAME, active, COOKIE_OPTIONS);
+    cookieStore.set(ZALO_SESSION_COOKIE_NAME, active, opts);
   }
 }
 
