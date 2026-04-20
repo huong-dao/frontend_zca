@@ -55,6 +55,12 @@ export interface PendingQrLoginSnapshot {
 
 export type StartQrLoginResponse = PendingQrLoginSnapshot;
 
+/** Danh sách session + session đang chọn (cookie và/hoặc fallback localStorage). */
+export interface ZaloSessionsPayload {
+  ids: string[];
+  active: string | null;
+}
+
 /** Phiên Zalo trả về cho client (không chứa credentials). */
 export interface ZaloSessionPublic {
   id: string;

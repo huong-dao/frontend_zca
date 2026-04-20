@@ -1,17 +1,14 @@
 import "server-only";
 
 import type { NextResponse } from "next/server";
+import type { ZaloSessionsPayload } from "@/lib/zalo/types";
+import { mergeZaloSessionsPayloads, parseZaloSessionsPayloadJson, resolveZaloSessionIdFromMerged } from "@/lib/zalo/session-payload";
 
 /** Cookie legacy: một session đang active (giữ tương thích). */
 export const ZALO_SESSION_COOKIE_NAME = "zca_zalo_session";
 
 /** Cookie mới: danh sách session + session đang chọn. */
 export const ZALO_SESSIONS_COOKIE_NAME = "zca_zalo_sessions";
-
-export interface ZaloSessionsPayload {
-  ids: string[];
-  active: string | null;
-}
 
 /**
  * Cookie có `Secure` sẽ không được trình duyệt lưu khi site chỉ chạy HTTP (vd: http://IP:3001).
@@ -127,13 +124,18 @@ export function removeSessionFromSessionsCookie(cookieStore: ZaloCookieStore, se
   writeZaloSessionsCookie(cookieStore, { ids, active });
 }
 
-export function resolveZaloSessionId(cookieStore: ZaloCookieStore, explicitSessionId?: string | null): string | null {
-  const trimmed = explicitSessionId?.trim();
-  if (trimmed) {
-    return trimmed;
-  }
+export function mergeCookieAndClientHeaderPayload(
+  cookieStore: ZaloCookieStore,
+  request: Request | null | undefined,
+): ZaloSessionsPayload {
+  const fromCookie = readZaloSessionsPayload(cookieStore);
+  const fromHeader = request ? parseZaloSessionsPayloadJson(request.headers.get("x-zalo-client-sessions")) : null;
 
-  return readZaloSessionsPayload(cookieStore).active;
+  return mergeZaloSessionsPayloads(fromCookie, fromHeader);
+}
+
+export function resolveZaloSessionId(cookieStore: ZaloCookieStore, explicitSessionId?: string | null): string | null {
+  return resolveZaloSessionIdFromMerged(readZaloSessionsPayload(cookieStore), explicitSessionId);
 }
 
 /**

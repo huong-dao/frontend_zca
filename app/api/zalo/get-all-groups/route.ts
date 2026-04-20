@@ -1,8 +1,6 @@
-import {
-  getAllGroups,
-  getPublicSession,
-} from "@/lib/zalo/server";
+import { backendGetAllGroups } from "@/lib/api/zalo-actions";
 import { getZaloSessionIdFromGetRequest } from "@/lib/zalo/request-session";
+import { getPublicSession } from "@/lib/zalo/public-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,9 +14,9 @@ export async function GET(request: Request) {
       return Response.json({ message: "Chưa có phiên đăng nhập Zalo." }, { status: 401 });
     }
 
-    const groups = await getAllGroups(sessionId);
+    const payload = await backendGetAllGroups(session.id);
 
-    return Response.json({ groups });
+    return Response.json(payload);
   } catch (error) {
     return Response.json(
       {

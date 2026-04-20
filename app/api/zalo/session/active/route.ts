@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
-import { getPublicSession } from "@/lib/zalo/server";
-import { readZaloSessionsPayload, writeZaloSessionsCookie } from "@/lib/zalo/session-cookie";
+import { fetchZaloSessionsList } from "@/lib/api/zalo-sessions";
+import { mergeCookieAndClientHeaderPayload, writeZaloSessionsCookie } from "@/lib/zalo/session-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,9 +15,11 @@ export async function POST(request: Request) {
     }
 
     const cookieStore = await cookies();
-    const payload = readZaloSessionsPayload(cookieStore);
+    const payload = mergeCookieAndClientHeaderPayload(cookieStore, request);
+    const { sessions } = await fetchZaloSessionsList();
+    const exists = sessions.some((s) => s.id === sessionId);
 
-    if (!payload.ids.includes(sessionId) || !(await getPublicSession(sessionId))) {
+    if (!payload.ids.includes(sessionId) || !exists) {
       return Response.json({ message: "Phiên Zalo không tồn tại trong phiên làm việc hiện tại." }, { status: 400 });
     }
 

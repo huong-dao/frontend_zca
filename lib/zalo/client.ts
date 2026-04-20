@@ -11,6 +11,14 @@ import type {
   ZaloSessionResponse,
   getGroupInfoPayload,
 } from "@/lib/zalo/types";
+import {
+  appendClientSessionId,
+  clearClientZaloSessionState,
+  getZaloClientSessionsHeaderValue,
+  removeClientSessionId,
+  setActiveClientSessionId,
+  syncClientZaloSessionsFromServer,
+} from "@/lib/zalo/client-session-storage";
 
 export const ZALO_SESSION_CHANGED_EVENT = "zca:zalo-session-changed";
 
@@ -25,14 +33,23 @@ class ZaloClientError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const merged = new Headers(init?.headers);
+
+  if (!merged.has("Content-Type")) {
+    merged.set("Content-Type", "application/json");
+  }
+
+  const clientSessions = typeof window !== "undefined" ? getZaloClientSessionsHeaderValue() : null;
+
+  if (clientSessions) {
+    merged.set("X-Zalo-Client-Sessions", clientSessions);
+  }
+
   const response = await fetch(path, {
     ...init,
     credentials: "include",
     cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers: merged,
   });
 
   const payload = (await response.json()) as { message?: string } & T;
@@ -59,25 +76,40 @@ export function getQrLoginStatus(loginId: string) {
   });
 }
 
-export function getCurrentZaloSession() {
-  return request<ZaloSessionResponse>("/api/zalo/session", {
+export async function getCurrentZaloSession() {
+  const data = await request<ZaloSessionResponse>("/api/zalo/session", {
     method: "GET",
   });
+
+  const list =
+    data.sessions.length > 0 ? data.sessions : data.session ? [data.session] : [];
+
+  syncClientZaloSessionsFromServer(list, data.activeSessionId);
+
+  return data;
 }
 
 /** Gắn cookie zca_zalo_* trên server (dùng sau khi QR thành công, khi Set-Cookie có thể bị mất). */
-export function bakeZaloSessionCookies(sessionId: string) {
-  return request<{ ok: true }>("/api/zalo/session/bake-cookies", {
+export async function bakeZaloSessionCookies(sessionId: string) {
+  const result = await request<{ ok: true }>("/api/zalo/session/bake-cookies", {
     method: "POST",
     body: JSON.stringify({ sessionId }),
   });
+
+  appendClientSessionId(sessionId);
+
+  return result;
 }
 
-export function setActiveZaloSession(sessionId: string) {
-  return request<{ success: boolean; activeSessionId: string }>("/api/zalo/session/active", {
+export async function setActiveZaloSession(sessionId: string) {
+  const result = await request<{ success: boolean; activeSessionId: string }>("/api/zalo/session/active", {
     method: "POST",
     body: JSON.stringify({ sessionId }),
   });
+
+  setActiveClientSessionId(sessionId);
+
+  return result;
 }
 
 export function notifyZaloSessionChanged() {
@@ -91,6 +123,12 @@ export async function logoutZalo(sessionId?: string) {
     method: "POST",
     body: JSON.stringify(sessionId ? { sessionId } : {}),
   });
+
+  if (sessionId) {
+    removeClientSessionId(sessionId);
+  } else {
+    clearClientZaloSessionState();
+  }
 
   notifyZaloSessionChanged();
   return response;

@@ -1,8 +1,6 @@
-import {
-  getFriendRequestStatus,
-  getPublicSession,
-} from "@/lib/zalo/server";
+import { backendGetFriendRequestStatus } from "@/lib/api/zalo-actions";
 import { getZaloSessionIdFromApiInput } from "@/lib/zalo/request-session";
+import { getPublicSession } from "@/lib/zalo/public-session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +9,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { friendId?: string; sessionId?: string };
     const friendId = body.friendId?.trim();
-    const sessionId = await getZaloSessionIdFromApiInput(body.sessionId, request.headers.get("x-zalo-session-id"));
+    const sessionId = await getZaloSessionIdFromApiInput(request, body.sessionId, request.headers.get("x-zalo-session-id"));
     const session = await getPublicSession(sessionId);
 
     if (!session) {
@@ -22,7 +20,7 @@ export async function POST(request: Request) {
       return Response.json({ message: "friendId là bắt buộc." }, { status: 400 });
     }
 
-    const friendStatus = await getFriendRequestStatus(friendId, sessionId);
+    const friendStatus = await backendGetFriendRequestStatus(session.id, friendId);
 
     return Response.json(friendStatus);
   } catch (error) {

@@ -26,6 +26,13 @@ function mapDtoToActive(dto: ZaloSessionFullDto): ActiveZaloSession {
   };
 }
 
+/** Danh sách phiên public (không credentials) — nguồn sự thật cho BFF sau khi bỏ zca-js trên Next. */
+export async function fetchZaloSessionsList(): Promise<{ sessions: ZaloSessionPublicDto[] }> {
+  return serverApiRequest<{ sessions: ZaloSessionPublicDto[] }>("/zalo-sessions", {
+    method: "GET",
+  });
+}
+
 export async function fetchFullZaloSessionFromBackend(sessionId: string): Promise<ActiveZaloSession | null> {
   try {
     const dto = await serverApiRequest<ZaloSessionFullDto>(`/zalo-sessions/${encodeURIComponent(sessionId)}`, {
