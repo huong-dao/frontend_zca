@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { NextResponse } from "next/server";
+
 /** Cookie legacy: một session đang active (giữ tương thích). */
 export const ZALO_SESSION_COOKIE_NAME = "zca_zalo_session";
 
@@ -13,8 +15,8 @@ export interface ZaloSessionsPayload {
 
 /**
  * Cookie có `Secure` sẽ không được trình duyệt lưu khi site chỉ chạy HTTP (vd: http://IP:3001).
- * - Production HTTPS: mặc định secure=true (hoặc COOKIE_SECURE=true).
- * - Production HTTP: đặt COOKIE_SECURE=false, hoặc để NEXT_PUBLIC_* URL bắt đầu bằng http:// (tự suy ra).
+ * Mặc định **không** bật Secure (trừ khi có URL https hoặc COOKIE_SECURE=true) để HTTP production không mất cookie
+ * khi PM2 không nạp đủ biến môi trường từ .env.
  */
 function zaloSessionCookieSecure(): boolean {
   const explicit = process.env.COOKIE_SECURE?.trim().toLowerCase();
@@ -29,27 +31,25 @@ function zaloSessionCookieSecure(): boolean {
     Boolean,
   ) as string[];
 
-  if (publicUrls.length > 0) {
-    const allHttp = publicUrls.every((url) => url.startsWith("http://"));
-    const anyHttps = publicUrls.some((url) => url.startsWith("https://"));
-    if (allHttp && !anyHttps) {
-      return false;
-    }
-    if (anyHttps) {
-      return true;
-    }
+  if (publicUrls.some((url) => url.startsWith("https://"))) {
+    return true;
   }
 
-  return process.env.NODE_ENV === "production";
+  return false;
 }
 
-function getCookieOptions() {
+/** Tuỳ chọn cookie dùng chung (Route Handler + cookies()). */
+export function getZaloSessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: zaloSessionCookieSecure(),
     path: "/",
   };
+}
+
+function getCookieOptions() {
+  return getZaloSessionCookieOptions();
 }
 
 export type ZaloCookieStore = {
@@ -134,4 +134,38 @@ export function resolveZaloSessionId(cookieStore: ZaloCookieStore, explicitSessi
   }
 
   return readZaloSessionsPayload(cookieStore).active;
+}
+
+/**
+ * Gắn Set-Cookie vào Response của Route Handler.
+ * Một số bản Next.js không gửi cookie đúng khi chỉ dùng `cookies().set()` — dùng `NextResponse.cookies` cho chắc.
+ */
+export async function applyZaloSessionCookiesToNextResponse(response: NextResponse, sessionId: string) {
+  const { cookies } = await import("next/headers");
+  const cookieStore = await cookies();
+  const current = readZaloSessionsPayload(cookieStore as ZaloCookieStore);
+  const ids = current.ids.includes(sessionId) ? current.ids : [...current.ids, sessionId];
+  const merged: ZaloSessionsPayload = { ids, active: sessionId };
+
+  const idSet = [...new Set(merged.ids.filter(Boolean))];
+  let active = merged.active;
+
+  if (idSet.length === 0) {
+    response.cookies.delete(ZALO_SESSIONS_COOKIE_NAME);
+    response.cookies.delete(ZALO_SESSION_COOKIE_NAME);
+    return;
+  }
+
+  if (!active || !idSet.includes(active)) {
+    active = idSet[0] ?? null;
+  }
+
+  const normalized: ZaloSessionsPayload = { ids: idSet, active };
+  const opts = getZaloSessionCookieOptions();
+
+  response.cookies.set(ZALO_SESSIONS_COOKIE_NAME, JSON.stringify(normalized), opts);
+
+  if (normalized.active) {
+    response.cookies.set(ZALO_SESSION_COOKIE_NAME, normalized.active, opts);
+  }
 }

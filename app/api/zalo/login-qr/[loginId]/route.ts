@@ -1,6 +1,6 @@
-import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { getQrLoginStatus } from "@/lib/zalo/server";
-import { addSessionToSessionsCookie } from "@/lib/zalo/session-cookie";
+import { applyZaloSessionCookiesToNextResponse } from "@/lib/zalo/session-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,13 +13,14 @@ export async function GET(
   const login = getQrLoginStatus(loginId);
 
   if (!login) {
-    return Response.json({ message: "Khong tim thay phien dang nhap QR." }, { status: 404 });
+    return NextResponse.json({ message: "Khong tim thay phien dang nhap QR." }, { status: 404 });
   }
+
+  const response = NextResponse.json(login);
 
   if (login.sessionId) {
-    const cookieStore = await cookies();
-    addSessionToSessionsCookie(cookieStore, login.sessionId);
+    await applyZaloSessionCookiesToNextResponse(response, login.sessionId);
   }
 
-  return Response.json(login);
+  return response;
 }

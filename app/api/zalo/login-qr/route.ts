@@ -1,17 +1,17 @@
-import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { startQrLogin } from "@/lib/zalo/server";
-import { addSessionToSessionsCookie } from "@/lib/zalo/session-cookie";
+import { applyZaloSessionCookiesToNextResponse } from "@/lib/zalo/session-cookie";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const cookieStore = await cookies();
   const login = await startQrLogin();
+  const response = NextResponse.json(login);
 
   if (login.sessionId) {
-    addSessionToSessionsCookie(cookieStore, login.sessionId);
+    await applyZaloSessionCookiesToNextResponse(response, login.sessionId);
   }
 
-  return Response.json(login);
+  return response;
 }
