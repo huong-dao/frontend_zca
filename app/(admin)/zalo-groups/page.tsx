@@ -116,6 +116,7 @@ export default function ZaloGroupsPage() {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-surface-container-low/50">
+              <th>ID</th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Tên nhóm
               </th>
@@ -146,7 +147,12 @@ export default function ZaloGroupsPage() {
               </tr>
             ) : (
               groups.map((group) => (
+                // console.log(group),
+                <>
                 <tr key={group.id} className="group transition-colors hover:bg-surface-container-low/30">
+                  <td className="px-6 py-3">
+                    <div className="body-md font-semibold text-on-surface text-sm">{group.groupZaloId}</div>
+                  </td>
                   <td className="px-6 py-3">
                     <div className="body-md font-semibold text-on-surface text-sm">{group.groupName}</div>
                   </td>
@@ -163,6 +169,7 @@ export default function ZaloGroupsPage() {
                     <div className="text-sm text-on-surface-variant">{formatDate(group.createdAt)}</div>
                   </td>
                 </tr>
+                </>
               ))
             )}
           </tbody>

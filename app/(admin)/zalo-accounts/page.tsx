@@ -1001,7 +1001,9 @@ export default function ZaloAccountsPage() {
               </tr>
             ) : (
               paginatedAccounts.map((account) => {
+                // console.log(account.groupData);
                 return (
+                <>
                 <tr
                   key={account.id}
                   className="group transition-colors hover:bg-surface-container-low/30"
@@ -1067,6 +1069,7 @@ export default function ZaloAccountsPage() {
                     <ActionMenu items={getActionItems(account)} />
                   </td>
                 </tr>
+                </>
               )}
             ))}
           </tbody>

@@ -748,6 +748,98 @@ Example request:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Roles: authenticated `ADMIN` or `USER`
 
+### POST `/zalo-groups/:groupId/invite-member`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-groups/:groupId/invite-member`
+- Function: `ZaloGroupsController.inviteMemberToGroup`
+
+#### Description
+Invite a **child** Zalo user into a Zalo group using the **master** account’s stored login session.
+
+Behavior:
+1. Resolves the Zalo grid id (`groupZaloId`) from `ZaloAccountGroup` for the given **internal** `ZaloGroup` id (`groupId` route param) and **`masterZaloAccountId`** (must be `isMaster = true` and already linked to that group in the database).
+2. Resolves the invitee’s **phone number** from `phoneNumber` and/or the child row (`childZaloAccountId`).
+3. On the **master** `sessionId`, calls Zalo `findUser(phone)` to obtain the **friend-graph `uid`** (this may differ from the child’s `getOwnId()` / stored `zalo_id`).
+4. Calls Zalo `addUserToGroup(uid, groupZaloId)` in the same session using the **master’s** grid id (from the master’s `ZaloAccountGroup` row).
+5. If Zalo returns success and **`errorMembers` is empty** (and no entries in `error_data`), and **`childZaloAccountId`** is provided, the API creates a **`ZaloAccountGroup` row for the child** with the **same** internal `group_id` and **same** `group_zalo_id` as the master’s mapping (multiple accounts may now share the same `group_zalo_id` in the database). The child’s `groupCount` is updated.
+
+**Frontend requirements**
+- `sessionId`: latest `zalo_login_sessions.id` for the **master** (same pattern as `GET /zalo/actions/groups?sessionId=...`).
+- Master must be **Zalo friends** with the invitee and have permission to add members to that group (Zalo-side rules).
+- If `childZaloAccountId` is sent, that account must exist in `zalo_account_relations` as a **child** of `masterZaloAccountId`.
+- To persist the child’s membership in the DB after a successful invite, include **`childZaloAccountId`** (same `group_zalo_id` as master is stored automatically).
+
+#### Request
+- Params:
+  - `groupId`: `string`, UUID — internal `ZaloGroup.id` (not the Zalo `groupZaloId` string)
+- Query: none
+- Body:
+  - `sessionId`: `string`, UUID — master `zalo_login_sessions.id`
+  - `masterZaloAccountId`: `string`, UUID — master `zalo_accounts.id` (`isMaster` must be `true`)
+  - `phoneNumber`: `string`, optional, minimum length `5` — used for `findUser` on the master session; may be omitted if `childZaloAccountId` is provided and that row has `phone`
+  - `childZaloAccountId`: `string`, optional, UUID — child account; when present, must be linked to the master via `zalo_account_relations`; supplies `phone` when `phoneNumber` is omitted; required for inserting `ZaloAccountGroup` after invite
+
+Example request:
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
+}
+```
+
+Example with explicit phone:
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "phoneNumber": "0914405474",
+  "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
+}
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "masterGroupZaloId": "4722820980206948279",
+  "inviteUid": "4546690961257603620",
+  "findUser": {
+    "display_name": "Đào Văn Phương",
+    "globalId": "FJQ9QJLN50FORDFDT87QJPEMDV420BO0"
+  },
+  "zalo": {
+    "errorMembers": [],
+    "error_data": {}
+  },
+  "dbSync": {
+    "persisted": true,
+    "created": true,
+    "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91",
+    "groupZaloId": "4722820980206948279",
+    "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001"
+  }
+}
+```
+
+(`zalo` shape follows zca-js `addUserToGroup` response. If `childZaloAccountId` is omitted, `dbSync.persisted` is `false` and `dbSync.reason` explains the skip.)
+
+#### Error cases
+- `400`: validation error; master not `isMaster`; child is master; child not linked to master; could not resolve phone; Zalo `addUserToGroup` returned non-empty `errorMembers` / `error_data`; Zalo API error (e.g. not friends, not admin, invalid params) — message may be prefixed with `[code]`
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: `ZaloGroup` not found; master account not found; child account not found; no `ZaloAccountGroup` row for master + group
+- `500`: failed to restore Zalo client from session credentials; unexpected error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### PUT `/zalo-groups/:id`
 #### Endpoint
 - Method: `PUT`

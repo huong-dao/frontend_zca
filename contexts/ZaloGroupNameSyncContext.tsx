@@ -18,7 +18,7 @@ import {
 import { getCurrentZaloSession, getGroupInfo } from "@/lib/zalo/client";
 
 // Đổi cờ này thành false nếu muốn tạm tắt toàn bộ đồng bộ tên nhóm.
-const ENABLE_ZALO_GROUP_NAME_SYNC = false;
+const ENABLE_ZALO_GROUP_NAME_SYNC = true;
 const SYNC_INTERVAL_MS = 3 * 60 * 1000;
 const SYNC_BATCH_SIZE = 10;
 const GROUP_REQUEST_DELAY_MS = 2000;
@@ -172,8 +172,12 @@ export function ZaloGroupNameSyncProvider({ children }: { children: ReactNode })
     }
   }, [loading, user]);
 
+  const runSyncCycleRef = useRef(runSyncCycle);
+  runSyncCycleRef.current = runSyncCycle;
+
+  // Phụ thuộc `user?.id` + ref: tránh reset interval khi AuthContext gán lại object `user` cùng id (trước đây gây sync dồn).
   useEffect(() => {
-    if (!ENABLE_ZALO_GROUP_NAME_SYNC || loading || !user) {
+    if (!ENABLE_ZALO_GROUP_NAME_SYNC || loading || !user?.id) {
       setIsSyncing(false);
       setCurrentBatchSize(0);
       setPendingCount(0);
@@ -181,16 +185,18 @@ export function ZaloGroupNameSyncProvider({ children }: { children: ReactNode })
       return;
     }
 
-    void runSyncCycle();
+    const tick = () => {
+      void runSyncCycleRef.current();
+    };
 
-    const intervalId = window.setInterval(() => {
-      void runSyncCycle();
-    }, SYNC_INTERVAL_MS);
+    void tick();
+
+    const intervalId = window.setInterval(tick, SYNC_INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [loading, runSyncCycle, user]);
+  }, [loading, user?.id]);
 
   const value = useMemo(
     () => ({
