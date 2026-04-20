@@ -62,7 +62,6 @@ export default function LoginPage() {
       router.replace("/dashboard");
     } catch (submitError) {
       showToast("Đăng nhập thất bại. Vui lòng thử lại.", "error");
-      console.log(submitError);
     } finally {
       setSubmitting(false);
     }
