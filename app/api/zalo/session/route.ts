@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const cookieStore = await cookies();
   const merged = mergeCookieAndClientHeaderPayload(cookieStore, request);
   const { sessions: backendSessions } = await fetchZaloSessionsList();
-
+  console.log(backendSessions);
   const backendIds = new Set(backendSessions.map((s) => s.id));
   let ids =
     merged.ids.length > 0 ? merged.ids.filter((id) => backendIds.has(id)) : backendSessions.map((s) => s.id);
