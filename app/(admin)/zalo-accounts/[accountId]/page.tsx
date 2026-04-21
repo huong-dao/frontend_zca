@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { HiArrowLongLeft, HiMiniUserMinus, HiMiniUserPlus, HiUserGroup } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
+import GroupSearchCombobox from "@/components/features/GroupSearchCombobox";
 import Modal from "@/components/features/Modal";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
@@ -51,7 +52,7 @@ export default function ZaloAccountDetailsPage() {
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteTargetChild, setInviteTargetChild] = useState<ZaloAccountChild | null>(null);
-  const [inviteGroupName, setInviteGroupName] = useState("");
+  const [inviteSelectedGroup, setInviteSelectedGroup] = useState<ZaloGroup | null>(null);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
 
   const loadAccountDetails = useCallback(async () => {
@@ -203,20 +204,19 @@ export default function ZaloAccountDetailsPage() {
 
   const openInviteToGroupModal = (child: ZaloAccountChild) => {
     setInviteTargetChild(child);
-    setInviteGroupName("");
+    setInviteSelectedGroup(null);
     setInviteModalOpen(true);
   };
 
   const closeInviteToGroupModal = () => {
     setInviteModalOpen(false);
     setInviteTargetChild(null);
-    setInviteGroupName("");
+    setInviteSelectedGroup(null);
   };
 
   const handleInviteToGroupSubmit = async () => {
-    const trimmedName = inviteGroupName.trim();
-    if (!account || !inviteTargetChild || !trimmedName) {
-      showToast("Vui lòng nhập tên nhóm.", "error");
+    if (!account || !inviteTargetChild || !inviteSelectedGroup) {
+      showToast("Vui lòng chọn nhóm.", "error");
       return;
     }
 
@@ -249,10 +249,10 @@ export default function ZaloAccountDetailsPage() {
 
       const phoneFromFriend = getChildFriendPhone(inviteTargetChild.id);
       const payload = {
+        groupId: inviteSelectedGroup.id,
         sessionId: matchingSession.id,
         masterZaloAccountId: account.id,
         childZaloAccountId: inviteTargetChild.id,
-        groupName: trimmedName,
         ...(phoneFromFriend ? { phoneNumber: phoneFromFriend } : {}),
       };
 
@@ -408,18 +408,21 @@ export default function ZaloAccountDetailsPage() {
         buttonText="Thêm vào nhóm"
         cancelText="Hủy"
       >
-        <label className="block text-sm font-medium text-on-surface">
-          Tên nhóm
-          <input
-            type="text"
-            autoComplete="off"
-            placeholder="Nhập tên nhóm Zalo"
-            className="mt-2 block w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm placeholder:text-on-surface-variant/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            value={inviteGroupName}
-            onChange={(event) => setInviteGroupName(event.target.value)}
-            disabled={inviteSubmitting}
-          />
-        </label>
+        <div>
+          <span className="block text-sm font-medium text-on-surface">Chọn nhóm</span>
+          <div className="mt-2">
+            <GroupSearchCombobox
+              accountId={accountId}
+              disabled={inviteSubmitting}
+              value={inviteSelectedGroup}
+              onChange={setInviteSelectedGroup}
+              placeholder="Gõ để tìm theo tên nhóm…"
+            />
+          </div>
+          <p className="mt-2 text-xs text-on-surface-variant">
+            Danh sách lọc theo nhóm đã liên kết với master này. Khi gửi lệnh, hệ thống dùng UUID nhóm để xác định đúng nhóm (không phụ thuộc tên trùng).
+          </p>
+        </div>
       </Modal>
 
       <PageHeader

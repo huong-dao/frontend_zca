@@ -250,19 +250,31 @@ export interface UpdateZaloGroupResponse {
   updatedAt: string;
 }
 
+/** POST `/zalo-groups/invite-member` — có `groupId` thì bỏ qua lookup theo tên. */
 export interface InviteMemberToZaloGroupPayload {
   sessionId: string;
   masterZaloAccountId: string;
-  childZaloAccountId: string;
-  /** Tên nhóm Zalo (do người dùng nhập). */
-  groupName: string;
   phoneNumber?: string;
+  /** Gửi để đồng bộ DB sau khi mời thành công; phải là child của master. */
+  childZaloAccountId: string;
+  /** UUID `ZaloGroup.id`; khi có thì không dùng `groupName` để lookup. */
+  groupId?: string;
+  /** Bắt buộc khi không gửi `groupId` — khớp `zalo_groups.group_name` (theo master). */
+  groupName?: string;
 }
 
 export interface InviteMemberToZaloGroupResponse {
   success: boolean;
   masterGroupZaloId?: string;
   inviteUid?: string;
+  findUser?: {
+    display_name?: string;
+    globalId?: string;
+  };
+  zalo?: {
+    errorMembers?: unknown[];
+    error_data?: Record<string, unknown>;
+  };
   dbSync?: {
     persisted: boolean;
     created?: boolean;

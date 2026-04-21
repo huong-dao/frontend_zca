@@ -14,6 +14,8 @@ import type {
 interface GetZaloGroupsParams {
   page?: number;
   limit?: number;
+  /** Lọc chứa chuỗi (không phân biệt hoa thường), theo GET `/zalo-groups/account/:id?group_name=`. */
+  group_name?: string;
 }
 
 export function getZaloGroups(params: GetZaloGroupsParams = {}) {
@@ -48,6 +50,11 @@ export function getZaloGroupsByAccountId(accountId: string, params: GetZaloGroup
     searchParams.set("limit", String(params.limit));
   }
 
+  const trimmedName = params.group_name?.trim();
+  if (trimmedName) {
+    searchParams.set("group_name", trimmedName);
+  }
+
   const queryString = searchParams.toString();
 
   return apiRequest<PaginatedResponse<ZaloGroup>>(
@@ -78,7 +85,7 @@ export function updateZaloGroup(groupId: string, data: UpdateZaloGroupPayload) {
   });
 }
 
-/** Body gồm groupName; đổi path nếu backend dùng URL khác. */
+/** POST `/zalo-groups/invite-member` — gửi `groupId` hoặc `groupName` (không dùng UUID trên path). */
 export function inviteMemberToZaloGroup(data: InviteMemberToZaloGroupPayload) {
   return apiRequest<InviteMemberToZaloGroupResponse>("/zalo-groups/invite-member", {
     method: "POST",

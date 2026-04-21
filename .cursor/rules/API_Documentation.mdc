@@ -568,12 +568,15 @@ Return all Zalo groups whose `isUpdateName` is `false`, meaning the group name h
 #### Description
 Return paginated Zalo groups linked to a specific Zalo account. Each item has the shared group data plus the real `groupZaloId` stored on that account-group mapping.
 
+Optional query **`group_name`**: when provided (non-empty after trim), only groups whose stored **`group_name`** contains that substring are returned, **case-insensitive** (SQL `ILIKE` / “contains” semantics). When omitted or blank, all linked groups are listed as before.
+
 #### Request
 - Params:
   - `id`: `string`, UUID of the target `zaloAccountId`
 - Query:
   - `page`: `number`, optional, default `1`, minimum `1`
   - `limit`: `number`, optional, default `20`, minimum `1`
+  - `group_name`: `string`, optional — substring filter on `zalo_groups.group_name` (case-insensitive contains); omit to skip filtering
 - Body: none
 
 #### Response
@@ -748,17 +751,19 @@ Example request:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Roles: authenticated `ADMIN` or `USER`
 
-### POST `/zalo-groups/:groupId/invite-member`
+### POST `/zalo-groups/invite-member`
 #### Endpoint
 - Method: `POST`
-- Full path: `/zalo-groups/:groupId/invite-member`
+- Full path: `/zalo-groups/invite-member`
 - Function: `ZaloGroupsController.inviteMemberToGroup`
 
 #### Description
 Invite a **child** Zalo user into a Zalo group using the **master** account’s stored login session.
 
 Behavior:
-1. Resolves the Zalo grid id (`groupZaloId`) from `ZaloAccountGroup` for the given **internal** `ZaloGroup` id (`groupId` route param) and **`masterZaloAccountId`** (must be `isMaster = true` and already linked to that group in the database).
+1. Resolves the **`ZaloAccountGroup`** row for **`masterZaloAccountId`** (must be `isMaster = true`):
+   - If the body includes **`groupId`** (internal `ZaloGroup.id` UUID), that value is used and **`groupName` is not used for lookup** (the group must exist and be linked to this master). If multiple mappings existed for the same master + group id, the **first** by **`joinedAt` ascending** is used.
+   - Otherwise **`groupName`** is required: find by **`ZaloGroup.groupName`** scoped to this master only. If more than one mapping matches the name, the **first** by **`joinedAt` ascending** is used. From the chosen row the API gets the internal **`group_id`** and **`groupZaloId`** for Zalo API calls.
 2. Resolves the invitee’s **phone number** from `phoneNumber` and/or the child row (`childZaloAccountId`).
 3. On the **master** `sessionId`, calls Zalo `findUser(phone)` to obtain the **friend-graph `uid`** (this may differ from the child’s `getOwnId()` / stored `zalo_id`).
 4. Calls Zalo `addUserToGroup(uid, groupZaloId)` in the same session using the **master’s** grid id (from the master’s `ZaloAccountGroup` row).
@@ -771,10 +776,11 @@ Behavior:
 - To persist the child’s membership in the DB after a successful invite, include **`childZaloAccountId`** (same `group_zalo_id` as master is stored automatically).
 
 #### Request
-- Params:
-  - `groupId`: `string`, UUID — internal `ZaloGroup.id` (not the Zalo `groupZaloId` string)
+- Params: none
 - Query: none
 - Body:
+  - `groupId`: `string`, optional, UUID — internal `ZaloGroup.id`; when present, resolves the group by id (for this master only) and **ignores `groupName`** for lookup
+  - `groupName`: `string`, required **unless** `groupId` is sent — non-empty after trim; must match `zalo_groups.group_name` for a group linked to **`masterZaloAccountId`** via `zalo_account_groups`
   - `sessionId`: `string`, UUID — master `zalo_login_sessions.id`
   - `masterZaloAccountId`: `string`, UUID — master `zalo_accounts.id` (`isMaster` must be `true`)
   - `phoneNumber`: `string`, optional, minimum length `5` — used for `findUser` on the master session; may be omitted if `childZaloAccountId` is provided and that row has `phone`
@@ -784,6 +790,7 @@ Example request:
 
 ```json
 {
+  "groupName": "Nhóm bán hàng A",
   "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
   "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
@@ -794,9 +801,21 @@ Example with explicit phone:
 
 ```json
 {
+  "groupName": "Nhóm bán hàng A",
   "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
   "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   "phoneNumber": "0914405474",
+  "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
+}
+```
+
+Example with internal group UUID (no `groupName` needed for lookup):
+
+```json
+{
+  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
   "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
 }
 ```
@@ -829,10 +848,10 @@ Example with explicit phone:
 (`zalo` shape follows zca-js `addUserToGroup` response. If `childZaloAccountId` is omitted, `dbSync.persisted` is `false` and `dbSync.reason` explains the skip.)
 
 #### Error cases
-- `400`: validation error; master not `isMaster`; child is master; child not linked to master; could not resolve phone; Zalo `addUserToGroup` returned non-empty `errorMembers` / `error_data`; Zalo API error (e.g. not friends, not admin, invalid params) — message may be prefixed with `[code]`
+- `400`: validation error; neither `groupId` nor valid `groupName` (when `groupId` omitted); master not `isMaster`; child is master; child not linked to master; could not resolve phone; Zalo `addUserToGroup` returned non-empty `errorMembers` / `error_data`; Zalo API error (e.g. not friends, not admin, invalid params) — message may be prefixed with `[code]`
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
-- `404`: `ZaloGroup` not found; master account not found; child account not found; no `ZaloAccountGroup` row for master + group
+- `404`: master account not found; child account not found; **`ZaloGroup` not found** (when `groupId` is used but id does not exist); no `ZaloAccountGroup` row for **this master** and the resolved group (by id or by name)
 - `500`: failed to restore Zalo client from session credentials; unexpected error
 
 #### Authentication
