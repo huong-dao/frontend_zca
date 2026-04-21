@@ -1889,11 +1889,11 @@ Example:
 ```
 
 #### Error cases
-- `400`: validation error; account is master; child has no `zalo_id`
+- `400`: validation error; account is master; child has no `zalo_id`; **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child and upsert `zalo_login_sessions`; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — often wrong or stale `group_zalo_id` for that child in `zalo_account_groups`, child not in the group on Zalo, or content/length limits — verify the grid id from that child’s context (e.g. `GET /zalo/actions/groups` with that child’s session) and re-link if needed
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
 - `404`: Zalo account not found; no child session for this user + `zalo_id`; no `zalo_account_groups` row for this child and `groupId`
-- `500`: failed to restore Zalo client from session; Zalo API error; DB error after a successful Zalo send (rare)
+- `500`: Zalo API error after session restored; DB error after a successful Zalo send (rare)
 
 #### Authentication
 - JWT required
