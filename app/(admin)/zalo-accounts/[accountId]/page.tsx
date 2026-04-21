@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { HiArrowLongLeft, HiMiniUserMinus, HiMiniUserPlus, HiUserGroup } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
+import GroupFilterSearchField from "@/components/features/GroupFilterSearchField";
 import GroupSearchCombobox from "@/components/features/GroupSearchCombobox";
 import Modal from "@/components/features/Modal";
 import PageHeader from "@/components/features/PageHeader";
@@ -17,6 +18,7 @@ import { getCurrentZaloSession } from "@/lib/zalo/client";
 import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@/lib/api/types";
 
 const TABLE_PAGE_SIZE = 10;
+const GROUP_FILTER_DEBOUNCE_MS = 350;
 const EMPTY_META: PaginationMeta = {
   page: 1,
   limit: TABLE_PAGE_SIZE,
@@ -47,6 +49,8 @@ export default function ZaloAccountDetailsPage() {
   const [groupsMeta, setGroupsMeta] = useState<PaginationMeta>(EMPTY_META);
   const [groupsLoading, setGroupsLoading] = useState(true);
   const [groupsError, setGroupsError] = useState("");
+  const [groupFilterQuery, setGroupFilterQuery] = useState("");
+  const [debouncedGroupFilter, setDebouncedGroupFilter] = useState("");
   const [submittingFriendChildId, setSubmittingFriendChildId] = useState<string | null>(null);
   const [submittingFriendAction, setSubmittingFriendAction] = useState<"make" | "unfriend" | null>(null);
 
@@ -154,6 +158,7 @@ export default function ZaloAccountDetailsPage() {
       const response = await getZaloGroupsByAccountId(accountId, {
         page: groupPage,
         limit: TABLE_PAGE_SIZE,
+        ...(debouncedGroupFilter ? { group_name: debouncedGroupFilter } : {}),
       });
 
       setGroups(response.data);
@@ -170,7 +175,18 @@ export default function ZaloAccountDetailsPage() {
     } finally {
       setGroupsLoading(false);
     }
-  }, [accountId, groupPage]);
+  }, [accountId, groupPage, debouncedGroupFilter]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedGroupFilter(groupFilterQuery.trim());
+    }, GROUP_FILTER_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [groupFilterQuery]);
+
+  useLayoutEffect(() => {
+    setGroupPage(1);
+  }, [debouncedGroupFilter]);
 
   useEffect(() => {
     if (!account?.isMaster) {
@@ -195,6 +211,8 @@ export default function ZaloAccountDetailsPage() {
 
   useEffect(() => {
     setGroupPage(1);
+    setGroupFilterQuery("");
+    setDebouncedGroupFilter("");
   }, [accountId]);
 
   const getFriendStatus = (childId: string) => friendStatusById.get(childId) ?? null;
@@ -420,7 +438,7 @@ export default function ZaloAccountDetailsPage() {
             />
           </div>
           <p className="mt-2 text-xs text-on-surface-variant">
-            Danh sách lọc theo nhóm đã liên kết với master này. Khi gửi lệnh, hệ thống dùng UUID nhóm để xác định đúng nhóm (không phụ thuộc tên trùng).
+            Danh sách lọc theo nhóm đã liên kết với master này.
           </p>
         </div>
       </Modal>
@@ -526,8 +544,15 @@ export default function ZaloAccountDetailsPage() {
         </section>
 
         <section className="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
-          <div className="border-b border-outline-variant/10 px-6 py-4">
-            <h3 className="text-lg font-semibold text-on-surface">Nhóm</h3>
+          <div className="flex flex-col gap-3 border-b border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <h3 className="shrink-0 text-lg font-semibold text-on-surface">Nhóm</h3>
+            <div className="min-w-0 w-full sm:max-w-sm lg:max-w-md">
+              <GroupFilterSearchField
+                value={groupFilterQuery}
+                onChange={setGroupFilterQuery}
+                placeholder="Gõ để lọc theo tên nhóm…"
+              />
+            </div>
           </div>
 
           {groupsError ? (
@@ -548,14 +573,16 @@ export default function ZaloAccountDetailsPage() {
             <tbody className="divide-y divide-outline-variant/10">
               {groupsLoading ? (
                 <tr>
-                  <td colSpan={2} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                  <td className="px-6 py-10 text-center text-sm text-on-surface-variant">
                     Đang tải danh sách group...
                   </td>
                 </tr>
               ) : groups.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="px-6 py-10 text-center text-sm text-on-surface-variant">
-                    Tài khoản master này chưa có dữ liệu group.
+                  <td className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                    {debouncedGroupFilter
+                      ? "Không có nhóm nào khớp bộ lọc."
+                      : "Tài khoản master này chưa có dữ liệu group."}
                   </td>
                 </tr>
               ) : (
