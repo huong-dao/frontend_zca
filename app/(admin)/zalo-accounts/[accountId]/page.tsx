@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { HiArrowLongLeft, HiMiniUserMinus, HiMiniUserPlus } from "react-icons/hi2";
+import { HiArrowLongLeft, HiMiniUserMinus, HiMiniUserPlus, HiUserGroup } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
+import Modal from "@/components/features/Modal";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
-import { getZaloGroupsByAccountId } from "@/lib/api/zalo-groups";
+import { getZaloGroupsByAccountId, inviteMemberToZaloGroup } from "@/lib/api/zalo-groups";
+import { getCurrentZaloSession } from "@/lib/zalo/client";
 import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@/lib/api/types";
 
 const TABLE_PAGE_SIZE = 10;
@@ -46,6 +48,11 @@ export default function ZaloAccountDetailsPage() {
   const [groupsError, setGroupsError] = useState("");
   const [submittingFriendChildId, setSubmittingFriendChildId] = useState<string | null>(null);
   const [submittingFriendAction, setSubmittingFriendAction] = useState<"make" | "unfriend" | null>(null);
+
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteTargetChild, setInviteTargetChild] = useState<ZaloAccountChild | null>(null);
+  const [inviteGroupName, setInviteGroupName] = useState("");
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
 
   const loadAccountDetails = useCallback(async () => {
     if (!accountId) {
@@ -191,6 +198,79 @@ export default function ZaloAccountDetailsPage() {
 
   const getFriendStatus = (childId: string) => friendStatusById.get(childId) ?? null;
 
+  const getChildFriendPhone = (childId: string) =>
+    account?.friends.find((friend) => friend.id === childId)?.phone?.trim() ?? "";
+
+  const openInviteToGroupModal = (child: ZaloAccountChild) => {
+    setInviteTargetChild(child);
+    setInviteGroupName("");
+    setInviteModalOpen(true);
+  };
+
+  const closeInviteToGroupModal = () => {
+    setInviteModalOpen(false);
+    setInviteTargetChild(null);
+    setInviteGroupName("");
+  };
+
+  const handleInviteToGroupSubmit = async () => {
+    const trimmedName = inviteGroupName.trim();
+    if (!account || !inviteTargetChild || !trimmedName) {
+      showToast("Vui lòng nhập tên nhóm.", "error");
+      return;
+    }
+
+    const friendStatus = getFriendStatus(inviteTargetChild.id);
+    if (friendStatus !== "APPROVE") {
+      showToast("Chỉ thêm vào nhóm khi tài khoản con đã kết bạn với master.", "error");
+      return;
+    }
+
+    setInviteSubmitting(true);
+
+    try {
+      const sessionResponse = await getCurrentZaloSession();
+      const sessionList =
+        sessionResponse.sessions.length > 0
+          ? sessionResponse.sessions
+          : sessionResponse.session
+            ? [sessionResponse.session]
+            : [];
+
+      const matchingSession = sessionList.find((session) => session.user.uid === account.zaloId);
+
+      if (!matchingSession) {
+        showToast(
+          "Chưa có phiên Zalo cho master này. Vui lòng đăng nhập Zalo (QR) cho tài khoản master trước.",
+          "error",
+        );
+        return;
+      }
+
+      const phoneFromFriend = getChildFriendPhone(inviteTargetChild.id);
+      const payload = {
+        sessionId: matchingSession.id,
+        masterZaloAccountId: account.id,
+        childZaloAccountId: inviteTargetChild.id,
+        groupName: trimmedName,
+        ...(phoneFromFriend ? { phoneNumber: phoneFromFriend } : {}),
+      };
+
+      await inviteMemberToZaloGroup(payload);
+      showToast(`Đã thêm ${inviteTargetChild.name} vào nhóm.`, "success");
+      closeInviteToGroupModal();
+      await loadAccountDetails();
+      await loadAccountGroups();
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Không thể thêm thành viên vào nhóm.",
+        "error",
+      );
+    } finally {
+      setInviteSubmitting(false);
+    }
+  };
+
   const handleMakeFriend = async (child: ZaloAccountChild) => {
     if (!account) {
       return;
@@ -272,18 +352,28 @@ export default function ZaloAccountDetailsPage() {
     const friendStatus = getFriendStatus(child.id);
 
     if (friendStatus === "APPROVE" || friendStatus === "PENDING") {
-      return [
-        {
-          label:
-            submittingFriendChildId === child.id && submittingFriendAction === "unfriend"
-              ? "Đang hủy kết bạn..."
-              : friendStatus === "PENDING"
-                ? "Hủy lời mời"
-                : "Hủy kết bạn",
-          icon: <HiMiniUserMinus />,
-          onClick: () => void handleUnFriend(child),
-        },
-      ];
+      const items: ActionItem[] = [];
+
+      if (friendStatus === "APPROVE") {
+        items.push({
+          label: "Thêm vào nhóm",
+          icon: <HiUserGroup />,
+          onClick: () => void openInviteToGroupModal(child),
+        });
+      }
+
+      items.push({
+        label:
+          submittingFriendChildId === child.id && submittingFriendAction === "unfriend"
+            ? "Đang hủy kết bạn..."
+            : friendStatus === "PENDING"
+              ? "Hủy lời mời"
+              : "Hủy kết bạn",
+        icon: <HiMiniUserMinus />,
+        onClick: () => void handleUnFriend(child),
+      });
+
+      return items;
     }
 
     return [
@@ -300,6 +390,38 @@ export default function ZaloAccountDetailsPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
+      <Modal
+        open={inviteModalOpen}
+        title={
+          inviteTargetChild
+            ? `Thêm vào nhóm — ${inviteTargetChild.name}`
+            : "Thêm vào nhóm"
+        }
+        onClose={() => {
+          if (!inviteSubmitting) {
+            closeInviteToGroupModal();
+          }
+        }}
+        onSubmit={handleInviteToGroupSubmit}
+        loading={inviteSubmitting}
+        loadingText="Đang thêm..."
+        buttonText="Thêm vào nhóm"
+        cancelText="Hủy"
+      >
+        <label className="block text-sm font-medium text-on-surface">
+          Tên nhóm
+          <input
+            type="text"
+            autoComplete="off"
+            placeholder="Nhập tên nhóm Zalo"
+            className="mt-2 block w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm placeholder:text-on-surface-variant/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            value={inviteGroupName}
+            onChange={(event) => setInviteGroupName(event.target.value)}
+            disabled={inviteSubmitting}
+          />
+        </label>
+      </Modal>
+
       <PageHeader
         title={account?.name ? `Chi tiết tài khoản: ${account.name}` : "Chi tiết tài khoản Zalo"}
         description="Quản lý tất cả tài khoản con và tất cả nhóm của tài khoản đang được xem"

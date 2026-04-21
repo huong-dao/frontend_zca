@@ -250,6 +250,29 @@ export interface UpdateZaloGroupResponse {
   updatedAt: string;
 }
 
+export interface InviteMemberToZaloGroupPayload {
+  sessionId: string;
+  masterZaloAccountId: string;
+  childZaloAccountId: string;
+  /** Tên nhóm Zalo (do người dùng nhập). */
+  groupName: string;
+  phoneNumber?: string;
+}
+
+export interface InviteMemberToZaloGroupResponse {
+  success: boolean;
+  masterGroupZaloId?: string;
+  inviteUid?: string;
+  dbSync?: {
+    persisted: boolean;
+    created?: boolean;
+    childZaloAccountId?: string;
+    groupZaloId?: string;
+    groupId?: string;
+    reason?: string;
+  };
+}
+
 export interface UpdateZaloAccountGroupDataPayload {
   id: string;
   groupData: Record<string, string>;

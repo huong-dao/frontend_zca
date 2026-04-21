@@ -2,6 +2,8 @@ import { apiRequest } from "@/lib/api/client";
 import type {
   BulkCreateZaloGroupsPayload,
   BulkCreateZaloGroupsResponse,
+  InviteMemberToZaloGroupPayload,
+  InviteMemberToZaloGroupResponse,
   PaginatedResponse,
   PendingNameUpdateZaloGroupsResponse,
   UpdateZaloGroupPayload,
@@ -72,6 +74,14 @@ export function getPendingNameUpdateZaloGroups() {
 export function updateZaloGroup(groupId: string, data: UpdateZaloGroupPayload) {
   return apiRequest<UpdateZaloGroupResponse>(`/zalo-groups/${groupId}`, {
     method: "PUT",
+    body: data,
+  });
+}
+
+/** Body gồm groupName; đổi path nếu backend dùng URL khác. */
+export function inviteMemberToZaloGroup(data: InviteMemberToZaloGroupPayload) {
+  return apiRequest<InviteMemberToZaloGroupResponse>("/zalo-groups/invite-member", {
+    method: "POST",
     body: data,
   });
 }
