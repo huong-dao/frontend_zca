@@ -210,6 +210,8 @@ export interface BulkCreateZaloGroupInput {
 
 export interface BulkCreateZaloGroupsPayload {
   groups: BulkCreateZaloGroupInput[];
+  /** Khi `"update origin name"`: cập nhật `originName` cho `group_zalo_id` đã tồn tại thay vì chỉ skip. */
+  mode?: "update origin name";
 }
 
 export interface BulkCreateZaloGroupsCreatedItem {

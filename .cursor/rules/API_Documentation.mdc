@@ -467,6 +467,7 @@ Return paginated Zalo groups stored in the database.
 - Query:
   - `page`: `number`, optional, default `1`
   - `limit`: `number`, optional, default `20`
+  - `global_id`: `string`, optional — exact match on `zalo_groups.global_id` (server-side filter; **`globalId` is not included in response objects**)
 - Body: none
 
 Example request:
@@ -480,12 +481,15 @@ Example request:
 
 #### Response
 
+Each item includes **`originName`** (original name when stored; may be `null`). **`globalId` is never returned.**
+
 ```json
 {
   "data": [
     {
       "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
       "groupName": "Marketing Team",
+      "originName": "Marketing Team",
       "groupZaloId": "1234567890123456789",
       "isUpdateName": false,
       "createdAt": "2026-04-15T08:20:00.000Z",
@@ -537,6 +541,7 @@ Return all Zalo groups whose `isUpdateName` is `false`, meaning the group name h
   {
     "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
     "groupName": "Marketing Team",
+    "originName": "Marketing Team",
     "groupZaloId": "1234567890123456789",
     "isUpdateName": false,
     "createdAt": "2026-04-15T08:20:00.000Z",
@@ -570,6 +575,8 @@ Return paginated Zalo groups linked to a specific Zalo account. Each item has th
 
 Optional query **`group_name`**: when provided (non-empty after trim), only groups whose stored **`group_name`** contains that substring are returned, **case-insensitive** (SQL `ILIKE` / “contains” semantics). When omitted or blank, all linked groups are listed as before.
 
+Optional query **`global_id`**: exact match on **`zalo_groups.global_id`** (not returned in items).
+
 #### Request
 - Params:
   - `id`: `string`, UUID of the target `zaloAccountId`
@@ -577,6 +584,7 @@ Optional query **`group_name`**: when provided (non-empty after trim), only grou
   - `page`: `number`, optional, default `1`, minimum `1`
   - `limit`: `number`, optional, default `20`, minimum `1`
   - `group_name`: `string`, optional — substring filter on `zalo_groups.group_name` (case-insensitive contains); omit to skip filtering
+  - `global_id`: `string`, optional — exact match on `zalo_groups.global_id`
 - Body: none
 
 #### Response
@@ -587,6 +595,7 @@ Optional query **`group_name`**: when provided (non-empty after trim), only grou
     {
       "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
       "groupName": "Marketing Team",
+      "originName": "Marketing Team",
       "groupZaloId": "1234567890123456789",
       "isUpdateName": false,
       "createdAt": "2026-04-15T08:20:00.000Z",
@@ -629,19 +638,23 @@ Create a new Zalo group record directly in the database.
 
 Note: `group_zalo_id` is the Zalo group identifier received from a specific account context. It is stored on the account-group mapping model, not as a global field on `ZaloGroup`.
 
+On create, `originName` is set once to the trimmed `group_name` and is **not** changed by later updates to `group_name` (see PUT).
+
 #### Request
 - Params: none
 - Query: none
 - Body:
   - `group_name`: `string`, required, minimum length `1`
   - `group_zalo_id`: `string`, required, minimum length `1`
+  - `global_id`: `string`, optional — Zalo group global id; **unique when set**; not returned in responses
 
 Example request:
 
 ```json
 {
   "group_name": "Marketing Team",
-  "group_zalo_id": "1234567890123456789"
+  "group_zalo_id": "1234567890123456789",
+  "global_id": "EPHPVTP4JNKHS9M7F4QP0UK2I8978C00"
 }
 ```
 
@@ -651,6 +664,7 @@ Example request:
 {
   "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
   "groupName": "Marketing Team",
+  "originName": "Marketing Team",
   "isUpdateName": false,
   "createdAt": "2026-04-15T08:20:00.000Z",
   "updatedAt": "2026-04-15T08:20:00.000Z"
@@ -683,14 +697,19 @@ For each new group:
 - one row is created in `ZaloAccountGroup` to map that group to the provided Zalo account
 - the target account `groupCount` is recalculated after the transaction
 
-`group_zalo_id` here is the Zalo group identifier returned in the context of the provided account mapping. Existing mappings are checked by `group_zalo_id` before insert and are skipped instead of being created again.
+`group_zalo_id` here is the Zalo group identifier returned in the context of the provided account mapping. By default, existing mappings for this account are **skipped** (no second insert). Optional body field `mode` changes that (see below).
+
+For each **new** `ZaloGroup` row, `originName` is set to the trimmed `group_name` at insert time. With default behavior, later calls do not change `originName` for rows that already exist for this account.
+
+- `mode` (optional): when exactly **`"update origin name"`**, each `group_zalo_id` that already exists for this account no longer counts as “skipped”: the linked `ZaloGroup.originName` is set to the trimmed `group_name` from the request. New `group_zalo_id` values are still inserted as usual. Other values for `mode` are rejected (validation).
 
 #### Request
 - Params:
   - `id`: `string`, UUID of the target `zaloAccountId`
 - Query: none
 - Body:
-  - `groups`: `Array<{ group_name: string; group_zalo_id: string }>` required, minimum `1` item
+  - `groups`: `Array<{ group_name: string; group_zalo_id: string; global_id?: string }>` required, minimum `1` item
+  - `mode`: `string`, optional — must be `"update origin name"` when present
 
 Example request:
 
@@ -699,7 +718,8 @@ Example request:
   "groups": [
     {
       "group_name": "Marketing Team",
-      "group_zalo_id": "1234567890123456789"
+      "group_zalo_id": "1234567890123456789",
+      "global_id": "EPHPVTP4JNKHS9M7F4QP0UK2I8978C00"
     },
     {
       "group_name": "Sales Team",
@@ -709,7 +729,13 @@ Example request:
 }
 ```
 
+With `"mode": "update origin name"` at the top level of the body (next to `groups`), existing `group_zalo_id` entries update `originName` instead of appearing under `skipped.existingGroupZaloIds`.
+
 #### Response
+
+- `created`: new `ZaloGroup` rows (same shape as before).
+- `updatedOriginName`: groups whose `originName` was updated (empty array unless `mode` is `"update origin name"`).
+- `skipped.existingGroupZaloIds`: empty when `mode` is `"update origin name"` and every requested existing id was handled as an update; otherwise lists `group_zalo_id` values that were skipped because they already exist.
 
 ```json
 {
@@ -717,11 +743,13 @@ Example request:
     {
       "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
       "groupName": "Marketing Team",
+      "originName": "Marketing Team",
       "isUpdateName": false,
       "createdAt": "2026-04-16T08:20:00.000Z",
       "updatedAt": "2026-04-16T08:20:00.000Z"
     }
   ],
+  "updatedOriginName": [],
   "skipped": {
     "existingGroupZaloIds": [
       "2234567890123456789"
@@ -732,6 +760,7 @@ Example request:
     "requested": 2,
     "uniqueRequested": 2,
     "created": 1,
+    "updatedOriginName": 0,
     "skippedExisting": 1,
     "skippedDuplicateInput": 0
   }
@@ -870,6 +899,8 @@ Update a stored Zalo group directly in the database and mark `isUpdateName` as `
 
 Note: updating this endpoint changes only the shared `ZaloGroup` record. `group_zalo_id` remains account-specific data on `ZaloAccountGroup`.
 
+`originName` is **not** modified by this endpoint; it stays as set on create.
+
 #### Request
 - Params:
   - `id`: `string`, UUID
@@ -877,13 +908,15 @@ Note: updating this endpoint changes only the shared `ZaloGroup` record. `group_
 - Body:
   - `group_name`: `string`, required, minimum length `1`
   - `group_zalo_id`: `string`, required, minimum length `1`
+  - `global_id`: `string`, optional — Zalo group global id (unique when set); stored for server-side filtering only; **not** included in JSON responses
 
 Example request:
 
 ```json
 {
-  "group_name": "Marketing Team",
-  "group_zalo_id": "1234567890123456789"
+  "group_name": "Marketing Team Renamed",
+  "group_zalo_id": "1234567890123456789",
+  "global_id": "EPHPVTP4JNKHS9M7F4QP0UK2I8978C00"
 }
 ```
 
@@ -892,7 +925,8 @@ Example request:
 ```json
 {
   "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "groupName": "Marketing Team",
+  "groupName": "Marketing Team Renamed",
+  "originName": "Marketing Team",
   "isUpdateName": true,
   "createdAt": "2026-04-15T08:20:00.000Z",
   "updatedAt": "2026-04-15T08:25:00.000Z"
