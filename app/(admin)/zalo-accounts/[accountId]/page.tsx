@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { HiArrowLongLeft, HiMiniUserMinus, HiMiniUserPlus, HiUserGroup } from "react-icons/hi2";
+import { HiArrowLongLeft, HiChatBubbleLeftRight, HiMiniUserMinus, HiMiniUserPlus, HiUserGroup } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
 import GroupFilterSearchField from "@/components/features/GroupFilterSearchField";
 import GroupSearchCombobox from "@/components/features/GroupSearchCombobox";
@@ -13,12 +13,14 @@ import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
+import { sendMessage } from "@/lib/api/messages";
 import { getZaloGroupsByAccountId, inviteMemberToZaloGroup } from "@/lib/api/zalo-groups";
 import { getCurrentZaloSession } from "@/lib/zalo/client";
 import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@/lib/api/types";
 
 const TABLE_PAGE_SIZE = 10;
 const GROUP_FILTER_DEBOUNCE_MS = 350;
+const TEST_MODAL_GROUPS_LIMIT = 500;
 const EMPTY_META: PaginationMeta = {
   page: 1,
   limit: TABLE_PAGE_SIZE,
@@ -58,6 +60,14 @@ export default function ZaloAccountDetailsPage() {
   const [inviteTargetChild, setInviteTargetChild] = useState<ZaloAccountChild | null>(null);
   const [inviteSelectedGroup, setInviteSelectedGroup] = useState<ZaloGroup | null>(null);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
+
+  const [testMessageModalOpen, setTestMessageModalOpen] = useState(false);
+  const [testSendChildId, setTestSendChildId] = useState("");
+  const [testSendGroupId, setTestSendGroupId] = useState("");
+  const [testSendText, setTestSendText] = useState("");
+  const [testModalGroups, setTestModalGroups] = useState<ZaloGroup[]>([]);
+  const [testModalGroupsLoading, setTestModalGroupsLoading] = useState(false);
+  const [testSendSubmitting, setTestSendSubmitting] = useState(false);
 
   const loadAccountDetails = useCallback(async () => {
     if (!accountId) {
@@ -289,6 +299,70 @@ export default function ZaloAccountDetailsPage() {
     }
   };
 
+  const openTestMessageModal = async () => {
+    setTestSendChildId("");
+    setTestSendGroupId("");
+    setTestSendText("");
+    setTestMessageModalOpen(true);
+
+    if (!accountId) {
+      return;
+    }
+
+    setTestModalGroupsLoading(true);
+    setTestModalGroups([]);
+
+    try {
+      const response = await getZaloGroupsByAccountId(accountId, {
+        page: 1,
+        limit: TEST_MODAL_GROUPS_LIMIT,
+      });
+      setTestModalGroups(response.data);
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Không thể tải danh sách nhóm.",
+        "error",
+      );
+    } finally {
+      setTestModalGroupsLoading(false);
+    }
+  };
+
+  const closeTestMessageModal = () => {
+    setTestMessageModalOpen(false);
+    setTestSendChildId("");
+    setTestSendGroupId("");
+    setTestSendText("");
+    setTestModalGroups([]);
+  };
+
+  const handleTestSendSubmit = async () => {
+    const trimmed = testSendText.trim();
+    if (!testSendChildId || !testSendGroupId || !trimmed) {
+      showToast("Vui lòng chọn tài khoản con, nhóm và nhập nội dung tin nhắn.", "error");
+      return;
+    }
+
+    setTestSendSubmitting(true);
+
+    try {
+      await sendMessage({
+        zaloAccountId: testSendChildId,
+        groupId: testSendGroupId,
+        text: trimmed,
+      });
+      showToast("Đã gửi tin nhắn test thành công.", "success");
+      closeTestMessageModal();
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Không thể gửi tin nhắn test.",
+        "error",
+      );
+    } finally {
+      setTestSendSubmitting(false);
+    }
+  };
+
   const handleMakeFriend = async (child: ZaloAccountChild) => {
     if (!account) {
       return;
@@ -443,13 +517,95 @@ export default function ZaloAccountDetailsPage() {
         </div>
       </Modal>
 
+      <Modal
+        open={testMessageModalOpen}
+        title="Gửi tin nhắn test"
+        modalWidth="540px"
+        onClose={() => {
+          if (!testSendSubmitting) {
+            closeTestMessageModal();
+          }
+        }}
+        onSubmit={() => void handleTestSendSubmit()}
+        loading={testSendSubmitting}
+        loadingText="Đang gửi…"
+        buttonText="Gửi"
+        cancelText="Hủy"
+      >
+        <div className="space-y-4">
+          <label className="block text-sm font-medium text-on-surface">
+            Tài khoản con
+            <select
+              className="mt-2 block w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              value={testSendChildId}
+              onChange={(event) => setTestSendChildId(event.target.value)}
+              disabled={testSendSubmitting || childAccounts.length === 0}
+            >
+              <option value="">— Chọn tài khoản con —</option>
+              {childAccounts.map((child) => (
+                <option key={child.id} value={child.id}>
+                  {child.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-sm font-medium text-on-surface">
+            Nhóm (của master đang xem)
+            {testModalGroupsLoading ? (
+              <p className="mt-2 text-sm text-on-surface-variant">Đang tải danh sách nhóm…</p>
+            ) : (
+              <select
+                className="mt-2 block w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                value={testSendGroupId}
+                onChange={(event) => setTestSendGroupId(event.target.value)}
+                disabled={testSendSubmitting || testModalGroups.length === 0}
+              >
+                <option value="">— Chọn nhóm —</option>
+                {testModalGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.groupName}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Backend yêu cầu tài khoản con có trong nhóm và đã đăng nhập Zalo (QR) dưới user hiện tại.
+            </p>
+          </label>
+
+          <label className="block text-sm font-medium text-on-surface">
+            Nội dung
+            <textarea
+              className="mt-2 block w-full min-h-[120px] rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm placeholder:text-on-surface-variant/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="Nhập nội dung tin nhắn…"
+              value={testSendText}
+              onChange={(event) => setTestSendText(event.target.value)}
+              disabled={testSendSubmitting}
+              rows={4}
+            />
+          </label>
+        </div>
+      </Modal>
+
       <PageHeader
         title={account?.name ? `Chi tiết tài khoản: ${account.name}` : "Chi tiết tài khoản Zalo"}
         description="Quản lý tất cả tài khoản con và tất cả nhóm của tài khoản đang được xem"
         actions={
-          <Button variant="primary" startIcon={<HiArrowLongLeft className="h-4 w-4" />} onClick={() => router.push("/zalo-accounts")}>
-            Quay lại danh sách tài khoản
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              startIcon={<HiChatBubbleLeftRight className="h-4 w-4" />}
+              onClick={() => void openTestMessageModal()}
+              disabled={loading || !account?.isMaster}
+            >
+              Gửi tin nhắn test
+            </Button>
+            <Button variant="primary" startIcon={<HiArrowLongLeft className="h-4 w-4" />} onClick={() => router.push("/zalo-accounts")}>
+              Quay lại danh sách tài khoản
+            </Button>
+          </>
         }
       />
 

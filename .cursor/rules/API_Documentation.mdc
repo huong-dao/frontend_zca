@@ -1833,39 +1833,72 @@ Example request:
 - Function: `MessagesController.send`
 
 #### Description
-This endpoint is no longer executed in the backend. Message sending is now handled in the frontend.
+Send a **plain text** message to a **Zalo group** as a **child** Zalo account. The backend:
+
+1. Loads `zalo_accounts` by `zaloAccountId` (must be **`is_master = false`**) and requires **`zalo_id`** on that row.
+2. Resolves the **child’s QR session** for the **current JWT user**: latest `zalo_login_sessions` row where `user_id` = app user and `zalo_uid` = that account’s `zalo_id` (the child must have logged in under this app user).
+3. Resolves `group_zalo_id` from `zalo_account_groups` for this child + internal `groupId`.
+4. Calls zca-js `sendMessage` with **`ThreadType.Group`** (same default as `POST /zalo/actions/send-message`).
+5. On success, inserts a **`messages`** row (`status: SENT`, `content`, `sender_id`, `group_id`, optional `message_zalo_id` / `cli_msg_id` / `uid_from` parsed from the zca-js result when present).
+
+`sessionId` is **not** sent by the client. For sending by explicit `sessionId` or raw `threadId`, use **`POST /zalo/actions/send-message`** (that route does **not** write to `messages`).
 
 #### Request
 - Params: none
 - Query: none
 - Body:
-  - `masterId`: `string`, required
-  - `groupId`: `string`, required
-  - `content`: `string`, required
+  - `zaloAccountId`: `string`, UUID — child `zalo_accounts.id`; must have `zalo_id` and a matching login session for the authenticated user
+  - `groupId`: `string`, UUID — internal `zalo_groups.id`
+  - `text`: `string`, required, minimum length `1` — message body
 
 Example request:
 
 ```json
 {
-  "masterId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "zaloAccountId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
   "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "content": "Hello group"
+  "text": "Hello group"
 }
 ```
 
 #### Response
-The backend currently returns an error for this endpoint.
+- `result`: zca-js `sendMessage` return (e.g. `message` / `attachment` with `msgId`).
+- `message`: persisted row — `id`, `messageZaloId`, `cliMsgId`, `uidFrom`, `content`, `senderId`, `groupId`, `sentAt`, `status`, `createdAt`.
+
+Example:
+
+```json
+{
+  "result": {
+    "message": { "msgId": 9876543210 },
+    "attachment": []
+  },
+  "message": {
+    "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
+    "messageZaloId": "9876543210",
+    "cliMsgId": null,
+    "uidFrom": "1122334455667788990",
+    "content": "Hello group",
+    "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "sentAt": "2026-04-21T12:00:00.000Z",
+    "status": "SENT",
+    "createdAt": "2026-04-21T12:00:00.000Z"
+  }
+}
+```
 
 #### Error cases
-- `400`: validation error
-- `400`: sending messages is handled in the frontend
+- `400`: validation error; account is master; child has no `zalo_id`
 - `401`: missing/invalid JWT
-- `500`: unexpected server error
+- `403`: role is not allowed
+- `404`: Zalo account not found; no child session for this user + `zalo_id`; no `zalo_account_groups` row for this child and `groupId`
+- `500`: failed to restore Zalo client from session; Zalo API error; DB error after a successful Zalo send (rare)
 
 #### Authentication
 - JWT required
-- Guards: `JwtAuthGuard`
-- Roles: any authenticated `ADMIN` or `USER`
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
 
 ### POST `/messages/recall/:id`
 #### Endpoint

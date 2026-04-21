@@ -285,6 +285,30 @@ export interface InviteMemberToZaloGroupResponse {
   };
 }
 
+export interface SendMessagePayload {
+  zaloAccountId: string;
+  groupId: string;
+  text: string;
+}
+
+export interface SendMessagePersistedRow {
+  id: string;
+  messageZaloId: string | null;
+  cliMsgId: string | null;
+  uidFrom: string;
+  content: string;
+  senderId: string;
+  groupId: string;
+  sentAt: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface SendMessageResponse {
+  result: unknown;
+  message: SendMessagePersistedRow;
+}
+
 export interface UpdateZaloAccountGroupDataPayload {
   id: string;
   groupData: Record<string, string>;
