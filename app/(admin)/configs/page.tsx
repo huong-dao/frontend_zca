@@ -72,19 +72,13 @@ export default function ConfigsPage() {
         description="Thiết lập thông số chung của hệ thống. Có thể bổ sung thêm mục cấu hình sau này."
       />
 
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="">
         <section className="lg:col-span-7 overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
           <div className="border-b border-outline-variant/10 px-6 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-on-surface">Gửi tin nhắn</h3>
-                <p className="mt-1 max-w-xl text-sm text-on-surface-variant">
-                  Giới hạn khoảng cách tối thiểu giữa hai lần gửi tin để tránh kích hoạt chống spam.
-                </p>
               </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-primary">
-                Đang áp dụng
-              </span>
             </div>
           </div>
 
@@ -126,7 +120,7 @@ export default function ConfigsPage() {
                       }}
                       className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-low px-4 py-3 text-sm text-on-surface shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
-                    <span className="shrink-0 text-sm font-medium text-on-surface-variant">giây</span>
+                    <span className="shrink-0 text-sm font-medium text-on-surface-variant">phút</span>
                   </div>
                   {fieldError ? <FormError message={fieldError} /> : null}
                 </div>
@@ -154,14 +148,7 @@ export default function ConfigsPage() {
           </div>
         </section>
 
-        <aside className="lg:col-span-5 rounded-xl border border-outline-variant/15 bg-surface-container-low/50 px-6 py-5">
-          <h4 className="text-sm font-semibold text-on-surface">Gợi ý</h4>
-          <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-on-surface-variant">
-            <li>Giá trị mặc định là 5 giây nếu chưa từng lưu.</li>
-            <li>Dữ liệu lưu trên trình duyệt này; đồng bộ server có thể bổ sung sau.</li>
-            <li>Module gửi tin có thể đọc qua <code className="rounded bg-surface-container px-1 py-0.5 text-xs">getMessageSendIntervalMs()</code>.</li>
-          </ul>
-        </aside>
+        
       </div>
     </div>
   );
