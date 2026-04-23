@@ -772,23 +772,18 @@ export default function ZaloAccountsPage() {
   // Tập trung toàn bộ action hiển thị ở mỗi dòng để dễ tìm nơi thêm / bớt menu thao tác.
   const getActionItems = (account: ZaloAccount): ActionItem[] => {
     const items: ActionItem[] = [
-      {
-        label: "Quét nhóm Zalo",
-        icon: <HiOutlineUserGroup />,
-        onClick: () => handleScanGroups(account.id),
-      },
-      zaloLoggedIds.has(account.zaloId)
-        ? {
-            label: "Đăng xuất Zalo",
-            icon: <HiOutlineArrowRightOnRectangle />,
-            danger: true,
-            onClick: () => void handleLogoutZaloForAccount(account),
-          }
-        : {
-            label: "Đăng nhập Zalo",
-            icon: <HiMiniQrCode />,
-            onClick: () => void handleBeginQrLogin(account.phone),
-          },
+      // zaloLoggedIds.has(account.zaloId)
+      //   ? {
+      //       label: "Đăng xuất Zalo",
+      //       icon: <HiOutlineArrowRightOnRectangle />,
+      //       danger: true,
+      //       onClick: () => void handleLogoutZaloForAccount(account),
+      //     }
+      //   : {
+      //       label: "Đăng nhập Zalo",
+      //       icon: <HiMiniQrCode />,
+      //       onClick: () => void handleBeginQrLogin(account.phone),
+      //     },
     ];
 
     if (!account.isMaster) {
@@ -800,11 +795,18 @@ export default function ZaloAccountsPage() {
     }
 
     if (account.isMaster) {
-      items.push({
-        label: "Xem chi tiết",
-        icon: <HiMiniEye />,
-        onClick: () => handleOpenAccountDetails(account.id),
-      });
+      items.push(
+        {
+          label: "Quét nhóm Zalo",
+          icon: <HiOutlineUserGroup />,
+          onClick: () => handleScanGroups(account.id),
+        },
+        {
+          label: "Xem chi tiết",
+          icon: <HiMiniEye />,
+          onClick: () => handleOpenAccountDetails(account.id),
+        }
+      );
     }
 
     return items;

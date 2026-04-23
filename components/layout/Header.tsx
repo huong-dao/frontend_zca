@@ -10,6 +10,7 @@ import {
   ZALO_SESSION_CHANGED_EVENT,
 } from "@/lib/zalo/client";
 import { useToast } from "@/components/features/Toast";
+import ZaloSessionCombobox from "@/components/features/ZaloSessionCombobox";
 import { HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
 import Button from "../ui/Button";
 import type { ZaloSessionPublic } from "@/lib/zalo/types";
@@ -20,6 +21,7 @@ export default function Header() {
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [sessions, setSessions] = useState<ZaloSessionPublic[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionSwitching, setSessionSwitching] = useState(false);
 
   const loadZaloSession = useCallback(async () => {
     try {
@@ -52,12 +54,18 @@ export default function Header() {
   }, [loadZaloSession]);
 
   const handleChangeActiveSession = async (nextId: string) => {
+    if (nextId === activeSessionId) {
+      return;
+    }
+    setSessionSwitching(true);
     try {
       await setActiveZaloSession(nextId);
       notifyZaloSessionChanged();
       await loadZaloSession();
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Không thể đổi phiên Zalo.", "error");
+    } finally {
+      setSessionSwitching(false);
     }
   };
 
@@ -119,23 +127,17 @@ export default function Header() {
         </div>
 
         {sessions.length > 1 ? (
-          <select
-            aria-label="Chọn phiên Zalo"
-            className="h-9 max-w-[220px] rounded-lg border border-outline-variant/20 bg-white px-2 text-xs text-on-surface"
-            value={activeSession?.id ?? ""}
-            onChange={(event) => void handleChangeActiveSession(event.target.value)}
-          >
-            {sessions.map((session) => (
-              <option key={session.id} value={session.id}>
-                {session.user.displayName || session.user.uid}
-              </option>
-            ))}
-          </select>
+          <ZaloSessionCombobox
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={(nextId) => void handleChangeActiveSession(nextId)}
+            switching={sessionSwitching}
+          />
         ) : null}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <Button
+        {/* <Button
           size="sm"
           variant="destructive"
           startIcon={<HiOutlineArrowRightOnRectangle />}
@@ -153,7 +155,7 @@ export default function Header() {
           onClick={() => void handleLogoutAll()}
         >
           Đăng xuất tất cả
-        </Button>
+        </Button> */}
       </div>
     </header>
   ) : null;
