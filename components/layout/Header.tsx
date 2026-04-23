@@ -137,7 +137,7 @@ export default function Header() {
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {/* <Button
+        <Button
           size="sm"
           variant="destructive"
           startIcon={<HiOutlineArrowRightOnRectangle />}
@@ -155,7 +155,7 @@ export default function Header() {
           onClick={() => void handleLogoutAll()}
         >
           Đăng xuất tất cả
-        </Button> */}
+        </Button>
       </div>
     </header>
   ) : null;
