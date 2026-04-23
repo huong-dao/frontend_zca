@@ -206,6 +206,7 @@ export interface ZaloGroup {
   id: string;
   groupName: string;
   groupZaloId: string;
+  originName: string;
   isUpdateName: boolean;
   createdAt: string;
   updatedAt: string;

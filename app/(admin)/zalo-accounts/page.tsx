@@ -817,7 +817,13 @@ export default function ZaloAccountsPage() {
     ];
 
     if (!account.isMaster) {
-      items.push({
+      items.push(
+        {
+          label: "Quét nhóm Zalo",
+          icon: <HiOutlineUserGroup />,
+          onClick: () => handleScanGroups(account.id),
+        },
+        {
         label: "Set Master",
         icon: <HiOutlineUserCircle />,
         onClick: () => handleSetMaster(account.id),
@@ -826,11 +832,6 @@ export default function ZaloAccountsPage() {
 
     if (account.isMaster) {
       items.push(
-        {
-          label: "Quét nhóm Zalo",
-          icon: <HiOutlineUserGroup />,
-          onClick: () => handleScanGroups(account.id),
-        },
         {
           label: "Xem chi tiết",
           icon: <HiMiniEye />,
@@ -1021,6 +1022,9 @@ export default function ZaloAccountsPage() {
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Ngày tạo
               </th>
+              <th>
+                Datagroup
+              </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal"></th>
             </tr>
           </thead>
@@ -1104,6 +1108,10 @@ export default function ZaloAccountsPage() {
                     <div className="text-sm text-on-surface-variant">
                       {formatDate(account.createdAt)}
                     </div>
+                  </td>
+
+                  <td>
+                    {account.groupData ? Object.keys(account.groupData).length : 0}
                   </td>
 
                   <td className="px-6 py-3 text-right">

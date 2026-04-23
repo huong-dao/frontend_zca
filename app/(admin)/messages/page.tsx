@@ -267,9 +267,6 @@ export default function MessagesPage() {
                       >
                         {truncateText(row.content, 200)}
                       </p>
-                      {row.messageZaloId ? (
-                        <p className="mt-1 text-xs text-on-surface-variant">msgId: {row.messageZaloId}</p>
-                      ) : null}
                     </td>
                     <td className="px-6 py-3 align-top text-sm text-on-surface">
                       <div className="font-medium">{row.group?.groupName ?? "—"}</div>
