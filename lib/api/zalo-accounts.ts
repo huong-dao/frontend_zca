@@ -4,6 +4,7 @@ import type {
   AddChildZaloAccountsResponse,
   CreateZaloAccountPayload,
   CreateZaloAccountResponse,
+  DeleteZaloAccountResponse,
   MakeFriendZaloAccountsPayload,
   MakeFriendZaloAccountsResponse,
   SetZaloAccountMasterPayload,
@@ -80,5 +81,11 @@ export function updateZaloAccountGroupData(data: UpdateZaloAccountGroupDataPaylo
   return apiRequest<UpdateZaloAccountGroupDataResponse>(`/zalo-accounts/${data.id}/group-data/`, {
     method: "PATCH",
     body: { groupData: data.groupData },
+  });
+}
+
+export function deleteZaloAccount(accountId: string) {
+  return apiRequest<DeleteZaloAccountResponse>(`/zalo-accounts/${encodeURIComponent(accountId)}`, {
+    method: "DELETE",
   });
 }

@@ -1105,7 +1105,7 @@ Example request:
 - Function: `ZaloAccountsController.findAll`
 
 #### Description
-List all Zalo accounts with master, child, and friend relations.
+List all **active** Zalo accounts (not soft-deleted) with master, child, and friend relations. Soft-deleted accounts are excluded; nested `masters` / `children` / `friends` also omit deleted peers.
 
 #### Request
 - Params: none
@@ -1122,8 +1122,11 @@ List all Zalo accounts with master, child, and friend relations.
     "phone": "0901234567",
     "name": "Master Account",
     "isMaster": true,
+    "isDeleted": false,
+    "deletedAt": null,
     "masterId": null,
     "groupCount": 5,
+    "groupData": null,
     "createdAt": "2026-04-15T08:30:00.000Z",
     "updatedAt": "2026-04-15T08:30:00.000Z",
     "master": null,
@@ -1566,7 +1569,7 @@ Example request:
 - Function: `ZaloAccountsController.findOne`
 
 #### Description
-Get one Zalo account with full relation details, including friend relationships.
+Get one **active** (not soft-deleted) Zalo account with full relation details. If the id was soft-deleted, returns `404`. Response includes `isDeleted` / `deletedAt` (always `false` / `null` when found).
 
 #### Request
 - Params:
@@ -1583,6 +1586,8 @@ Get one Zalo account with full relation details, including friend relationships.
   "phone": "0909999999",
   "name": "Child Account",
   "isMaster": false,
+  "isDeleted": false,
+  "deletedAt": null,
   "groupCount": 2,
   "groupData": null,
   "createdAt": "2026-04-15T08:31:00.000Z",
@@ -1639,6 +1644,50 @@ Get one Zalo account with full relation details, including friend relationships.
 - JWT required
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
+
+### DELETE `/zalo-accounts/:id`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/zalo-accounts/:id`
+- Function: `ZaloAccountsController.softDelete`
+
+#### Description
+**Soft delete** a Zalo account: sets `isDeleted` and `deletedAt` in the database (row is not physically removed, to preserve foreign keys and history). The account is then **excluded** from listings, filters, and all other features that resolve an account (invite/remove member, group bulk, `POST /messages/send`, etc.). `GET /zalo-accounts/...` will return `404` for that id. Historical **`messages`** rows still reference the sender; **`GET /messages`** includes `sender.isDeleted` / `sender.deletedAt` so the client can show the correct UI.
+
+All **`ZaloLoginSession`** rows whose `zalo_uid` matches this account’s `zalo_id` are **deleted** (real delete), in the same transaction as the soft delete — so no orphaned QR/cookie sessions remain for that Zalo identity. If the account has no `zalo_id`, no session rows are removed.
+
+Idempotent: if the account is already soft-deleted, still runs session cleanup (returns how many `zalo_login_sessions` rows were removed, often `0`).
+
+#### Request
+- Params:
+  - `id`: `string`, UUID
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "message": "Zalo account removed.",
+  "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "isDeleted": true,
+  "deletedAt": "2026-04-21T12:00:00.000Z",
+  "loginSessionsRemoved": 1
+}
+```
+
+`loginSessionsRemoved` is the number of `zalo_login_sessions` rows deleted (may be `0` if there was no `zalo_id` or no stored session). The idempotent (already-removed) response includes `loginSessionsRemoved` but omits `deletedAt`.
+
+#### Error cases
+- `400`: invalid UUID
+- `401` / `403`: as other `zalo-accounts` routes
+- `404`: id does not exist
+- `500`: unexpected error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
 
 ### PATCH `/zalo-accounts/:id/group-data`
 #### Endpoint
@@ -1854,7 +1903,7 @@ Mark an existing account as a master account. The account is updated with `isMas
 - Function: `MessagesController.findAll`
 
 #### Description
-Return paginated message logs with optional filtering by message status.
+Return paginated message logs with optional filtering by message status. Each item’s **`sender`** includes **`isDeleted`** and **`deletedAt`** for the Zalo account that sent the message (so the UI can show when the sender was soft-deleted via `DELETE /zalo-accounts/:id`).
 
 #### Request
 - Params: none
@@ -1894,7 +1943,9 @@ Example request:
         "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
         "zaloId": "1122334455",
         "name": "Child Account",
-        "phone": "0909999999"
+        "phone": "0909999999",
+        "isDeleted": false,
+        "deletedAt": null
       },
       "group": {
         "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",

@@ -15,6 +15,7 @@ import {
   HiOutlineUserCircle,
   HiOutlineExclamationTriangle,
   HiOutlineFunnel,
+  HiTrash,
 } from "react-icons/hi2";
 import { useToast } from "@/components/features/Toast";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
@@ -26,7 +27,16 @@ import FormError from "@/components/ui/FormError";
 import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { createZaloGroupsBulk } from "@/lib/api/zalo-groups";
-import { addChildZaloAccounts, createZaloAccount, filterZaloAccountsByType, getZaloAccounts, searchZaloAccounts, setZaloAccountMaster, updateZaloAccountGroupData } from "@/lib/api/zalo-accounts";
+import {
+  addChildZaloAccounts,
+  createZaloAccount,
+  deleteZaloAccount,
+  filterZaloAccountsByType,
+  getZaloAccounts,
+  searchZaloAccounts,
+  setZaloAccountMaster,
+  updateZaloAccountGroupData,
+} from "@/lib/api/zalo-accounts";
 import { ApiError } from "@/lib/api/client";
 import type { BulkCreateZaloGroupInput, ZaloAccount, ZaloAccountFilterType } from "@/lib/api/types";
 import {
@@ -768,6 +778,26 @@ export default function ZaloAccountsPage() {
     router.push(`/zalo-accounts/${accountId}`);
   };
 
+  const handleDeleteAccount = useCallback(
+    async (account: ZaloAccount) => {
+      const confirmed = window.confirm(
+        `Bạn có chắc chắn muốn xóa tài khoản "${account.name}"? Tài khoản sẽ bị ẩn khỏi hệ thống (xóa mềm).`,
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteZaloAccount(account.id);
+        showToast("Đã xóa tài khoản.", "success");
+        await loadAccounts();
+      } catch (requestError) {
+        showToast(getErrorMessage(requestError, "Không thể xóa tài khoản."), "error");
+      }
+    },
+    [loadAccounts, showToast],
+  );
+
   // SECTION: ROW ACTION MENU
   // Tập trung toàn bộ action hiển thị ở mỗi dòng để dễ tìm nơi thêm / bớt menu thao tác.
   const getActionItems = (account: ZaloAccount): ActionItem[] => {
@@ -805,9 +835,16 @@ export default function ZaloAccountsPage() {
           label: "Xem chi tiết",
           icon: <HiMiniEye />,
           onClick: () => handleOpenAccountDetails(account.id),
-        }
+        },
       );
     }
+
+    items.push({
+      label: "Xóa tài khoản",
+      icon: <HiTrash />,
+      danger: true,
+      onClick: () => void handleDeleteAccount(account),
+    });
 
     return items;
   };

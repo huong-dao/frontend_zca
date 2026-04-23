@@ -176,6 +176,15 @@ export interface SetZaloAccountMasterResponse {
   updatedAt: string;
 }
 
+/** DELETE `/zalo-accounts/:id` — soft delete. */
+export interface DeleteZaloAccountResponse {
+  message: string;
+  id: string;
+  isDeleted: boolean;
+  deletedAt?: string;
+  loginSessionsRemoved: number;
+}
+
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -331,6 +340,39 @@ export interface SendMessagePersistedRow {
 export interface SendMessageResponse {
   result: unknown;
   message: SendMessagePersistedRow;
+}
+
+export type MessageLogStatus = "SENT" | "FAILED" | "RECALL";
+
+export interface MessageLogSender {
+  id: string;
+  zaloId: string;
+  name: string;
+  phone: string;
+  isDeleted: boolean;
+  deletedAt: string | null;
+}
+
+export interface MessageLogGroup {
+  id: string;
+  groupName: string;
+  groupZaloId: string;
+}
+
+/** GET `/messages` — một dòng trong `data`. */
+export interface MessageLog {
+  id: string;
+  messageZaloId: string | null;
+  cliMsgId: string | null;
+  uidFrom: string;
+  content: string;
+  senderId: string;
+  groupId: string;
+  sentAt: string;
+  status: MessageLogStatus;
+  createdAt: string;
+  sender: MessageLogSender;
+  group: MessageLogGroup;
 }
 
 export interface UpdateZaloAccountGroupDataPayload {
