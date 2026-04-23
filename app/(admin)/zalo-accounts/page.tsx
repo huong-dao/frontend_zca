@@ -680,7 +680,7 @@ export default function ZaloAccountsPage() {
 
       setScanGroupMessage("Đang tạo nhóm Zalo trong hệ thống từ dữ liệu vừa quét...\nVui lòng chờ hoàn tất.");
 
-      const bulkCreateResponse = await createZaloGroupsBulk(accountId, { groups, mode: "update origin name" });
+      const bulkCreateResponse = await createZaloGroupsBulk(accountId, { groups });
 
       setScanGroupMessage(
         `Đã tạo nhóm Zalo xong!\nTạo mới: ${bulkCreateResponse.summary.created}, đã có sẵn: ${bulkCreateResponse.summary.skippedExisting}.\nTự động đóng popup sau 3 giây...`,

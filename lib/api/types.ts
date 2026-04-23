@@ -206,6 +206,8 @@ export interface ZaloGroup {
   id: string;
   groupName: string;
   groupZaloId: string;
+  /** Global id nhóm từ Zalo (E2E / định danh chuỗi), nếu backend đồng bộ. */
+  globalId?: string;
   originName: string;
   isUpdateName: boolean;
   createdAt: string;
@@ -252,11 +254,13 @@ export type PendingNameUpdateZaloGroupsResponse = ZaloGroup[];
 export interface UpdateZaloGroupPayload {
   group_name: string;
   group_zalo_id: string;
+  global_id?: string;
 }
 
 export interface UpdateZaloGroupResponse {
   id: string;
   groupName: string;
+  globalId?: string;
   isUpdateName: boolean;
   createdAt: string;
   updatedAt: string;

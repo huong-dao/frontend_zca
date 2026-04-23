@@ -43,7 +43,13 @@ function getReadableGroupName(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function extractGroupNameFromGroupInfo(groupId: string, payload: unknown) {
+function getReadableGlobalId(record: Record<string, unknown>) {
+  const v = record.globalId ?? record.global_id;
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+/** Trích tên + globalId từ phản hồi get-group-info (globalId cùng object với tên hợp lệ). */
+function extractGroupNameAndGlobalIdFromGroupInfo(groupId: string, payload: unknown) {
   const queue: unknown[] = [payload];
   const visited = new Set<unknown>();
 
@@ -77,7 +83,7 @@ function extractGroupNameFromGroupInfo(groupId: string, payload: unknown) {
       getReadableGroupName(record.subject);
 
     if (groupName) {
-      return groupName;
+      return { groupName, globalId: getReadableGlobalId(record) };
     }
 
     queue.push(...Object.values(record));
@@ -135,13 +141,17 @@ export function ZaloGroupNameSyncProvider({ children }: { children: ReactNode })
             group.groupZaloId,
             sessionResponse.session?.id,
           );
-          const updatedGroupName =
-            extractGroupNameFromGroupInfo(group.groupZaloId, groupInfoResponse.groupInfo) ??
-            group.groupName;
+          const extracted = extractGroupNameAndGlobalIdFromGroupInfo(
+            group.groupZaloId,
+            groupInfoResponse.groupInfo,
+          );
+          const updatedGroupName = extracted?.groupName ?? group.groupName;
+          const globalIdToPersist = extracted?.globalId ?? (group.globalId?.trim() || undefined);
 
           await updateZaloGroup(group.id, {
             group_name: updatedGroupName,
             group_zalo_id: group.groupZaloId,
+            ...(globalIdToPersist ? { global_id: globalIdToPersist } : {}),
           });
         } catch (requestError) {
           setLastError(
