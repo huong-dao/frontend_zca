@@ -73,6 +73,10 @@ This document is intended for the NextJS frontend team and is generated from the
 - `FAILED`: send attempt failed but log was still stored
 - `RECALL`: message was recalled successfully via Zalo undo API
 
+### ZaloAccountStatus
+- `ACTIVE`: account can be used for messaging (and normal UI actions) per backend rules
+- `INACTIVE`: set while a **child group scan** (or post-invite sync) is in progress; the frontend can use this to **disable** “quét nhóm” / related buttons until the job finishes and status returns to `ACTIVE`
+
 ## System API
 ### GET `/`
 #### Endpoint
@@ -787,33 +791,33 @@ With `"mode": "update origin name"` at the top level of the body (next to `group
 - Function: `ZaloGroupsController.inviteMemberToGroup`
 
 #### Description
-Invite a **child** Zalo user into a Zalo group using the **master** account’s stored login session.
+Invite a **child** Zalo user into a Zalo group using the **master** account’s stored login session. The endpoint **only** calls Zalo (`findUser` + `addUserToGroup`); it does **not** create or update `zalo_account_groups` rows. Use **`ZaloGroup.global_id`** (Zalo’s unique group id, identical for master and child views) to identify the group in your app and in this API when possible.
 
 Behavior:
-1. Resolves the **`ZaloAccountGroup`** row for **`masterZaloAccountId`** (must be `isMaster = true`):
-   - If the body includes **`groupId`** (internal `ZaloGroup.id` UUID), that value is used and **`groupName` is not used for lookup** (the group must exist and be linked to this master). If multiple mappings existed for the same master + group id, the **first** by **`joinedAt` ascending** is used.
-   - Otherwise **`groupName`** is required: find by **`ZaloGroup.groupName`** scoped to this master only. If more than one mapping matches the name, the **first** by **`joinedAt` ascending** is used. From the chosen row the API gets the internal **`group_id`** and **`groupZaloId`** for Zalo API calls.
-2. Resolves the invitee’s **phone number** from `phoneNumber` and/or the child row (`childZaloAccountId`).
-3. On the **master** `sessionId`, calls Zalo `findUser(phone)` to obtain the **friend-graph `uid`** (this may differ from the child’s `getOwnId()` / stored `zalo_id`).
-4. Calls Zalo `addUserToGroup(uid, groupZaloId)` in the same session using the **master’s** grid id (from the master’s `ZaloAccountGroup` row).
-5. If Zalo returns success and **`errorMembers` is empty** (and no entries in `error_data`), and **`childZaloAccountId`** is provided, the API creates a **`ZaloAccountGroup` row for the child** with the **same** internal `group_id` and **same** `group_zalo_id` as the master’s mapping (multiple accounts may now share the same `group_zalo_id` in the database). The child’s `groupCount` is updated.
+1. Resolves the **`ZaloAccountGroup`** row for **`masterZaloAccountId`** (must be `isMaster = true`) to obtain **`groupZaloId`** for zca-js:
+   - If **`globalId`** is set: find **`ZaloGroup`** by **`zalo_groups.global_id`**, then the mapping **master + that `group_id`**. (When `globalId` is sent, **`groupId` / `groupName` are ignored** for lookup.)
+   - Else if **`groupId`** (internal `ZaloGroup.id` UUID) is set: same as before; **`groupName` is not used for lookup**; the **first** mapping by **`joinedAt` ascending** wins if duplicates.
+   - Else **`groupName`** is required: find by **`ZaloGroup.groupName`** scoped to this master; **first** by **`joinedAt` ascending** wins.
+2. Resolves the invitee’s **phone** from `phoneNumber` and/or the child row (`childZaloAccountId`).
+3. On the **master** `sessionId`, calls Zalo `findUser(phone)` for the **friend-graph `uid`**, then **`addUserToGroup(uid, groupZaloId)`** (master’s grid id from the mapping row — Zalo’s API still uses the per-device grid id for the call, while **`globalId`** in our DB is the stable identifier for the group).
 
 **Frontend requirements**
 - `sessionId`: latest `zalo_login_sessions.id` for the **master** (same pattern as `GET /zalo/actions/groups?sessionId=...`).
 - Master must be **Zalo friends** with the invitee and have permission to add members to that group (Zalo-side rules).
-- If `childZaloAccountId` is sent, that account must exist in `zalo_account_relations` as a **child** of `masterZaloAccountId`.
-- To persist the child’s membership in the DB after a successful invite, include **`childZaloAccountId`** (same `group_zalo_id` as master is stored automatically).
+- If `childZaloAccountId` is sent, that account must exist in `zalo_account_relations` as a **child** of `masterZaloAccountId` (used to resolve `phone` only).
+- After a **successful** Zalo invite, if **`childZaloAccountId`** is set, the server attempts to **enqueue a background child group scan** (same pipeline as `POST /zalo-accounts/:id/child-group-scan`: `getAllGroups` + batched `getGroupInfo`, Redis cache, `zalo_account_groups` mapping by `globalId`). The child’s **`ZaloAccount.status`** becomes **`INACTIVE`** for the duration of that work (and is set back to **`ACTIVE`** when the last chunk finishes, or on error). The client should read **`status`** from account payloads (e.g. list/detail) to hide repeat actions (e.g. “quét nhóm” / invite-driven sync) while **`INACTIVE`**.
 
 #### Request
 - Params: none
 - Query: none
 - Body:
-  - `groupId`: `string`, optional, UUID — internal `ZaloGroup.id`; when present, resolves the group by id (for this master only) and **ignores `groupName`** for lookup
-  - `groupName`: `string`, required **unless** `groupId` is sent — non-empty after trim; must match `zalo_groups.group_name` for a group linked to **`masterZaloAccountId`** via `zalo_account_groups`
+  - `globalId`: `string`, optional, non-empty after trim — Zalo **group** global id (`zalo_groups.global_id`); **preferred**; when present, **`groupId` / `groupName` are ignored** for lookup
+  - `groupId`: `string`, optional, UUID — internal `ZaloGroup.id`; when present (and `globalId` omitted), **ignores `groupName`**
+  - `groupName`: `string`, required if neither `globalId` nor `groupId` is sent — must match a group linked to **`masterZaloAccountId`**
   - `sessionId`: `string`, UUID — master `zalo_login_sessions.id`
   - `masterZaloAccountId`: `string`, UUID — master `zalo_accounts.id` (`isMaster` must be `true`)
   - `phoneNumber`: `string`, optional, minimum length `5` — used for `findUser` on the master session; may be omitted if `childZaloAccountId` is provided and that row has `phone`
-  - `childZaloAccountId`: `string`, optional, UUID — child account; when present, must be linked to the master via `zalo_account_relations`; supplies `phone` when `phoneNumber` is omitted; required for inserting `ZaloAccountGroup` after invite
+  - `childZaloAccountId`: `string`, optional, UUID — child account; when present, must be linked to the master via `zalo_account_relations`; supplies `phone` when `phoneNumber` is omitted
 
 Example request:
 
@@ -849,6 +853,17 @@ Example with internal group UUID (no `groupName` needed for lookup):
 }
 ```
 
+Example with **`globalId`** (preferred when `zalo_groups.global_id` is set):
+
+```json
+{
+  "globalId": "EPHPVTP4JNKHS9M7F4QP0UK2I8978C00",
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
+}
+```
+
 #### Response
 
 ```json
@@ -863,24 +878,17 @@ Example with internal group UUID (no `groupName` needed for lookup):
   "zalo": {
     "errorMembers": [],
     "error_data": {}
-  },
-  "dbSync": {
-    "persisted": true,
-    "created": true,
-    "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91",
-    "groupZaloId": "4722820980206948279",
-    "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001"
   }
 }
 ```
 
-(`zalo` shape follows zca-js `addUserToGroup` response. If `childZaloAccountId` is omitted, `dbSync.persisted` is `false` and `dbSync.reason` explains the skip.)
+(`zalo` shape follows zca-js `addUserToGroup` response. This route does **not** create or update database rows.)
 
 #### Error cases
-- `400`: validation error; neither `groupId` nor valid `groupName` (when `groupId` omitted); master not `isMaster`; child is master; child not linked to master; could not resolve phone; Zalo `addUserToGroup` returned non-empty `errorMembers` / `error_data`; Zalo API error (e.g. not friends, not admin, invalid params) — message may be prefixed with `[code]`
+- `400`: validation error; no way to identify the group (`globalId` / `groupId` / `groupName`); master not `isMaster`; child is master; child not linked to master; could not resolve phone; Zalo `addUserToGroup` returned non-empty `errorMembers` / `error_data`; Zalo API error (e.g. not friends, not admin, invalid params) — message may be prefixed with `[code]`
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
-- `404`: master account not found; child account not found; **`ZaloGroup` not found** (when `groupId` is used but id does not exist); no `ZaloAccountGroup` row for **this master** and the resolved group (by id or by name)
+- `404`: master account not found; child account not found; **`ZaloGroup` not found** (unknown `groupId` or unknown **`global_id`**); no `ZaloAccountGroup` row for **this master** and the resolved group; no group for **name** (legacy lookup)
 - `500`: failed to restore Zalo client from session credentials; unexpected error
 
 #### Authentication
@@ -897,14 +905,14 @@ Example with internal group UUID (no `groupName` needed for lookup):
 #### Description
 Remove a Zalo user from a group using the **master** session, mirroring **`POST /zalo-groups/invite-member`** but calling Zalo **`removeUserFromGroup(memberUid, groupZaloId)`** instead of `addUserToGroup`.
 
-Same group resolution (`groupId` or `groupName` + `masterZaloAccountId`), same member resolution (`phoneNumber` / `childZaloAccountId` + `findUser` on the master session). The **`groupZaloId`** used for Zalo is always the one from the master’s **`zalo_account_groups`** row.
+Same group resolution as invite: prefer **`globalId`**, else **`groupId`**, else **`groupName`**, plus `masterZaloAccountId`. Same member resolution. The **`groupZaloId`** for Zalo is from the master’s **`zalo_account_groups`** row.
 
-After a successful remove (`errorMembers` empty), if **`childZaloAccountId`** is set, the API **deletes** the child’s **`zalo_account_groups`** row for that internal `group_id` and refreshes the child’s **`groupCount`**.
+After a successful remove (`errorMembers` empty), if **`childZaloAccountId`** is set, the API **deletes** the child’s **`zalo_account_groups`** row for that internal `group_id` (if present) and refreshes the child’s **`groupCount`**.
 
 #### Request
 - Params: none
 - Query: none
-- Body: same fields as **`POST /zalo-groups/invite-member`** (`groupId`, `groupName`, `sessionId`, `masterZaloAccountId`, `phoneNumber`, `childZaloAccountId`).
+- Body: same fields as **`POST /zalo-groups/invite-member`**, including optional **`globalId`**, plus `groupId`, `groupName`, `sessionId`, `masterZaloAccountId`, `phoneNumber`, `childZaloAccountId`.
 
 Example:
 
@@ -1832,6 +1840,54 @@ Example request:
 - `401`: missing/invalid JWT
 - `404`: one or more child Zalo accounts were not found
 - `404`: master Zalo account not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`, `USER`
+
+### POST `/zalo-accounts/:id/child-group-scan`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-accounts/:id/child-group-scan` (`id` = child `zalo_accounts.id` UUID)
+- Function: `ZaloAccountsController.childGroupScan` → `ChildGroupSyncService.startChildGroupScan`
+
+#### Description
+**“Quét nhóm” (child only):** validates the child account, checks `sessionId` belongs to the **current app user** and matches the child’s `zaloId`, sets **`ZaloAccount.status`** to **`INACTIVE`**, and enqueues a Bull job. The job loads group grid ids from Zalo via **`getAllGroups`**, then calls **`getGroupInfo`** in batches (default **~20** ids per Zalo call), at most **~10** such calls per job run; remaining work is re-queued after a **~3 minute** delay (configurable; not the master `GROUP_SYNC_CRON` interval). When the last chunk completes successfully, status returns to **`ACTIVE`**. If the child is already **`INACTIVE`**, the API returns **`409`** to avoid double scans.
+
+**Environment:** set **`GROUP_SYNC_ENABLED=true`** (và Redis như job master). Tuỳ chọn điều chỉnh `CHILD_GROUP_SYNC_*` cho batch, delay, cache — xem `.env.example`.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID — child `zalo_accounts.id` (`isMaster` must be `false`)
+- Query: none
+- Body:
+  - `sessionId`: `string`, UUID — a `zalo_login_sessions.id` for the **current user** whose `zaloUid` matches this child’s `zaloId`
+
+Example request:
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa"
+}
+```
+
+#### Response
+
+```json
+{
+  "enqueued": true,
+  "zaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91",
+  "status": "INACTIVE"
+}
+```
+
+#### Error cases
+- `400`: validation error; account is not a child; child has no `zaloId`; `sessionId` not for current user or not for this Zalo account; feature disabled
+- `401` / `403`: as other `zalo-accounts` routes
+- `404`: Zalo account not found
+- `409`: `status` is already `INACTIVE` (scan already running)
 - `500`: unexpected server error
 
 #### Authentication

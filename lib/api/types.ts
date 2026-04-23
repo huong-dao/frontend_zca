@@ -58,6 +58,7 @@ export interface ZaloAccount {
   name: string;
   isMaster: boolean;
   masterId: string | null;
+  status: "ACTIVE" | "INACTIVE";
   groupCount: number;
   groupData: Record<string, string>;
   createdAt: string;
