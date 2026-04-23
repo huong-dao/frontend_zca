@@ -31,3 +31,10 @@ export function sendMessage(data: SendMessagePayload) {
     body: data,
   });
 }
+
+/** DELETE `/messages/:id` — đặt trạng thái RECALL (thu hồi ở mức app). */
+export function recallMessage(messageId: string) {
+  return apiRequest<MessageLog>(`/messages/${encodeURIComponent(messageId)}`, {
+    method: "DELETE",
+  });
+}

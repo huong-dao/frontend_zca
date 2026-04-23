@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiArrowPath } from "react-icons/hi2";
+import { HiArrowPath, HiArrowUturnLeft } from "react-icons/hi2";
+import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
+import { useToast } from "@/components/features/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMessages } from "@/lib/api/messages";
+import { getMessages, recallMessage } from "@/lib/api/messages";
 import type { MessageLog, MessageLogStatus, PaginationMeta } from "@/lib/api/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -54,8 +56,13 @@ function truncateText(text: string, maxLen: number) {
   return `${text.slice(0, maxLen)}…`;
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function MessagesPage() {
   const { user, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const [messages, setMessages] = useState<MessageLog[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(EMPTY_META);
   const [page, setPage] = useState(1);
@@ -63,6 +70,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [recallingId, setRecallingId] = useState<string | null>(null);
 
   const loadMessages = useCallback(
     async (nextPage: number, options?: { silent?: boolean }) => {
@@ -121,6 +129,42 @@ export default function MessagesPage() {
 
   const handleRefresh = () => {
     void loadMessages(page, { silent: true });
+  };
+
+  const handleRecallMessage = useCallback(
+    async (row: MessageLog) => {
+      if (row.status !== "SENT") {
+        return;
+      }
+      setRecallingId(row.id);
+      try {
+        const updated = await recallMessage(row.id);
+        setMessages((previous) => previous.map((item) => (item.id === row.id ? updated : item)));
+        showToast("Đã thu hồi tin nhắn.", "success");
+      } catch (requestError) {
+        showToast(
+          getErrorMessage(requestError, "Không thể thu hồi tin nhắn."),
+          "error",
+        );
+      } finally {
+        setRecallingId(null);
+      }
+    },
+    [showToast],
+  );
+
+  const getMessageActionItems = (row: MessageLog): ActionItem[] => {
+    if (row.status !== "SENT") {
+      return [];
+    }
+    return [
+      {
+        label: recallingId === row.id ? "Đang thu hồi…" : "Thu hồi",
+        icon: <HiArrowUturnLeft />,
+        danger: true,
+        onClick: () => void handleRecallMessage(row),
+      },
+    ];
   };
 
   const pageSummary = useMemo(() => {
@@ -193,64 +237,77 @@ export default function MessagesPage() {
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Gửi lúc
               </th>
+              <th className="text-sm px-6 py-3 text-label-sm text-right text-on-surface font-normal" />
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant/10">
             {loading && messages.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   Đang tải danh sách tin nhắn…
                 </td>
               </tr>
             ) : messages.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   {statusFilter
                     ? "Không có tin nhắn nào phù hợp bộ lọc."
                     : "Chưa có tin nhắn nào."}
                 </td>
               </tr>
             ) : (
-              messages.map((row) => (
-                <tr key={row.id} className="group transition-colors hover:bg-surface-container-low/30">
-                  <td className="px-6 py-3 align-top">
-                    <p
-                      className="max-w-md text-sm text-on-surface line-clamp-3"
-                      title={row.content}
-                    >
-                      {truncateText(row.content, 200)}
-                    </p>
-                    {row.messageZaloId ? (
-                      <p className="mt-1 text-xs text-on-surface-variant">msgId: {row.messageZaloId}</p>
-                    ) : null}
-                  </td>
-                  <td className="px-6 py-3 align-top text-sm text-on-surface">
-                    <div className="font-medium">{row.group?.groupName ?? "—"}</div>
-                    <div className="text-xs text-on-surface-variant">{row.group?.groupZaloId}</div>
-                  </td>
-                  <td className="px-6 py-3 align-top text-sm text-on-surface">
-                    <div className="font-medium flex flex-wrap items-center gap-1.5">
-                      <span>{row.sender?.name ?? "—"}</span>
-                      {row.sender?.isDeleted ? (
-                        <Badge variant="error" className="text-[10px]">
-                          Đã xóa
-                        </Badge>
+              messages.map((row) => {
+                const actionItems = getMessageActionItems(row);
+                return (
+                  <tr key={row.id} className="group transition-colors hover:bg-surface-container-low/30">
+                    <td className="px-6 py-3 align-top">
+                      <p
+                        className="max-w-md text-sm text-on-surface line-clamp-3"
+                        title={row.content}
+                      >
+                        {truncateText(row.content, 200)}
+                      </p>
+                      {row.messageZaloId ? (
+                        <p className="mt-1 text-xs text-on-surface-variant">msgId: {row.messageZaloId}</p>
                       ) : null}
-                    </div>
-                  </td>
-                  <td className="px-6 py-3 align-top text-sm text-on-surface">
-                    {row.sender?.phone ?? "—"}
-                  </td>
-                  <td className="px-6 py-3 align-top">
-                    <Badge variant={statusBadgeVariant(row.status)} className="text-xs">
-                      {row.status}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3 align-top text-sm text-on-surface-variant">
-                    {row.sentAt ? formatDateTime(row.sentAt) : "—"}
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="px-6 py-3 align-top text-sm text-on-surface">
+                      <div className="font-medium">{row.group?.groupName ?? "—"}</div>
+                      <div className="text-xs text-on-surface-variant">{row.group?.groupZaloId}</div>
+                    </td>
+                    <td className="px-6 py-3 align-top text-sm text-on-surface">
+                      <div className="font-medium flex flex-wrap items-center gap-1.5">
+                        <span>{row.sender?.name ?? "—"}</span>
+                        {row.sender?.isDeleted ? (
+                          <Badge variant="error" className="text-[10px]">
+                            Đã xóa
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 align-top text-sm text-on-surface">
+                      {row.sender?.phone ?? "—"}
+                    </td>
+                    <td className="px-6 py-3 align-top">
+                      <Badge variant={statusBadgeVariant(row.status)} className="text-xs">
+                        {row.status}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-3 align-top text-sm text-on-surface-variant">
+                      {row.sentAt ? formatDateTime(row.sentAt) : "—"}
+                    </td>
+                    <td className="px-6 py-3 text-right align-top">
+                      {actionItems.length > 0 ? (
+                        <div className="inline-flex">
+                          <ActionMenu items={actionItems} />
+                        </div>
+                      ) : (
+                        <span className="text-xs text-on-surface-variant">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

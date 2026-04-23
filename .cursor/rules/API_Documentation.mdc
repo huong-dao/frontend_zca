@@ -2047,6 +2047,39 @@ Example:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Roles: authenticated `ADMIN` or `USER`
 
+### DELETE `/messages/:id`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/messages/:id`
+- Function: `MessagesController.remove`
+
+#### Description
+**App-level “delete” / recall:** does **not** remove the row. Sets `status` to **`RECALL`** on the `messages` table (history kept for analytics / foreign keys).
+
+Only the **same app user** who can act as the **sender** may call this: the JWT user must have a stored **`zalo_login_sessions`** row for the message sender’s `zalo_id` (same rule as sending with that child account). If the message is already `RECALL`, the response is still **200** with the current row (idempotent).
+
+This does **not** call Zalo’s `deleteMessage` API — it only updates your database. Sync with Zalo separately if needed.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID — internal `messages.id`
+- Query: none
+- Body: none
+
+#### Response
+Full message object (same shape as list items in `GET /messages`), with `status: "RECALL"`.
+
+#### Error cases
+- `400`: invalid UUID; sender account removed or missing `zalo_id`; message not in `SENT` status
+- `401`: missing/invalid JWT
+- `404`: message not found; **no QR session** for this user + sender’s `zalo_id` (must be logged in as that child on this app user)
+- `500`: unexpected error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### POST `/messages/recall/:id`
 #### Endpoint
 - Method: `POST`
@@ -2054,7 +2087,7 @@ Example:
 - Function: `MessagesController.recall`
 
 #### Description
-This endpoint is no longer executed in the backend. Message recall is now handled in the frontend.
+Same behavior as **`DELETE /messages/:id`** (sets `status` to `RECALL`, no row delete). Kept for clients that prefer POST for this action.
 
 #### Request
 - Params:
@@ -2063,19 +2096,15 @@ This endpoint is no longer executed in the backend. Message recall is now handle
 - Body: none
 
 #### Response
-The backend currently returns an error for this endpoint.
+Same as **`DELETE /messages/:id`**.
 
 #### Error cases
-- `400`: invalid UUID
-- `400`: recalling messages is handled in the frontend
-- `401`: missing/invalid JWT
-- `404`: message not found
-- `500`: unexpected server error
+Same as **`DELETE /messages/:id`**.
 
 #### Authentication
 - JWT required
-- Guards: `JwtAuthGuard`
-- Roles: any authenticated `ADMIN` or `USER`
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
 
 ## Configs API
 ### GET `/configs`
