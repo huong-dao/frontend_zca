@@ -1047,12 +1047,14 @@ export default function ZaloAccountsPage() {
 
                   <td className="px-6 py-3">
                     <div className="text-sm text-on-surface-variant">
-                      {hasGroupData(account.groupData, account.id) ? (
-                        <Badge className="text-xs" variant="success" icon={<HiOutlineCheckCircle />}>
-                          Đã quét
-                        </Badge>
-                      ) : (
-                        <Badge className="text-xs" variant="warning">Chưa quét</Badge>
+                      {account.isMaster && (
+                        hasGroupData(account.groupData, account.id) ? (
+                          <Badge className="text-xs" variant="success" icon={<HiOutlineCheckCircle />}>
+                            Đã quét
+                          </Badge>
+                        ) : (
+                          <Badge className="text-xs" variant="warning">Chưa quét</Badge>
+                        )
                       )}
                     </div>
                   </td>

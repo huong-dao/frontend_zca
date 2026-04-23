@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { HiArrowLongLeft, HiChatBubbleLeftRight, HiMiniUserMinus, HiMiniUserPlus, HiUserGroup } from "react-icons/hi2";
+import {
+  HiArrowLongLeft,
+  HiChatBubbleLeftRight,
+  HiMiniUserMinus,
+  HiMiniUserPlus,
+  HiUserGroup,
+  HiUserMinus,
+} from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
 import GroupFilterSearchField from "@/components/features/GroupFilterSearchField";
 import GroupSearchCombobox from "@/components/features/GroupSearchCombobox";
@@ -14,7 +21,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
 import { sendMessage } from "@/lib/api/messages";
-import { getZaloGroupsByAccountId, inviteMemberToZaloGroup } from "@/lib/api/zalo-groups";
+import { getZaloGroupsByAccountId, inviteMemberToZaloGroup, removeMemberFromZaloGroup } from "@/lib/api/zalo-groups";
 import { getCurrentZaloSession } from "@/lib/zalo/client";
 import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@/lib/api/types";
 
@@ -60,6 +67,11 @@ export default function ZaloAccountDetailsPage() {
   const [inviteTargetChild, setInviteTargetChild] = useState<ZaloAccountChild | null>(null);
   const [inviteSelectedGroup, setInviteSelectedGroup] = useState<ZaloGroup | null>(null);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
+
+  const [removeFromGroupModalOpen, setRemoveFromGroupModalOpen] = useState(false);
+  const [removeTargetChild, setRemoveTargetChild] = useState<ZaloAccountChild | null>(null);
+  const [removeSelectedGroup, setRemoveSelectedGroup] = useState<ZaloGroup | null>(null);
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
 
   const [testMessageModalOpen, setTestMessageModalOpen] = useState(false);
   const [testSendChildId, setTestSendChildId] = useState("");
@@ -299,6 +311,75 @@ export default function ZaloAccountDetailsPage() {
     }
   };
 
+  const openRemoveFromGroupModal = (child: ZaloAccountChild) => {
+    setRemoveTargetChild(child);
+    setRemoveSelectedGroup(null);
+    setRemoveFromGroupModalOpen(true);
+  };
+
+  const closeRemoveFromGroupModal = () => {
+    setRemoveFromGroupModalOpen(false);
+    setRemoveTargetChild(null);
+    setRemoveSelectedGroup(null);
+  };
+
+  const handleRemoveFromGroupSubmit = async () => {
+    if (!account || !removeTargetChild || !removeSelectedGroup) {
+      showToast("Vui lòng chọn nhóm.", "error");
+      return;
+    }
+
+    const friendStatus = getFriendStatus(removeTargetChild.id);
+    if (friendStatus !== "APPROVE") {
+      showToast("Chỉ xóa khỏi nhóm khi tài khoản con đã kết bạn với master.", "error");
+      return;
+    }
+
+    setRemoveSubmitting(true);
+
+    try {
+      const sessionResponse = await getCurrentZaloSession();
+      const sessionList =
+        sessionResponse.sessions.length > 0
+          ? sessionResponse.sessions
+          : sessionResponse.session
+            ? [sessionResponse.session]
+            : [];
+
+      const matchingSession = sessionList.find((session) => session.user.uid === account.zaloId);
+
+      if (!matchingSession) {
+        showToast(
+          "Chưa có phiên Zalo cho master này. Vui lòng đăng nhập Zalo (QR) cho tài khoản master trước.",
+          "error",
+        );
+        return;
+      }
+
+      const phoneFromFriend = getChildFriendPhone(removeTargetChild.id);
+      const payload = {
+        groupId: removeSelectedGroup.id,
+        sessionId: matchingSession.id,
+        masterZaloAccountId: account.id,
+        childZaloAccountId: removeTargetChild.id,
+        ...(phoneFromFriend ? { phoneNumber: phoneFromFriend } : {}),
+      };
+
+      await removeMemberFromZaloGroup(payload);
+      showToast(`Đã xóa ${removeTargetChild.name} khỏi nhóm.`, "success");
+      closeRemoveFromGroupModal();
+      await loadAccountDetails();
+      await loadAccountGroups();
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Không thể xóa thành viên khỏi nhóm.",
+        "error",
+      );
+    } finally {
+      setRemoveSubmitting(false);
+    }
+  };
+
   const openTestMessageModal = async () => {
     setTestSendChildId("");
     setTestSendGroupId("");
@@ -447,11 +528,19 @@ export default function ZaloAccountDetailsPage() {
       const items: ActionItem[] = [];
 
       if (friendStatus === "APPROVE") {
-        items.push({
-          label: "Thêm vào nhóm",
-          icon: <HiUserGroup />,
-          onClick: () => void openInviteToGroupModal(child),
-        });
+        items.push(
+          {
+            label: "Thêm vào nhóm",
+            icon: <HiUserGroup />,
+            onClick: () => void openInviteToGroupModal(child),
+          },
+          {
+            label: "Xóa khỏi nhóm",
+            icon: <HiUserMinus />,
+            danger: true,
+            onClick: () => void openRemoveFromGroupModal(child),
+          },
+        );
       }
 
       items.push({
@@ -508,6 +597,39 @@ export default function ZaloAccountDetailsPage() {
               disabled={inviteSubmitting}
               value={inviteSelectedGroup}
               onChange={setInviteSelectedGroup}
+              placeholder="Gõ để tìm theo tên nhóm…"
+            />
+          </div>
+          <p className="mt-2 text-xs text-on-surface-variant">
+            Danh sách lọc theo nhóm đã liên kết với master này.
+          </p>
+        </div>
+      </Modal>
+
+      <Modal
+        open={removeFromGroupModalOpen}
+        title={
+          removeTargetChild ? `Xóa khỏi nhóm — ${removeTargetChild.name}` : "Xóa khỏi nhóm"
+        }
+        onClose={() => {
+          if (!removeSubmitting) {
+            closeRemoveFromGroupModal();
+          }
+        }}
+        onSubmit={handleRemoveFromGroupSubmit}
+        loading={removeSubmitting}
+        loadingText="Đang xóa…"
+        buttonText="Xóa khỏi nhóm"
+        cancelText="Hủy"
+      >
+        <div>
+          <span className="block text-sm font-medium text-on-surface">Chọn nhóm</span>
+          <div className="mt-2">
+            <GroupSearchCombobox
+              accountId={accountId}
+              disabled={removeSubmitting}
+              value={removeSelectedGroup}
+              onChange={setRemoveSelectedGroup}
               placeholder="Gõ để tìm theo tên nhóm…"
             />
           </div>

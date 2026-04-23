@@ -287,6 +287,28 @@ export interface InviteMemberToZaloGroupResponse {
   };
 }
 
+/** Cùng body với mời thành viên. POST `/zalo-groups/remove-member` */
+export type RemoveMemberFromZaloGroupPayload = InviteMemberToZaloGroupPayload;
+
+export interface RemoveMemberFromZaloGroupResponse {
+  success: boolean;
+  masterGroupZaloId?: string;
+  removedMemberUid?: string;
+  findUser?: {
+    display_name?: string;
+    globalId?: string;
+  };
+  zalo?: {
+    errorMembers?: unknown[];
+  };
+  dbSync?: {
+    persisted: boolean;
+    childZaloAccountId?: string;
+    groupId?: string;
+    reason?: string;
+  };
+}
+
 export interface SendMessagePayload {
   zaloAccountId: string;
   groupId: string;

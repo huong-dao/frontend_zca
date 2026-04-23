@@ -888,6 +888,68 @@ Example with internal group UUID (no `groupName` needed for lookup):
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Roles: authenticated `ADMIN` or `USER`
 
+### POST `/zalo-groups/remove-member`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-groups/remove-member`
+- Function: `ZaloGroupsController.removeMemberFromGroup`
+
+#### Description
+Remove a Zalo user from a group using the **master** session, mirroring **`POST /zalo-groups/invite-member`** but calling Zalo **`removeUserFromGroup(memberUid, groupZaloId)`** instead of `addUserToGroup`.
+
+Same group resolution (`groupId` or `groupName` + `masterZaloAccountId`), same member resolution (`phoneNumber` / `childZaloAccountId` + `findUser` on the master session). The **`groupZaloId`** used for Zalo is always the one from the master’s **`zalo_account_groups`** row.
+
+After a successful remove (`errorMembers` empty), if **`childZaloAccountId`** is set, the API **deletes** the child’s **`zalo_account_groups`** row for that internal `group_id` and refreshes the child’s **`groupCount`**.
+
+#### Request
+- Params: none
+- Query: none
+- Body: same fields as **`POST /zalo-groups/invite-member`** (`groupId`, `groupName`, `sessionId`, `masterZaloAccountId`, `phoneNumber`, `childZaloAccountId`).
+
+Example:
+
+```json
+{
+  "groupName": "Nhóm bán hàng A",
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "masterZaloAccountId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91"
+}
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "masterGroupZaloId": "4722820980206948279",
+  "removedMemberUid": "4546690961257603620",
+  "findUser": {
+    "display_name": "Đào Văn Phương",
+    "globalId": "FJQ9QJLN50FORDFDT87QJPEMDV420BO0"
+  },
+  "zalo": {
+    "errorMembers": []
+  },
+  "dbSync": {
+    "persisted": true,
+    "childZaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91",
+    "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001"
+  }
+}
+```
+
+(`zalo` shape follows zca-js `removeUserFromGroup`. If `childZaloAccountId` is omitted, `dbSync.persisted` is `false` and `dbSync.reason` explains the skip.)
+
+#### Error cases
+- `400`: validation error; same account/relation/phone cases as invite-member; Zalo `removeUserFromGroup` returned non-empty `errorMembers`; Zalo API error
+- `401` / `403` / `404` / `500`: same categories as **invite-member** (session restore, not found, etc.)
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### PUT `/zalo-groups/:id`
 #### Endpoint
 - Method: `PUT`
@@ -1871,8 +1933,8 @@ Send a **plain text** message to a **Zalo group** as a **child** Zalo account. T
 
 1. Loads `zalo_accounts` by `zaloAccountId` (must be **`is_master = false`**) and requires **`zalo_id`** on that row.
 2. Resolves the **child’s QR session** for the **current JWT user**: latest `zalo_login_sessions` row where `user_id` = app user and `zalo_uid` = that account’s `zalo_id` (the child must have logged in under this app user).
-3. Resolves `group_zalo_id` from `zalo_account_groups` for this child + internal `groupId`.
-4. Calls zca-js `sendMessage` with **`ThreadType.Group`** (same default as `POST /zalo/actions/send-message`).
+3. Verifies a `zalo_account_groups` row links this child to the internal `groupId` (authorization only; **does not** use stored `group_zalo_id` for send — that id can differ from the child’s Zalo context).
+4. Calls **`getAllGroups`** on the child session, then finds the **Zalo group thread id** (a key in `gridVerMap`) whose value **equals** the linked `zalo_groups.originName` after trim (if `originName` is empty, falls back to `groupName`). That id is passed to zca-js `sendMessage` with **`ThreadType.Group`** (same default as `POST /zalo/actions/send-message`).
 5. On success, inserts a **`messages`** row (`status: SENT`, `content`, `sender_id`, `group_id`, optional `message_zalo_id` / `cli_msg_id` / `uid_from` parsed from the zca-js result when present).
 
 `sessionId` is **not** sent by the client. For sending by explicit `sessionId` or raw `threadId`, use **`POST /zalo/actions/send-message`** (that route does **not** write to `messages`).
@@ -1923,7 +1985,7 @@ Example:
 ```
 
 #### Error cases
-- `400`: validation error; account is master; child has no `zalo_id`; **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child and upsert `zalo_login_sessions`; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — often wrong or stale `group_zalo_id` for that child in `zalo_account_groups`, child not in the group on Zalo, or content/length limits — verify the grid id from that child’s context (e.g. `GET /zalo/actions/groups` with that child’s session) and re-link if needed
+- `400`: validation error; account is master; child has no `zalo_id`; **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child and upsert `zalo_login_sessions`; **no matching group** in the child’s `getAllGroups` list for this `ZaloGroup`’s `originName` / `groupName`, or **more than one** group with the same display name; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — child not in the group on Zalo, or content/length limits — compare names with `GET /zalo/actions/groups?sessionId=...` for that child’s session and sync `originName` if needed
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
 - `404`: Zalo account not found; no child session for this user + `zalo_id`; no `zalo_account_groups` row for this child and `groupId`

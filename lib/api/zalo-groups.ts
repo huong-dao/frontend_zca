@@ -4,6 +4,8 @@ import type {
   BulkCreateZaloGroupsResponse,
   InviteMemberToZaloGroupPayload,
   InviteMemberToZaloGroupResponse,
+  RemoveMemberFromZaloGroupPayload,
+  RemoveMemberFromZaloGroupResponse,
   PaginatedResponse,
   PendingNameUpdateZaloGroupsResponse,
   UpdateZaloGroupPayload,
@@ -88,6 +90,13 @@ export function updateZaloGroup(groupId: string, data: UpdateZaloGroupPayload) {
 /** POST `/zalo-groups/invite-member` — gửi `groupId` hoặc `groupName` (không dùng UUID trên path). */
 export function inviteMemberToZaloGroup(data: InviteMemberToZaloGroupPayload) {
   return apiRequest<InviteMemberToZaloGroupResponse>("/zalo-groups/invite-member", {
+    method: "POST",
+    body: data,
+  });
+}
+
+export function removeMemberFromZaloGroup(data: RemoveMemberFromZaloGroupPayload) {
+  return apiRequest<RemoveMemberFromZaloGroupResponse>("/zalo-groups/remove-member", {
     method: "POST",
     body: data,
   });
