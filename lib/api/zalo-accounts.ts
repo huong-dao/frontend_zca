@@ -2,6 +2,8 @@ import { apiRequest } from "@/lib/api/client";
 import type {
   AddChildZaloAccountsPayload,
   AddChildZaloAccountsResponse,
+  ChildGroupScanPayload,
+  ChildGroupScanResponse,
   CreateZaloAccountPayload,
   CreateZaloAccountResponse,
   DeleteZaloAccountResponse,
@@ -81,6 +83,14 @@ export function updateZaloAccountGroupData(data: UpdateZaloAccountGroupDataPaylo
   return apiRequest<UpdateZaloAccountGroupDataResponse>(`/zalo-accounts/${data.id}/group-data/`, {
     method: "PATCH",
     body: { groupData: data.groupData },
+  });
+}
+
+/** POST `/zalo-accounts/:id/child-group-scan` — quét nhóm cho tài khoản child (hàng đợi nền). */
+export function childGroupScan(accountId: string, body: ChildGroupScanPayload) {
+  return apiRequest<ChildGroupScanResponse>(`/zalo-accounts/${encodeURIComponent(accountId)}/child-group-scan`, {
+    method: "POST",
+    body,
   });
 }
 

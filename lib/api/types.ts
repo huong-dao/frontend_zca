@@ -30,6 +30,8 @@ export interface ZaloAccountChild {
   zaloId: string;
   name: string;
   groupCount: number;
+  /** Khi `INACTIVE`, không còn thao tác mời vào nhóm (theo nghiệp vụ backend). */
+  status?: "ACTIVE" | "INACTIVE";
 }
 
 export interface ZaloAccountFriend {
@@ -379,6 +381,16 @@ export interface MessageLog {
   createdAt: string;
   sender: MessageLogSender;
   group: MessageLogGroup;
+}
+
+export interface ChildGroupScanPayload {
+  sessionId: string;
+}
+
+export interface ChildGroupScanResponse {
+  enqueued: boolean;
+  zaloAccountId: string;
+  status: "INACTIVE";
 }
 
 export interface UpdateZaloAccountGroupDataPayload {

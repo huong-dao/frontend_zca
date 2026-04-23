@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createZaloGroupsBulk } from "@/lib/api/zalo-groups";
 import {
   addChildZaloAccounts,
+  childGroupScan,
   createZaloAccount,
   deleteZaloAccount,
   filterZaloAccountsByType,
@@ -157,6 +158,11 @@ export default function ZaloAccountsPage() {
   const [selectedMasterAccountId, setSelectedMasterAccountId] = useState("");
   const [submittingBulkAction, setSubmittingBulkAction] = useState(false);
   const [accountFilter, setAccountFilter] = useState<ZaloAccountFilterType>("all");
+  /** Khóa toàn bộ thao tác trên dòng child trong lúc quét nhóm (tới khi `loadAccounts` xong). */
+  const [childRowAllActionsLockedIds, setChildRowAllActionsLockedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const childScanLockedRef = useRef<Set<string>>(new Set());
 
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const persistedSessionIdRef = useRef<string | null>(null);
@@ -637,6 +643,37 @@ export default function ZaloAccountsPage() {
       return;
     }
 
+    if (!targetAccount.isMaster) {
+      if (childScanLockedRef.current.has(accountId)) {
+        return;
+      }
+      childScanLockedRef.current.add(accountId);
+      setChildRowAllActionsLockedIds((prev) => new Set(prev).add(accountId));
+      setScanGroupMessage("Đang gửi yêu cầu quét nhóm Zalo…");
+      setOpenModalScanningGroups(true);
+      try {
+        await childGroupScan(accountId, { sessionId: matchingSession.id });
+        setScanGroupMessage("Đã nhận yêu cầu. Đang tải lại danh sách tài khoản…");
+        await loadAccounts();
+        setScanGroupMessage(
+          "Hoàn tất. Tài khoản con tạm INACTIVE trong lúc đồng bộ nền.\nTự động đóng popup sau 3 giây…",
+        );
+        showToast("Đã gửi quét nhóm Zalo. Hệ thống sẽ đồng bộ nhóm trong nền.", "success");
+        closeScanGroupsModalAfterDelay();
+      } catch (requestError) {
+        setScanGroupMessage("Gửi yêu cầu quét nhóm thất bại. Bạn có thể đóng popup và thử lại.");
+        showToast(getErrorMessage(requestError, "Không thể quét nhóm Zalo."), "error");
+      } finally {
+        childScanLockedRef.current.delete(accountId);
+        setChildRowAllActionsLockedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(accountId);
+          return next;
+        });
+      }
+      return;
+    }
+
     setScanGroupMessage("Đang quét tất cả nhóm Zalo...");
     setOpenModalScanningGroups(true);
 
@@ -648,20 +685,7 @@ export default function ZaloAccountsPage() {
 
       await updateZaloAccountGroupData({ id: accountId, groupData: groupData });
 
-      setScanGroupMessage("Đã cập nhật dữ liệu nhóm.\nĐang kiểm tra tài khoản đang quét có phải master hay không...");
-
-      const latestAccounts = await getZaloAccounts();
-      const currentAccount = latestAccounts.find((account) => account.id === accountId);
-      const isMasterAccount = currentAccount?.isMaster ?? false;
-
-      if (!isMasterAccount) {
-        setScanGroupMessage("Đã cập nhật dữ liệu nhóm cho tài khoản hiện tại!\nTự động đóng popup sau 3 giây...");
-
-        await loadAccounts();
-        showToast("Đã cập nhật dữ liệu nhóm Zalo.", "success");
-        closeScanGroupsModalAfterDelay();
-        return;
-      }
+      setScanGroupMessage("Đã cập nhật dữ liệu nhóm.\nĐang chuẩn bị tạo nhóm trên hệ thống…");
 
       const scannedGroupIds = Object.keys(groupData);
 
@@ -832,6 +856,11 @@ export default function ZaloAccountsPage() {
 
     if (account.isMaster) {
       items.push(
+        {
+          label: "Quét nhóm Zalo",
+          icon: <HiOutlineUserGroup />,
+          onClick: () => handleScanGroups(account.id),
+        },
         {
           label: "Xem chi tiết",
           icon: <HiMiniEye />,
@@ -1044,7 +1073,8 @@ export default function ZaloAccountsPage() {
               </tr>
             ) : (
               paginatedAccounts.map((account) => {
-                // console.log(account.groupData);
+                const childRowLocked =
+                  !account.isMaster && childRowAllActionsLockedIds.has(account.id);
                 return (
                 <>
                 <tr
@@ -1054,9 +1084,10 @@ export default function ZaloAccountsPage() {
                   <td className="px-6 py-3">
                     <input
                       checked={selectedAccountIds.includes(account.id)}
-                      className="h-4 w-4 rounded border-outline-variant/30 text-primary focus:ring-primary"
+                      className="h-4 w-4 rounded border-outline-variant/30 text-primary focus:ring-primary disabled:opacity-50"
                       type="checkbox"
                       aria-label={`Chọn tài khoản ${account.name}`}
+                      disabled={childRowLocked}
                       onChange={() => handleToggleAccountSelection(account.id)}
                     />
                   </td>
@@ -1115,7 +1146,11 @@ export default function ZaloAccountsPage() {
                   </td>
 
                   <td className="px-6 py-3 text-right">
-                    <ActionMenu items={getActionItems(account)} />
+                    {childRowLocked ? (
+                      <span className="text-xs text-on-surface-variant">Đang xử lý…</span>
+                    ) : (
+                      <ActionMenu items={getActionItems(account)} />
+                    )}
                   </td>
                 </tr>
                 </>

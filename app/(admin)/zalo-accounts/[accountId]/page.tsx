@@ -80,12 +80,14 @@ export default function ZaloAccountDetailsPage() {
   const [testModalGroups, setTestModalGroups] = useState<ZaloGroup[]>([]);
   const [testModalGroupsLoading, setTestModalGroupsLoading] = useState(false);
   const [testSendSubmitting, setTestSendSubmitting] = useState(false);
+  /** Khóa “Thêm/Xóa khỏi nhóm” theo child cho tới khi refetch xong; không ảnh hưởng kết bạn / hủy kết bạn. */
+  const [groupOpsPendingChildIds, setGroupOpsPendingChildIds] = useState<Set<string>>(() => new Set());
 
-  const loadAccountDetails = useCallback(async () => {
+  const loadAccountDetails = useCallback(async (): Promise<ZaloAccount | null> => {
     if (!accountId) {
       setError("Không tìm thấy ID tài khoản Zalo.");
       setLoading(false);
-      return;
+      return null;
     }
 
     setLoading(true);
@@ -98,16 +100,17 @@ export default function ZaloAccountDetailsPage() {
       if (!matchedAccount) {
         setAccount(null);
         setError("Không tìm thấy tài khoản Zalo.");
-        return;
+        return null;
       }
 
       if (!matchedAccount.isMaster) {
         setAccount(matchedAccount);
         setError("Trang chi tiết này chỉ áp dụng cho tài khoản master.");
-        return;
+        return null;
       }
 
       setAccount(matchedAccount);
+      return matchedAccount;
     } catch (requestError) {
       setAccount(null);
       setError(
@@ -115,6 +118,7 @@ export default function ZaloAccountDetailsPage() {
           ? requestError.message
           : "Không thể tải chi tiết tài khoản Zalo.",
       );
+      return null;
     } finally {
       setLoading(false);
     }
@@ -239,10 +243,16 @@ export default function ZaloAccountDetailsPage() {
 
   const getFriendStatus = (childId: string) => friendStatusById.get(childId) ?? null;
 
+  const isChildInactive = (child: ZaloAccountChild) => child.status === "INACTIVE";
+
   const getChildFriendPhone = (childId: string) =>
     account?.friends.find((friend) => friend.id === childId)?.phone?.trim() ?? "";
 
   const openInviteToGroupModal = (child: ZaloAccountChild) => {
+    if (isChildInactive(child)) {
+      showToast("Tài khoản con đang ở trạng thái không hoạt động, không thể thêm vào nhóm.", "error");
+      return;
+    }
     setInviteTargetChild(child);
     setInviteSelectedGroup(null);
     setInviteModalOpen(true);
@@ -266,7 +276,15 @@ export default function ZaloAccountDetailsPage() {
       return;
     }
 
+    const currentChild = account.children.find((c) => c.id === inviteTargetChild.id);
+    if (currentChild && isChildInactive(currentChild)) {
+      showToast("Tài khoản con đang ở trạng thái không hoạt động, không thể thêm vào nhóm.", "error");
+      return;
+    }
+
+    const opChildId = inviteTargetChild.id;
     setInviteSubmitting(true);
+    setGroupOpsPendingChildIds((prev) => new Set(prev).add(opChildId));
 
     try {
       const sessionResponse = await getCurrentZaloSession();
@@ -297,9 +315,18 @@ export default function ZaloAccountDetailsPage() {
       };
 
       await inviteMemberToZaloGroup(payload);
-      showToast(`Đã thêm ${inviteTargetChild.name} vào nhóm.`, "success");
+      const invitedChildId = inviteTargetChild.id;
+      const invitedName = inviteTargetChild.name;
       closeInviteToGroupModal();
-      await loadAccountDetails();
+      const nextAccount = await loadAccountDetails();
+      const refreshedChild = nextAccount?.children.find((c) => c.id === invitedChildId);
+      const nowInactive = refreshedChild ? isChildInactive(refreshedChild) : false;
+      showToast(
+        nowInactive
+          ? `Đã thêm ${invitedName} vào nhóm. Tài khoản con hiện ở trạng thái không hoạt động (INACTIVE).`
+          : `Đã thêm ${invitedName} vào nhóm.`,
+        "success",
+      );
       await loadAccountGroups();
     } catch (requestError) {
       showToast(
@@ -308,6 +335,11 @@ export default function ZaloAccountDetailsPage() {
       );
     } finally {
       setInviteSubmitting(false);
+      setGroupOpsPendingChildIds((prev) => {
+        const next = new Set(prev);
+        next.delete(opChildId);
+        return next;
+      });
     }
   };
 
@@ -335,7 +367,9 @@ export default function ZaloAccountDetailsPage() {
       return;
     }
 
+    const opChildId = removeTargetChild.id;
     setRemoveSubmitting(true);
+    setGroupOpsPendingChildIds((prev) => new Set(prev).add(opChildId));
 
     try {
       const sessionResponse = await getCurrentZaloSession();
@@ -377,6 +411,11 @@ export default function ZaloAccountDetailsPage() {
       );
     } finally {
       setRemoveSubmitting(false);
+      setGroupOpsPendingChildIds((prev) => {
+        const next = new Set(prev);
+        next.delete(opChildId);
+        return next;
+      });
     }
   };
 
@@ -523,24 +562,27 @@ export default function ZaloAccountDetailsPage() {
 
   const getChildActionItems = (child: ZaloAccountChild): ActionItem[] => {
     const friendStatus = getFriendStatus(child.id);
+    const groupOpsPending = groupOpsPendingChildIds.has(child.id);
 
     if (friendStatus === "APPROVE" || friendStatus === "PENDING") {
       const items: ActionItem[] = [];
 
       if (friendStatus === "APPROVE") {
-        items.push(
-          {
+        if (!isChildInactive(child) && !groupOpsPending) {
+          items.push({
             label: "Thêm vào nhóm",
             icon: <HiUserGroup />,
             onClick: () => void openInviteToGroupModal(child),
-          },
-          {
+          });
+        }
+        if (!groupOpsPending) {
+          items.push({
             label: "Xóa khỏi nhóm",
             icon: <HiUserMinus />,
             danger: true,
             onClick: () => void openRemoveFromGroupModal(child),
-          },
-        );
+          });
+        }
       }
 
       items.push({
@@ -774,13 +816,13 @@ export default function ZaloAccountDetailsPage() {
             <tbody className="divide-y divide-outline-variant/10">
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                     Đang tải danh sách tài khoản con...
                   </td>
                 </tr>
               ) : childAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                     Tài khoản master này chưa có child nào.
                   </td>
                 </tr>
@@ -788,7 +830,14 @@ export default function ZaloAccountDetailsPage() {
                 paginatedChildAccounts.map((child) => (
                   <tr key={child.id} className="group transition-colors hover:bg-surface-container-low/30">
                     <td className="px-6 py-3">
-                      <div className="body-md font-semibold text-on-surface text-sm">{child.name}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="body-md font-semibold text-on-surface text-sm">{child.name}</span>
+                        {isChildInactive(child) ? (
+                          <Badge variant="error" className="text-xs">
+                            Không hoạt động
+                          </Badge>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-sm text-on-surface">{child.groupCount}</td>
                     <td className="px-6 py-3">
