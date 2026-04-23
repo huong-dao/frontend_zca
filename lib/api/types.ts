@@ -329,7 +329,10 @@ export interface RemoveMemberFromZaloGroupResponse {
 export interface SendMessagePayload {
   zaloAccountId: string;
   groupId: string;
-  text: string;
+  /** Có thể rỗng nếu gửi kèm `files` (multipart). */
+  text?: string;
+  /** Tối đa 20 file, mỗi file tối đa 25 MB (theo server). */
+  files?: File[];
 }
 
 export interface SendMessagePersistedRow {

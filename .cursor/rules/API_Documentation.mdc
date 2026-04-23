@@ -2036,33 +2036,37 @@ Example request:
 - Function: `MessagesController.send`
 
 #### Description
-Send a **plain text** message to a **Zalo group** as a **child** Zalo account. The backend:
+Send a **text** message and/or **one or more file attachments** to a **Zalo group** as a **child** Zalo account. The backend:
 
 1. Loads `zalo_accounts` by `zaloAccountId` (must be **`is_master = false`**) and requires **`zalo_id`** on that row.
 2. Resolves the **child’s QR session** for the **current JWT user**: latest `zalo_login_sessions` row where `user_id` = app user and `zalo_uid` = that account’s `zalo_id` (the child must have logged in under this app user).
-3. Verifies a `zalo_account_groups` row links this child to the internal `groupId` (authorization only; **does not** use stored `group_zalo_id` for send — that id can differ from the child’s Zalo context).
-4. Calls **`getAllGroups`** on the child session, then finds the **Zalo group thread id** (a key in `gridVerMap`) whose value **equals** the linked `zalo_groups.originName` after trim (if `originName` is empty, falls back to `groupName`). That id is passed to zca-js `sendMessage` with **`ThreadType.Group`** (same default as `POST /zalo/actions/send-message`).
-5. On success, inserts a **`messages`** row (`status: SENT`, `content`, `sender_id`, `group_id`, optional `message_zalo_id` / `cli_msg_id` / `uid_from` parsed from the zca-js result when present).
+3. Loads **`zalo_account_groups`** where `zalo_account_id` = `zaloAccountId` and `group_id` = `groupId` and uses **`group_zalo_id`** from that row as the Zalo **thread id** (this child’s device grid id for that group; populated by child group scan + mapping).
+4. Reads **`configurations`** key **`message_interval`** (minutes). If the value is **&gt; 0**, ensures the **previous** row in **`messages`** for the same `sender_id` + `group_id` (by `created_at` desc) is older than that many minutes; otherwise returns **400** with a Vietnamese message (name, group name, time since last send, minutes to wait).
+5. If files are present, they are written to a **temporary** path, then zca-js **`sendMessage`** is called with `MessageContent` (`msg` = trimmed `text` or empty string, `attachments` = absolute file paths) per `docs/Zalo_Integration.mdc`. If there are no files, **`sendMessage`** is called with plain text only. Default thread type: **`ThreadType.Group`** (same as `POST /zalo/actions/send-message`).
+6. On success, inserts a **`messages`** row (`status: SENT`, `content`, `sender_id`, `group_id`, optional `message_zalo_id` / `cli_msg_id` / `uid_from` parsed from the zca-js result when present). Stored **`content`** is the user-visible text, or a line such as `Đính kèm: a.pdf, b.png` (and both text and attachment names if both are present).
 
-`sessionId` is **not** sent by the client. For sending by explicit `sessionId` or raw `threadId`, use **`POST /zalo/actions/send-message`** (that route does **not** write to `messages`).
+`sessionId` is **not** sent by the client. For sending by explicit `sessionId` or raw `threadId`, use **`POST /zalo/actions/send-message`** (that route does **not** write to `messages`). File upload for app users is **only** via this endpoint, not the JSON `send-message` action.
 
 #### Request
 - Params: none
 - Query: none
-- Body:
+- **Body: `multipart/form-data`** (not JSON). Either non-empty `text` (after trim) or at least one uploaded file is required.
   - `zaloAccountId`: `string`, UUID — child `zalo_accounts.id`; must have `zalo_id` and a matching login session for the authenticated user
   - `groupId`: `string`, UUID — internal `zalo_groups.id`
-  - `text`: `string`, required, minimum length `1` — message body
+  - `text` (optional): `string` — max length 20,000; message body. May be omitted or empty if at least one file is provided.
+  - `files` (optional): one or more file parts, **repeated field name** `files` (up to 20 files). Allowed types are not restricted server-side; Zalo limits apply. Per-file size limit (multer): **25 MB**; total part count: **20**.
 
-Example request:
+Example (text only — still use **multipart** with the same field names, no `files` parts):
 
-```json
-{
-  "zaloAccountId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
-  "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
-  "text": "Hello group"
-}
+```text
+Content-Type: multipart/form-data; boundary=…
+
+zaloAccountId=7c13f32f-90eb-483f-b5e0-c3b7fa120001
+groupId=5d6a8d48-b45c-43d8-9b0d-5cc3bd110001
+text=Hello group
 ```
+
+Example: text + two files: append two parts named `files` (binary).
 
 #### Response
 - `result`: zca-js `sendMessage` return (e.g. `message` / `attachment` with `msgId`).
@@ -2092,11 +2096,12 @@ Example:
 ```
 
 #### Error cases
-- `400`: validation error; account is master; child has no `zalo_id`; **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child and upsert `zalo_login_sessions`; **no matching group** in the child’s `getAllGroups` list for this `ZaloGroup`’s `originName` / `groupName`, or **more than one** group with the same display name; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — child not in the group on Zalo, or content/length limits — compare names with `GET /zalo/actions/groups?sessionId=...` for that child’s session and sync `originName` if needed
+- `400`: validation error; **no `text` and no `files`**; account is master; child has no `zalo_id`; `zalo_account_groups.group_zalo_id` is empty; **`message_interval` missing/invalid** in `configurations`; **rate limit** — last message from this child to this group was too recent (see `message_interval`); **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — child not in the group on Zalo, or content/length limits — run child **group scan** so `group_zalo_id` and mapping stay in sync, or re-invite; individual file &gt; 25 MB or &gt; 20 files
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
 - `404`: Zalo account not found; no child session for this user + `zalo_id`; no `zalo_account_groups` row for this child and `groupId`
 - `500`: Zalo API error after session restored; DB error after a successful Zalo send (rare)
+- `413` (or proxy error): payload too large if the reverse proxy is stricter than the app
 
 #### Authentication
 - JWT required

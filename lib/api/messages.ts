@@ -26,9 +26,16 @@ export function getMessages(params: GetMessagesParams = {}) {
 }
 
 export function sendMessage(data: SendMessagePayload) {
+  const formData = new FormData();
+  formData.append("zaloAccountId", data.zaloAccountId);
+  formData.append("groupId", data.groupId);
+  formData.append("text", data.text ?? "");
+  for (const file of data.files ?? []) {
+    formData.append("files", file);
+  }
   return apiRequest<SendMessageResponse>("/messages/send", {
     method: "POST",
-    body: data,
+    body: formData,
   });
 }
 

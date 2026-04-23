@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   HiArrowLongLeft,
   HiChatBubbleLeftRight,
   HiMiniUserMinus,
   HiMiniUserPlus,
+  HiOutlineTrash,
   HiUserGroup,
   HiUserMinus,
 } from "react-icons/hi2";
@@ -28,6 +29,8 @@ import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@
 const TABLE_PAGE_SIZE = 10;
 const GROUP_FILTER_DEBOUNCE_MS = 350;
 const TEST_MODAL_GROUPS_LIMIT = 500;
+const MAX_TEST_MESSAGE_FILES = 20;
+const MAX_TEST_MESSAGE_FILE_BYTES = 25 * 1024 * 1024;
 const EMPTY_META: PaginationMeta = {
   page: 1,
   limit: TABLE_PAGE_SIZE,
@@ -41,6 +44,16 @@ function formatDate(value: string) {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function ZaloAccountDetailsPage() {
@@ -80,6 +93,8 @@ export default function ZaloAccountDetailsPage() {
   const [testModalGroups, setTestModalGroups] = useState<ZaloGroup[]>([]);
   const [testModalGroupsLoading, setTestModalGroupsLoading] = useState(false);
   const [testSendSubmitting, setTestSendSubmitting] = useState(false);
+  const [testSendFiles, setTestSendFiles] = useState<File[]>([]);
+  const testMessageFileInputRef = useRef<HTMLInputElement>(null);
   /** Khóa “Thêm/Xóa khỏi nhóm” theo child cho tới khi refetch xong; không ảnh hưởng kết bạn / hủy kết bạn. */
   const [groupOpsPendingChildIds, setGroupOpsPendingChildIds] = useState<Set<string>>(() => new Set());
 
@@ -423,6 +438,10 @@ export default function ZaloAccountDetailsPage() {
     setTestSendChildId("");
     setTestSendGroupId("");
     setTestSendText("");
+    setTestSendFiles([]);
+    if (testMessageFileInputRef.current) {
+      testMessageFileInputRef.current.value = "";
+    }
     setTestMessageModalOpen(true);
 
     if (!accountId) {
@@ -453,13 +472,59 @@ export default function ZaloAccountDetailsPage() {
     setTestSendChildId("");
     setTestSendGroupId("");
     setTestSendText("");
+    setTestSendFiles([]);
+    if (testMessageFileInputRef.current) {
+      testMessageFileInputRef.current.value = "";
+    }
     setTestModalGroups([]);
+  };
+
+  const handleTestMessageFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { files } = event.target;
+    event.target.value = "";
+    if (!files?.length) {
+      return;
+    }
+    const incoming = Array.from(files);
+    for (const file of incoming) {
+      if (file.size > MAX_TEST_MESSAGE_FILE_BYTES) {
+        showToast(`File "${file.name}" vượt quá 25 MB.`, "error");
+        return;
+      }
+    }
+    setTestSendFiles((prev) => {
+      const space = MAX_TEST_MESSAGE_FILES - prev.length;
+      if (space <= 0) {
+        queueMicrotask(() => {
+          showToast(`Chỉ gửi tối đa ${MAX_TEST_MESSAGE_FILES} file.`, "info");
+        });
+        return prev;
+      }
+      const toAdd = incoming.slice(0, space);
+      if (incoming.length > space) {
+        queueMicrotask(() => {
+          showToast(
+            `Chỉ thêm được ${toAdd.length} file (tối đa ${MAX_TEST_MESSAGE_FILES} file mỗi lần gửi).`,
+            "info",
+          );
+        });
+      }
+      return [...prev, ...toAdd];
+    });
+  };
+
+  const handleRemoveTestMessageFile = (index: number) => {
+    setTestSendFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleTestSendSubmit = async () => {
     const trimmed = testSendText.trim();
-    if (!testSendChildId || !testSendGroupId || !trimmed) {
-      showToast("Vui lòng chọn tài khoản con, nhóm và nhập nội dung tin nhắn.", "error");
+    if (!testSendChildId || !testSendGroupId) {
+      showToast("Vui lòng chọn tài khoản con và nhóm.", "error");
+      return;
+    }
+    if (!trimmed && testSendFiles.length === 0) {
+      showToast("Nhập nội dung hoặc chọn ít nhất một file đính kèm.", "error");
       return;
     }
 
@@ -470,6 +535,7 @@ export default function ZaloAccountDetailsPage() {
         zaloAccountId: testSendChildId,
         groupId: testSendGroupId,
         text: trimmed,
+        ...(testSendFiles.length > 0 ? { files: testSendFiles } : {}),
       });
       showToast("Đã gửi tin nhắn test thành công.", "success");
       closeTestMessageModal();
@@ -742,13 +808,55 @@ export default function ZaloAccountDetailsPage() {
             Nội dung
             <textarea
               className="mt-2 block w-full min-h-[120px] rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm placeholder:text-on-surface-variant/70 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Nhập nội dung tin nhắn…"
+              placeholder="Nhập nội dung (có thể để trống nếu chỉ gửi file)…"
               value={testSendText}
               onChange={(event) => setTestSendText(event.target.value)}
               disabled={testSendSubmitting}
               rows={4}
             />
+            <p className="mt-1 text-xs text-on-surface-variant font-normal">
+              Bắt buộc có nội dung hoặc ít nhất một file đính kèm.
+            </p>
           </label>
+
+          <div>
+            <span className="block text-sm font-medium text-on-surface">Đính kèm</span>
+            <p className="mt-1 text-xs text-on-surface-variant">
+              Có thể chọn nhiều file trong một lần. Tối đa 20 file, mỗi file tối đa 25 MB.
+            </p>
+            <input
+              ref={testMessageFileInputRef}
+              type="file"
+              multiple
+              className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-on-surface"
+              onChange={handleTestMessageFilesChange}
+              disabled={testSendSubmitting}
+            />
+            {testSendFiles.length > 0 ? (
+              <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-outline-variant/20 bg-surface-container-low/50 p-2">
+                {testSendFiles.map((file, index) => (
+                  <li
+                    key={`${file.name}-${file.size}-${index}`}
+                    className="flex items-center gap-2 text-xs text-on-surface"
+                  >
+                    <span className="min-w-0 flex-1 truncate" title={file.name}>
+                      {file.name}
+                    </span>
+                    <span className="shrink-0 text-on-surface-variant">{formatFileSize(file.size)}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded p-1 text-error hover:bg-error/10"
+                      onClick={() => handleRemoveTestMessageFile(index)}
+                      disabled={testSendSubmitting}
+                      aria-label={`Bỏ ${file.name}`}
+                    >
+                      <HiOutlineTrash className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
       </Modal>
 
