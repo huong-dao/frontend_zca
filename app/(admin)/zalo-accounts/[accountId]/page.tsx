@@ -38,6 +38,8 @@ const GROUP_FILTER_DEBOUNCE_MS = 350;
 const TEST_MODAL_GROUPS_LIMIT = 500;
 const MAX_TEST_MESSAGE_FILES = 20;
 const MAX_TEST_MESSAGE_FILE_BYTES = 25 * 1024 * 1024;
+/** Bật `true`: chỉ log ra console (và toast), không gọi `POST /messages/send` — tắt khi xong thử. */
+const TEST_MESSAGE_DRY_RUN = true;
 const EMPTY_META: PaginationMeta = {
   page: 1,
   limit: TABLE_PAGE_SIZE,
@@ -101,13 +103,10 @@ export default function ZaloAccountDetailsPage() {
   const [testModalGroupsLoading, setTestModalGroupsLoading] = useState(false);
   const [testSendSubmitting, setTestSendSubmitting] = useState(false);
   const [testSendFiles, setTestSendFiles] = useState<File[]>([]);
-  /** Dùng khi gửi: đọc tại thời điểm bấm Gửi, tránh closure cũ khiến `files` rỗng. */
+  const [testFileInputKey, setTestFileInputKey] = useState(0);
+  /** Cập nhật đồng bộ trong onChange / remove / mở-đóng modal — không dùng effect (tránh ghi đè ref). */
   const testSendFilesRef = useRef<File[]>([]);
   const testMessageFileInputRef = useRef<HTMLInputElement>(null);
-
-  useLayoutEffect(() => {
-    testSendFilesRef.current = testSendFiles;
-  }, [testSendFiles]);
   /** Khóa “Thêm/Xóa khỏi nhóm” theo child cho tới khi refetch xong; không ảnh hưởng kết bạn / hủy kết bạn. */
   const [groupOpsPendingChildIds, setGroupOpsPendingChildIds] = useState<Set<string>>(() => new Set());
 
@@ -453,9 +452,7 @@ export default function ZaloAccountDetailsPage() {
     setTestSendGroupId("");
     setTestSendText("");
     setTestSendFiles([]);
-    if (testMessageFileInputRef.current) {
-      testMessageFileInputRef.current.value = "";
-    }
+    setTestFileInputKey((k) => k + 1);
     setTestMessageModalOpen(true);
 
     if (!accountId) {
@@ -488,15 +485,12 @@ export default function ZaloAccountDetailsPage() {
     setTestSendGroupId("");
     setTestSendText("");
     setTestSendFiles([]);
-    if (testMessageFileInputRef.current) {
-      testMessageFileInputRef.current.value = "";
-    }
+    setTestFileInputKey((k) => k + 1);
     setTestModalGroups([]);
   };
 
   const handleTestMessageFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { files } = event.target;
-    event.target.value = "";
     if (!files?.length) {
       return;
     }
@@ -540,7 +534,18 @@ export default function ZaloAccountDetailsPage() {
 
   const handleTestSendSubmit = async () => {
     const trimmed = testSendText.trim();
-    const fileList = testSendFilesRef.current;
+    const fromRef = testSendFilesRef.current;
+    const fromState = testSendFiles;
+    const fromInput = testMessageFileInputRef.current?.files?.length
+      ? Array.from(testMessageFileInputRef.current.files)
+      : [];
+    const fileList =
+      fromRef.length > 0
+        ? [...fromRef]
+        : fromState.length > 0
+          ? [...fromState]
+          : fromInput;
+
     if (!testSendChildId || !testSendGroupId) {
       showToast("Vui lòng chọn tài khoản con và nhóm.", "error");
       return;
@@ -557,8 +562,39 @@ export default function ZaloAccountDetailsPage() {
         zaloAccountId: testSendChildId,
         groupId: testSendGroupId,
         text: trimmed,
-        files: fileList.length > 0 ? [...fileList] : undefined,
+        files: fileList.length > 0 ? fileList : undefined,
       });
+
+      const formDataLog: { key: string; value: string; file?: { name: string; size: number } }[] = [];
+      formData.forEach((value, key) => {
+        if (value instanceof File) {
+          formDataLog.push({ key, value: `[File: ${value.name}]`, file: { name: value.name, size: value.size } });
+        } else {
+          formDataLog.push({ key, value: String(value) });
+        }
+      });
+
+      console.log("[Gửi tin test] snapshot trước khi gửi:", {
+        dryRun: TEST_MESSAGE_DRY_RUN,
+        zaloAccountId: testSendChildId,
+        groupId: testSendGroupId,
+        text: trimmed,
+        fileCount: fileList.length,
+        fromRef: fromRef.length,
+        fromState: fromState.length,
+        fromInput: fromInput.length,
+        files: fileList.map((f) => ({ name: f.name, size: f.size, type: f.type })),
+        formDataEntries: formDataLog,
+      });
+
+      if (TEST_MESSAGE_DRY_RUN) {
+        if (formDataLog.filter((e) => e.key === "files").length === 0 && fileList.length > 0) {
+          console.error("[Gửi tin test] LỖI: có file trong list nhưng FormData thiếu part `files`.");
+        }
+        showToast("Chế độ DRY RUN: đã log console — chưa gọi API. Đặt TEST_MESSAGE_DRY_RUN = false khi sẵn sàng gửi thật.", "info");
+        return;
+      }
+
       await apiRequest<SendMessageResponse>("/messages/send", {
         method: "POST",
         body: formData,
@@ -789,6 +825,13 @@ export default function ZaloAccountDetailsPage() {
         cancelText="Hủy"
       >
         <div className="space-y-4">
+          {TEST_MESSAGE_DRY_RUN ? (
+            <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-on-surface">
+              Đang bật <strong>DRY RUN</strong>: bấm Gửi chỉ ghi <code>console.log</code>, không gọi API. Đổi
+              hằng số <code>TEST_MESSAGE_DRY_RUN</code> thành <code>false</code> trong mã nguồn trang này khi muốn
+              gửi thật.
+            </p>
+          ) : null}
           <label className="block text-sm font-medium text-on-surface">
             Tài khoản con
             <select
@@ -851,6 +894,7 @@ export default function ZaloAccountDetailsPage() {
               Có thể chọn nhiều file trong một lần. Tối đa 20 file, mỗi file tối đa 25 MB.
             </p>
             <input
+              key={testFileInputKey}
               ref={testMessageFileInputRef}
               type="file"
               multiple
