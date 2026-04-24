@@ -9,7 +9,11 @@ import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import FormError from "@/components/ui/FormError";
 import Badge from "@/components/ui/Badge";
-import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
+import {
+  DataTableScroll,
+  dataTableClassName,
+  dataTableFrozenFirstColumnInnerClass,
+} from "@/components/ui/DataTableScroll";
 import { useAuth } from "@/contexts/AuthContext";
 import { createApiKey, deleteApiKey, getApiKeys } from "@/lib/api/api-keys";
 import type { ApiKey } from "@/lib/api/types";
@@ -27,6 +31,9 @@ function formatDateTime(value: string) {
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
+
+/** Cùng class cho `th` + `td` cột 1 (Tên): chỉnh `max-w-*` / `w-*` tại đây. */
+const FROZEN_NAME_COL = "min-w-0 max-w-[min(42vw,11rem)] sm:max-w-44 md:max-w-52 lg:max-w-56";
 
 export default function ApiKeysPage() {
   const { user, loading: authLoading } = useAuth();
@@ -151,7 +158,9 @@ export default function ApiKeysPage() {
           <table className={dataTableClassName}>
             <thead>
               <tr className="bg-surface-container-low/50">
-                <th className="text-sm px-6 py-3 text-left text-label-sm font-normal tracking-wider text-on-surface">
+                <th
+                  className={`text-left text-sm text-label-sm font-normal tracking-wider text-on-surface px-6 py-3 ${FROZEN_NAME_COL}`}
+                >
                   Tên
                 </th>
                 <th className="text-sm px-6 py-3 text-left text-label-sm font-normal tracking-wider text-on-surface min-w-48">
@@ -185,8 +194,12 @@ export default function ApiKeysPage() {
                     key={row.id}
                     className="group transition-colors hover:bg-surface-container-low/30"
                   >
-                    <td className="px-6 py-3">
-                      <div className="body-md text-sm font-semibold text-on-surface">{row.name}</div>
+                    <td className={`px-6 py-3 ${FROZEN_NAME_COL}`}>
+                      <div
+                        className={`body-md text-sm font-semibold text-on-surface ${dataTableFrozenFirstColumnInnerClass}`}
+                      >
+                        {row.name}
+                      </div>
                     </td>
                     <td className="max-w-md px-6 py-3">
                       <code className="block break-all text-xs text-on-surface md:text-sm">

@@ -7,9 +7,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
 import { getZaloGroups } from "@/lib/api/zalo-groups";
 import type { PaginationMeta, ZaloGroup } from "@/lib/api/types";
-import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
+import {
+  DataTableScroll,
+  dataTableClassName,
+  dataTableFrozenFirstColumnInnerClass,
+} from "@/components/ui/DataTableScroll";
 
 const DEFAULT_LIMIT = 20;
+
+/** Cùng class cho `th` cột 1 + `td` cột 1: chỉnh `max-w-*` / `w-*` ở đây (mobile: hẹp, desktop: rộng hơn). */
+const FROZEN_GROUP_NAME_COL =
+  "min-w-0 max-w-[min(42vw,11rem)] sm:max-w-44 md:max-w-52 lg:max-w-56";
 
 const EMPTY_META: PaginationMeta = {
   page: 1,
@@ -118,7 +126,9 @@ export default function ZaloGroupsPage() {
         <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
-              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+              <th
+                className={`text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface ${FROZEN_GROUP_NAME_COL}`}
+              >
                 Tên nhóm
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -151,8 +161,12 @@ export default function ZaloGroupsPage() {
                 // console.log(group),
                 <>
                 <tr key={group.id} className="group transition-colors hover:bg-surface-container-low/30">
-                  <td className="px-6 py-3">
-                    <div className="body-md font-semibold text-on-surface text-sm">{group.groupName}</div>
+                  <td className={`px-6 py-3 ${FROZEN_GROUP_NAME_COL}`}>
+                    <div
+                      className={`body-md text-sm font-semibold text-on-surface ${dataTableFrozenFirstColumnInnerClass}`}
+                    >
+                      {group.groupName}
+                    </div>
                   </td>
 
                   <td className="px-6 py-3">

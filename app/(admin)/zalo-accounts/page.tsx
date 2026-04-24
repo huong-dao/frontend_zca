@@ -25,7 +25,11 @@ import Pagination from "@/components/features/Pagination";
 import Button from "@/components/ui/Button";
 import FormError from "@/components/ui/FormError";
 import Badge from "@/components/ui/Badge";
-import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
+import {
+  DataTableScroll,
+  dataTableClassName,
+  dataTableFrozenFirstColumnInnerClass,
+} from "@/components/ui/DataTableScroll";
 import { useAuth } from "@/contexts/AuthContext";
 import { createZaloGroupsBulk } from "@/lib/api/zalo-groups";
 import {
@@ -55,6 +59,24 @@ import type { PendingQrLoginSnapshot, PendingQrLoginStatus, ZaloSessionPublic } 
 
 const PAGE_SIZE = 20;
 const TABLE_COLUMN_COUNT = 8;
+
+/** Checkbox cột 1 cố định `w-14` — cột Tên dùng `sticky left-14` (cùng 3.5rem). */
+const FROZEN_CHECKBOX_TH_CLASS =
+  "sticky left-0 z-[30] w-14 min-w-14 max-w-14 px-3 py-3 border-r border-outline-variant/15 bg-surface-container-low shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)]";
+const FROZEN_CHECKBOX_TD_CLASS =
+  "sticky left-0 z-[25] w-14 min-w-14 max-w-14 px-3 py-3 border-r border-outline-variant/10 bg-surface-container-lowest shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)] group-hover:bg-surface-container-low";
+
+/** `th`/`td` cột Tên (sau checkbox): chỉnh `max-w-*` trong chuỗi này. */
+const FROZEN_ACCOUNT_NAME_COL =
+  "min-w-0 max-w-[min(42vw,11rem)] sm:max-w-44 md:max-w-52 lg:max-w-56";
+const FROZEN_NAME_TH_CLASS = [
+  "sticky left-14 z-20 border-r border-outline-variant/15 bg-surface-container-low shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)]",
+  FROZEN_ACCOUNT_NAME_COL,
+].join(" ");
+const FROZEN_NAME_TD_CLASS = [
+  "sticky left-14 z-10 border-r border-outline-variant/10 bg-surface-container-lowest shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)] group-hover:bg-surface-container-low",
+  FROZEN_ACCOUNT_NAME_COL,
+].join(" ");
 const QR_FINISHED_STATUSES: PendingQrLoginStatus[] = [
   "authenticated",
   "expired",
@@ -1025,7 +1047,7 @@ export default function ZaloAccountsPage() {
         <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
-              <th className="px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+              <th className={`text-label-sm font-normal tracking-wider text-on-surface ${FROZEN_CHECKBOX_TH_CLASS}`}>
                 <input
                   ref={selectAllVisibleCheckboxRef}
                   checked={allVisibleSelected}
@@ -1035,7 +1057,9 @@ export default function ZaloAccountsPage() {
                   onChange={handleToggleSelectAllVisible}
                 />
               </th>
-              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+              <th
+                className={`text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface ${FROZEN_NAME_TH_CLASS}`}
+              >
                 Tên
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -1080,7 +1104,7 @@ export default function ZaloAccountsPage() {
                   key={account.id}
                   className="group transition-colors hover:bg-surface-container-low/30"
                 >
-                  <td className="px-6 py-3">
+                  <td className={FROZEN_CHECKBOX_TD_CLASS}>
                     <input
                       checked={selectedAccountIds.includes(account.id)}
                       className="h-4 w-4 rounded border-outline-variant/30 text-primary focus:ring-primary disabled:opacity-50"
@@ -1090,18 +1114,18 @@ export default function ZaloAccountsPage() {
                       onChange={() => handleToggleAccountSelection(account.id)}
                     />
                   </td>
-                  <td className="px-6 py-3">
-                    <div className="body-md font-semibold text-on-surface text-sm">{account.name}</div>
-                    {zaloLoggedIds.has(account.zaloId) ? (
-                      <Badge variant="success" className="mt-1 text-xs" icon={<HiMiniFaceSmile />}>
-                        Đang đăng nhập
-                      </Badge>
-                    ) : null}
-                    {account.master ? (
-                      <div className="mt-1 text-xs text-outline">
-                        Thuộc master: {account.master.name}
-                      </div>
-                    ) : null}
+                  <td className={`px-6 py-3 ${FROZEN_NAME_TD_CLASS}`}>
+                    <div className={`space-y-1 ${dataTableFrozenFirstColumnInnerClass}`}>
+                      <div className="body-md text-sm font-semibold text-on-surface">{account.name}</div>
+                      {zaloLoggedIds.has(account.zaloId) ? (
+                        <Badge variant="success" className="text-xs" icon={<HiMiniFaceSmile />}>
+                          Đang đăng nhập
+                        </Badge>
+                      ) : null}
+                      {account.master ? (
+                        <div className="text-xs text-outline">Thuộc master: {account.master.name}</div>
+                      ) : null}
+                    </div>
                   </td>
 
                   <td className="px-6 py-3 text-sm">

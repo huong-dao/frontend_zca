@@ -11,9 +11,17 @@ import { getMessages, undoMessage } from "@/lib/api/messages";
 import type { MessageLog, MessageLogStatus, PaginationMeta } from "@/lib/api/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
+import {
+  DataTableScroll,
+  dataTableClassName,
+  dataTableFrozenFirstColumnInnerClass,
+} from "@/components/ui/DataTableScroll";
 
 const DEFAULT_LIMIT = 20;
+
+/** Cùng class cho cột 1 (Nội dung) — `th` + `td`; chỉnh `max-w-*` tại đây. */
+const FROZEN_CONTENT_COL =
+  "min-w-0 max-w-[min(42vw,11rem)] sm:max-w-44 md:max-w-52 lg:max-w-md";
 
 const EMPTY_META: PaginationMeta = {
   page: 1,
@@ -214,7 +222,9 @@ export default function MessagesPage() {
         <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
-              <th className="min-w-72 whitespace-nowrap text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+              <th
+                className={`whitespace-nowrap text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface ${FROZEN_CONTENT_COL}`}
+              >
                 Nội dung
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -255,9 +265,9 @@ export default function MessagesPage() {
                 const actionItems = getMessageActionItems(row);
                 return (
                   <tr key={row.id} className="group transition-colors hover:bg-surface-container-low/30">
-                    <td className="min-w-72 max-w-md px-6 py-3 align-top">
+                    <td className={`px-6 py-3 align-top ${FROZEN_CONTENT_COL}`}>
                       <p
-                        className="whitespace-pre-wrap break-words text-sm text-on-surface"
+                        className={`${dataTableFrozenFirstColumnInnerClass} whitespace-pre-wrap text-sm text-on-surface`}
                         title={row.content}
                       >
                         {row.content}
