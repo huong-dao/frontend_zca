@@ -94,7 +94,13 @@ export default function ZaloAccountDetailsPage() {
   const [testModalGroupsLoading, setTestModalGroupsLoading] = useState(false);
   const [testSendSubmitting, setTestSendSubmitting] = useState(false);
   const [testSendFiles, setTestSendFiles] = useState<File[]>([]);
+  /** Dùng khi gửi: đọc tại thời điểm bấm Gửi, tránh closure cũ khiến `files` rỗng. */
+  const testSendFilesRef = useRef<File[]>([]);
   const testMessageFileInputRef = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    testSendFilesRef.current = testSendFiles;
+  }, [testSendFiles]);
   /** Khóa “Thêm/Xóa khỏi nhóm” theo child cho tới khi refetch xong; không ảnh hưởng kết bạn / hủy kết bạn. */
   const [groupOpsPendingChildIds, setGroupOpsPendingChildIds] = useState<Set<string>>(() => new Set());
 
@@ -519,11 +525,12 @@ export default function ZaloAccountDetailsPage() {
 
   const handleTestSendSubmit = async () => {
     const trimmed = testSendText.trim();
+    const filesToSend = testSendFilesRef.current;
     if (!testSendChildId || !testSendGroupId) {
       showToast("Vui lòng chọn tài khoản con và nhóm.", "error");
       return;
     }
-    if (!trimmed && testSendFiles.length === 0) {
+    if (!trimmed && filesToSend.length === 0) {
       showToast("Nhập nội dung hoặc chọn ít nhất một file đính kèm.", "error");
       return;
     }
@@ -535,7 +542,7 @@ export default function ZaloAccountDetailsPage() {
         zaloAccountId: testSendChildId,
         groupId: testSendGroupId,
         text: trimmed,
-        ...(testSendFiles.length > 0 ? { files: testSendFiles } : {}),
+        files: filesToSend.length > 0 ? [...filesToSend] : undefined,
       });
       showToast("Đã gửi tin nhắn test thành công.", "success");
       closeTestMessageModal();

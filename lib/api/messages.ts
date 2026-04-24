@@ -31,7 +31,7 @@ export function sendMessage(data: SendMessagePayload) {
   formData.append("groupId", data.groupId);
   formData.append("text", data.text ?? "");
   for (const file of data.files ?? []) {
-    formData.append("files", file);
+    formData.append("files", file, file.name);
   }
   return apiRequest<SendMessageResponse>("/messages/send", {
     method: "POST",
