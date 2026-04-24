@@ -419,3 +419,14 @@ export interface UpdateZaloAccountGroupDataResponse {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ConfigEntry {
+  id: string;
+  key: string;
+  value: string;
+  updatedAt: string;
+}
+
+export interface PutConfigsBatchPayload {
+  entries: { key: string; value: string }[];
+}

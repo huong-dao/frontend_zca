@@ -2041,9 +2041,9 @@ Send a **text** message and/or **one or more file attachments** to a **Zalo grou
 1. Loads `zalo_accounts` by `zaloAccountId` (must be **`is_master = false`**) and requires **`zalo_id`** on that row.
 2. Resolves the **child’s QR session** for the **current JWT user**: latest `zalo_login_sessions` row where `user_id` = app user and `zalo_uid` = that account’s `zalo_id` (the child must have logged in under this app user).
 3. Loads **`zalo_account_groups`** where `zalo_account_id` = `zaloAccountId` and `group_id` = `groupId` and uses **`group_zalo_id`** from that row as the Zalo **thread id** (this child’s device grid id for that group; populated by child group scan + mapping).
-4. Reads **`configurations`** key **`message_interval`** (minutes). If the value is **&gt; 0**, ensures the **previous** row in **`messages`** for the same `sender_id` + `group_id` (by `created_at` desc) is older than that many minutes; otherwise returns **400** with a Vietnamese message (name, group name, time since last send, minutes to wait).
-5. If files are present, they are written to a **temporary** path, then zca-js **`sendMessage`** is called with `MessageContent` (`msg` = trimmed `text` or empty string, `attachments` = absolute file paths) per `docs/Zalo_Integration.mdc`. If there are no files, **`sendMessage`** is called with plain text only. Default thread type: **`ThreadType.Group`** (same as `POST /zalo/actions/send-message`).
-6. On success, inserts a **`messages`** row (`status: SENT`, `content`, `sender_id`, `group_id`, optional `message_zalo_id` / `cli_msg_id` / `uid_from` parsed from the zca-js result when present). Stored **`content`** is the user-visible text, or a line such as `Đính kèm: a.pdf, b.png` (and both text and attachment names if both are present).
+4. Reads **`configurations`** key **`message_interval`** (minutes). If the value is **&gt; 0**, ensures the **previous** row in **`messages`** for the same `sender_id` + `group_id` (by `created_at` desc, then `id` desc) is older than that many minutes; otherwise returns **400** with a Vietnamese message (name, group name, time since last send, minutes to wait).
+5. If files are present, they are written to a **temporary** path, then zca-js **`sendMessage`** is called with `MessageContent` (`msg` = trimmed `text` or empty string, `attachments` = absolute file paths) per `docs/Zalo_Integration.mdc`. If there are no files, **`sendMessage`** is called with plain text only. Default thread type: **`ThreadType.Group`** (same as `POST /zalo/actions/send-message`). When Zalo returns **several** bubbles in one `send` (e.g. one text + one per PDF), the zca `result` has `message` and/or `attachment[]` — the server creates **one `messages` row per bubble** (separate `message_zalo_id` / `cli_msg_id` for undo), e.g. one row for the caption and one per file. Same `sent_at` for the whole batch.
+6. On success, inserts one or more **`messages`** rows (`status: SENT`, `content` per bubble, same `sender_id` / `group_id`, `message_zalo_id` / `cli_msg_id` / `uid_from` from each part of the zca-js result when present). The **first** bubble in the batch (text block from zca) has **`parent_id: null`**. **Subsequent** rows for files in the same send set **`parent_id`** to the text row’s `id` so the client can group them; `POST /messages/undo/:id` on the **text** `id` undoes the text bubble and each file bubble, then sets **`RECALL`** on all those rows; undoing a **child** row (file) only undoes that bubble.
 
 `sessionId` is **not** sent by the client. For sending by explicit `sessionId` or raw `threadId`, use **`POST /zalo/actions/send-message`** (that route does **not** write to `messages`). File upload for app users is **only** via this endpoint, not the JSON `send-message` action.
 
@@ -2069,10 +2069,11 @@ text=Hello group
 Example: text + two files: append two parts named `files` (binary).
 
 #### Response
-- `result`: zca-js `sendMessage` return (e.g. `message` / `attachment` with `msgId`).
-- `message`: persisted row — `id`, `messageZaloId`, `cliMsgId`, `uidFrom`, `content`, `senderId`, `groupId`, `sentAt`, `status`, `createdAt`.
+- `result`: zca-js `sendMessage` return (e.g. `message` and/or `attachment[]` with `msgId` per bubble).
+- `message`: first persisted row (same as `messages[0]`) — backward compatible for clients that expect a single object.
+- `messages`: array of all persisted rows for this Zalo `send` (one per bubble: text + each file, when applicable), each with its own `id` and optional **`parentId`** (null for the text row, or the text row’s `id` for file rows) for grouping and **cascade undo** (see `POST /messages/undo/:id`).
 
-Example:
+Example (one text message only — `messages` has length 1):
 
 ```json
 {
@@ -2088,12 +2089,30 @@ Example:
     "content": "Hello group",
     "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
     "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "parentId": null,
     "sentAt": "2026-04-21T12:00:00.000Z",
     "status": "SENT",
     "createdAt": "2026-04-21T12:00:00.000Z"
-  }
+  },
+  "messages": [
+    {
+      "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0001",
+      "messageZaloId": "9876543210",
+      "cliMsgId": null,
+      "uidFrom": "1122334455667788990",
+      "content": "Hello group",
+      "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+      "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "parentId": null,
+      "sentAt": "2026-04-21T12:00:00.000Z",
+      "status": "SENT",
+      "createdAt": "2026-04-21T12:00:00.000Z"
+    }
+  ]
 }
 ```
+
+If you send text + 2 files and Zalo returns **three** bubbles, `messages` contains **three** items (the text row has `parentId: null`, the two file rows have `parentId` = the text row’s `id`). **Undo the text** (`POST /messages/undo/:id` with the text `id`) runs `api.undo` for all three in order and returns **`RECALL`** on all; undo a **file** `id` only to withdraw that file bubble.
 
 #### Error cases
 - `400`: validation error; **no `text` and no `files`**; account is master; child has no `zalo_id`; `zalo_account_groups.group_zalo_id` is empty; **`message_interval` missing/invalid** in `configurations`; **rate limit** — last message from this child to this group was too recent (see `message_interval`); **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — child not in the group on Zalo, or content/length limits — run child **group scan** so `group_zalo_id` and mapping stay in sync, or re-invite; individual file &gt; 25 MB or &gt; 20 files
@@ -2145,7 +2164,9 @@ Low-level Zalo session call: runs zca-js **`api.undo(UndoPayload, threadId, thre
 #### Description
 App-level **withdraw** (no row delete): calls Zalo **`undo`** with ids from the `messages` row and `zalo_account_groups.group_zalo_id` for the sender + group, then sets **`status`** to **`RECALL`**. The row is kept (same as the former recall behaviour, but the Zalo side now uses **`api.undo`**, not `deleteMessage`).
 
-The JWT user must have a **QR session** for the sender’s `zalo_id` (child account). The message must be **`SENT`**, and must have both **`message_zalo_id`** and **`cli_msg_id`**. If already **`RECALL`**, **200** returns the current row (idempotent).
+If the target row has **`parent_id` = null** and there are **child** rows (same group send) still **`SENT`**, the server **undoes the parent on Zalo first, then each child** in creation order, then sets **`RECALL`** on all of them. If the target row is a **child** (file), only that bubble is withdrawn.
+
+The JWT user must have a **QR session** for the sender’s `zalo_id` (child account). The message (and each child for cascade) must be **`SENT`**, and must have both **`message_zalo_id`** and **`cli_msg_id`**. If already **`RECALL`**, **200** returns the current row (idempotent; unchanged shape, no `results` / extra `messages` in that branch).
 
 #### Request
 - Params:
@@ -2154,8 +2175,10 @@ The JWT user must have a **QR session** for the sender’s `zalo_id` (child acco
 - Body: none
 
 #### Response
-- `result`: zca `UndoResponse` from the undo call
-- `message`: persisted message row (same select shape as `GET /messages` items) with `status: "RECALL"`
+- `result`: zca `UndoResponse` from the **last** `api.undo` call in the chain (if cascade, one undo per bubble)
+- `results`: every zca `UndoResponse` in order (length **1** for a single bubble, or text + N files for cascade on the parent)
+- `message`: the row for **`id`** in the request (same select shape as `GET /messages` items) with `status: "RECALL"`
+- `messages`: all rows that were set to `RECALL` in this call (text + file children, or a single row), ordered by `created_at` ascending
 
 #### Error cases
 - `400`: invalid UUID; sender or account not allowed; **missing `message_zalo_id` / `cli_msg_id`**; not `SENT`; `group_zalo_id` empty; Zalo error
@@ -2197,6 +2220,48 @@ Return all configuration key-value pairs.
 ```
 
 #### Error cases
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`
+
+### PUT `/configs/batch`
+#### Endpoint
+- Method: `PUT`
+- Full path: `/configs/batch`
+- Function: `ConfigsController.upsertMany`
+
+#### Description
+Upsert **many** `configurations` rows in one request: for each `{ key, value }`, if `key` already exists it is **updated**; otherwise a new row is **inserted** (unique on `key`). Processed in a **database transaction** (one `upsert` per entry, in array order). Duplicate `key` values in the same body: the **last** occurrence wins for that key.
+
+#### Request
+- Params: none
+- Query: none
+- Body (JSON):
+  - `entries`: `array`, required, min length `1` — each item:
+    - `key`: `string`, required, length 1–255 (trimmed)
+    - `value`: `string`, required, max length 255 (trimmed)
+
+Example:
+
+```json
+{
+  "entries": [
+    { "key": "message_interval", "value": "5" },
+    { "key": "some_other_flag", "value": "on" }
+  ]
+}
+```
+
+#### Response
+Array of saved rows (same shape as `GET /configs` items), **in the same order as `entries`**.
+
+#### Error cases
+- `400`: validation error; empty `entries`
 - `401`: missing/invalid JWT
 - `403`: role is not `ADMIN`
 - `500`: unexpected server error
