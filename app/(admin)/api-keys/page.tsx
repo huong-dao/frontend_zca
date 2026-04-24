@@ -147,7 +147,7 @@ export default function ApiKeysPage() {
           <div className="border-b border-error/20 bg-error/10 px-6 py-4 text-sm text-error">{error}</div>
         ) : null}
 
-        <DataTableScroll>
+        <DataTableScroll freezeFirstColumn={true}>
           <table className={dataTableClassName}>
             <thead>
               <tr className="bg-surface-container-low/50">

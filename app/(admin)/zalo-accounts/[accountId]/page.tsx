@@ -981,7 +981,7 @@ export default function ZaloAccountDetailsPage() {
           <table className={dataTableClassName}>
             <thead>
               <tr className="bg-surface-container-low/50">
-                <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+                <th className="dataTableFrozenHeaderClass text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                   Tên
                 </th>
                 <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -1020,7 +1020,7 @@ export default function ZaloAccountDetailsPage() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-6 py-3 text-sm text-on-surface">{child.groupCount}</td>
+                    <td className="dataTableFrozenCellClass px-6 py-3 text-sm text-on-surface">{child.groupCount}</td>
                     <td className="px-6 py-3">
                       {getFriendStatus(child.id) === "APPROVE" ? (
                         <Badge variant="success" className="text-xs">Đã kết bạn</Badge>

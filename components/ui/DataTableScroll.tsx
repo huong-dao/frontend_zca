@@ -17,18 +17,19 @@ const SCROLL = "w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain";
  * Cột thứ 2 trở đi: thêm `left-*` bằng tổng độ rộng các cột bên trái (vd. `left-48`, `left-[200px]`).
  */
 export const dataTableFrozenHeaderClass =
-  "sticky left-0 z-20 border-r border-outline-variant/15 bg-surface-container-low/50 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)]";
+  "sticky left-0 z-20 border-r border-outline-variant/15 bg-surface-container-low shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)]";
 
 /**
  * Gắn vào thẻ `td` tương ứng; hàng cần có `className="group"` trên `<tr>` để đồng bộ hover.
+ * Dùng màu đục (không /30) để khi scroll ngang không lộ nội dung cột bên cạnh.
  */
 export const dataTableFrozenCellClass =
-  "sticky left-0 z-10 border-r border-outline-variant/10 bg-surface-container-lowest shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)] group-hover:bg-surface-container-low/30";
+  "sticky left-0 z-10 border-r border-outline-variant/10 bg-surface-container-lowest shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)] group-hover:bg-surface-container-low";
 
 /** Khi `freezeFirstColumn`: style cột đầu qua selector (không cần sửa từng ô). */
 const FROZEN_FIRST_COL =
   "[&_thead>tr>th:first-child]:sticky [&_thead>tr>th:first-child]:left-0 [&_thead>tr>th:first-child]:z-20 " +
-  "[&_thead>tr>th:first-child]:bg-surface-container-low/50 " +
+  "[&_thead>tr>th:first-child]:bg-surface-container-low " +
   "[&_thead>tr>th:first-child]:border-r [&_thead>tr>th:first-child]:border-outline-variant/15 " +
   "[&_thead>tr>th:first-child]:shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)] " +
   "[&_tbody>tr>td:first-child:not([colspan])]:sticky " +
@@ -38,7 +39,7 @@ const FROZEN_FIRST_COL =
   "[&_tbody>tr>td:first-child:not([colspan])]:border-r " +
   "[&_tbody>tr>td:first-child:not([colspan])]:border-outline-variant/10 " +
   "[&_tbody>tr>td:first-child:not([colspan])]:shadow-[2px_0_8px_-4px_rgba(0,0,0,0.1)] " +
-  "[&_tbody>tr:hover>td:first-child:not([colspan])]:bg-surface-container-low/30";
+  "[&_tbody>tr:hover>td:first-child:not([colspan])]:bg-surface-container-low";
 
 export function DataTableScroll({ children, className, freezeFirstColumn = false }: Props) {
   const base = [SCROLL, freezeFirstColumn ? FROZEN_FIRST_COL : null, className].filter(Boolean).join(" ");
