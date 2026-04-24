@@ -742,7 +742,7 @@ export default function ZaloAccountDetailsPage() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="min-w-0 flex-1 overflow-y-auto p-8">
       <Modal
         open={inviteModalOpen}
         title={

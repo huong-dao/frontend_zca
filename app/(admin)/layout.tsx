@@ -34,7 +34,7 @@ export default function AdminLayout({
     <ZaloGroupNameSyncProvider>
       <AdminNavProvider>
         <Sidebar />
-        <main className="min-h-screen w-full lg:ml-64">
+        <main className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden lg:ml-64 lg:w-[calc(100%-16rem)]">
           <Header />
           {children}
         </main>

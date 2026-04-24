@@ -90,7 +90,7 @@ export default function ZaloGroupsPage() {
   }, [meta]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="min-w-0 flex-1 overflow-y-auto p-8">
       <PageHeader
         title="Danh sách nhóm Zalo"
         description="Quản lý toàn bộ nhóm Zalo trong hệ thống"

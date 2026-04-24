@@ -171,7 +171,7 @@ export default function MessagesPage() {
   }, [meta]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="min-w-0 flex-1 overflow-y-auto p-8">
       <PageHeader
         title="Tin nhắn"
         description="Nhật ký tin nhắn đã gửi qua hệ thống (theo tài khoản người gửi và nhóm)"
@@ -210,7 +210,7 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        <DataTableScroll>
+        <DataTableScroll freezeFirstColumn={true}>
         <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
@@ -218,7 +218,7 @@ export default function MessagesPage() {
                 Nội dung
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
-                Nhóm
+                Nhóm/Người dùng
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Người gửi
@@ -264,8 +264,11 @@ export default function MessagesPage() {
                       </p>
                     </td>
                     <td className="px-6 py-3 align-top text-sm text-on-surface">
-                      <div className="font-medium">{row.group?.groupName ?? "—"}</div>
-                      <div className="text-xs text-on-surface-variant">{row.group?.groupZaloId}</div>
+                      <div className="font-medium">
+                        {row.group?.groupName?.trim()
+                          ? row.group.groupName
+                          : row.peerPhone || "—"}
+                      </div>
                     </td>
                     <td className="px-6 py-3 align-top text-sm text-on-surface">
                       <div className="font-medium flex flex-wrap items-center gap-1.5">

@@ -903,7 +903,7 @@ export default function ZaloAccountsPage() {
 
   // SECTION: RENDER
   return (
-    <div className="flex-1 p-8">
+    <div className="min-w-0 flex-1 p-8">
       <PageHeader
         title="Danh sách tài khoản Zalo"
         description="Quản lý toàn bộ tài khoản Zalo trong hệ thống"

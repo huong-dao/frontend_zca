@@ -385,6 +385,7 @@ export interface MessageLog {
   content: string;
   senderId: string;
   groupId: string;
+  peerPhone: string;
   sentAt: string;
   status: MessageLogStatus;
   createdAt: string;

@@ -166,7 +166,7 @@ export default function ConfigsPage() {
   }, [buildBatchEntries, showToast, validate, valueByKey]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="min-w-0 flex-1 overflow-y-auto p-8">
       <PageHeader
         title="Cấu hình"
         description="Cấu hình lưu trên server. Mỗi lần Lưu sẽ gửi tất cả trường bên dưới tới API (PUT /configs/batch)."

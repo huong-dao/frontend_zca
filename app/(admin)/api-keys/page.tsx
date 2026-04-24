@@ -131,7 +131,7 @@ export default function ApiKeysPage() {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto p-8">
+    <div className="min-w-0 flex-1 overflow-y-auto p-8">
       <PageHeader
         title="API Keys"
         description="Quản lý public API key dùng cho tích hợp bên ngoài"
