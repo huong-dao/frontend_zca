@@ -9,7 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
+    const isAdmin = user?.role === "ADMIN";
     const { mobileMenuOpen, closeMobileMenu } = useAdminNav();
     const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
     const activeClass = 'flex items-center gap-3 text-blue-400 border-l-4 border-blue-600 pl-4 py-3 bg-blue-900/20';
@@ -52,10 +53,12 @@ export default function Sidebar() {
                     <HiHome className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Dashboard</span>
                 </Link>
-                <Link onClick={closeMobileMenu} className={`${isActive('/users') ? activeClass : inactiveClass}`} href="/users">
-                    <HiMiniUserCircle className="w-5 h-5" />
-                    <span className="font-inter body-md tracking-normal">Người dùng</span>
-                </Link>
+                {isAdmin ? (
+                    <Link onClick={closeMobileMenu} className={`${isActive('/users') ? activeClass : inactiveClass}`} href="/users">
+                        <HiMiniUserCircle className="w-5 h-5" />
+                        <span className="font-inter body-md tracking-normal">Người dùng</span>
+                    </Link>
+                ) : null}
                 <Link onClick={closeMobileMenu} className={`${isActive('/zalo-groups') ? activeClass : inactiveClass}`} href="/zalo-groups">
                     <HiMiniUserGroup className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Nhóm Zalo</span>

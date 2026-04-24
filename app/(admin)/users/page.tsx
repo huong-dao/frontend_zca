@@ -348,7 +348,7 @@ export default function UsersPage() {
                             <ActionMenu items={actions} />
                           </div>
                         ) : (
-                          <span className="text-sm text-on-surface-variant">—</span>
+                          <span className="text-sm text-on-surface-variant"></span>
                         )}
                       </td>
                     </tr>
