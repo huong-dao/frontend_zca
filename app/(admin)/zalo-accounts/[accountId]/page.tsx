@@ -39,7 +39,7 @@ const TEST_MODAL_GROUPS_LIMIT = 500;
 const MAX_TEST_MESSAGE_FILES = 20;
 const MAX_TEST_MESSAGE_FILE_BYTES = 25 * 1024 * 1024;
 /** Bật `true`: chỉ log ra console (và toast), không gọi `POST /messages/send` — tắt khi xong thử. */
-const TEST_MESSAGE_DRY_RUN = true;
+const TEST_MESSAGE_DRY_RUN = false;
 const EMPTY_META: PaginationMeta = {
   page: 1,
   limit: TABLE_PAGE_SIZE,
