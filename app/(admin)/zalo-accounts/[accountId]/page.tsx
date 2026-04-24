@@ -20,6 +20,7 @@ import Pagination from "@/components/features/Pagination";
 import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
 import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
 import { buildSendMessageFormData, MESSAGE_SEND_REQUEST_TIMEOUT_MS } from "@/lib/api/messages";
 import { apiRequest } from "@/lib/api/client";
@@ -976,7 +977,8 @@ export default function ZaloAccountDetailsPage() {
             <h3 className="text-lg font-semibold text-on-surface">Tài khoản con</h3>
           </div>
 
-          <table className="w-full border-collapse text-left">
+          <DataTableScroll>
+          <table className={dataTableClassName}>
             <thead>
               <tr className="bg-surface-container-low/50">
                 <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -1036,6 +1038,7 @@ export default function ZaloAccountDetailsPage() {
               )}
             </tbody>
           </table>
+          </DataTableScroll>
 
           <div className="flex flex-col gap-4 border-t border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-on-surface-variant">{childSummary}</div>
@@ -1067,7 +1070,8 @@ export default function ZaloAccountDetailsPage() {
             </div>
           ) : null}
 
-          <table className="w-full border-collapse text-left">
+          <DataTableScroll>
+          <table className={dataTableClassName}>
             <thead>
               <tr className="bg-surface-container-low/50">
                 <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -1107,6 +1111,7 @@ export default function ZaloAccountDetailsPage() {
               )}
             </tbody>
           </table>
+          </DataTableScroll>
 
           <div className="flex flex-col gap-4 border-t border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-on-surface-variant">{groupSummary}</div>

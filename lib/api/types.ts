@@ -430,3 +430,16 @@ export interface ConfigEntry {
 export interface PutConfigsBatchPayload {
   entries: { key: string; value: string }[];
 }
+
+/** GET `/api-keys` — một phần tử trong mảng. */
+export interface ApiKey {
+  id: string;
+  name: string;
+  secretKey: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateApiKeyPayload {
+  name: string;
+}

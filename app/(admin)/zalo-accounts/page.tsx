@@ -25,6 +25,7 @@ import Pagination from "@/components/features/Pagination";
 import Button from "@/components/ui/Button";
 import FormError from "@/components/ui/FormError";
 import Badge from "@/components/ui/Badge";
+import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
 import { useAuth } from "@/contexts/AuthContext";
 import { createZaloGroupsBulk } from "@/lib/api/zalo-groups";
 import {
@@ -1020,7 +1021,8 @@ export default function ZaloAccountsPage() {
           </div>
         ) : null}
 
-        <table className="w-full border-collapse text-left">
+        <DataTableScroll>
+        <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
               <th className="px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -1151,6 +1153,7 @@ export default function ZaloAccountsPage() {
             ))}
           </tbody>
         </table>
+        </DataTableScroll>
 
         <div className="flex flex-col gap-4 border-t border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-xs text-on-surface-variant">{pageSummary}</div>

@@ -11,6 +11,7 @@ import { getMessages, undoMessage } from "@/lib/api/messages";
 import type { MessageLog, MessageLogStatus, PaginationMeta } from "@/lib/api/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
 
 const DEFAULT_LIMIT = 20;
 
@@ -47,13 +48,6 @@ function statusBadgeVariant(status: MessageLogStatus): "success" | "error" | "in
     return "error";
   }
   return "info";
-}
-
-function truncateText(text: string, maxLen: number) {
-  if (text.length <= maxLen) {
-    return text;
-  }
-  return `${text.slice(0, maxLen)}…`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -216,10 +210,11 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        <table className="w-full border-collapse text-left">
+        <DataTableScroll>
+        <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
-              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal max-w-md">
+              <th className="min-w-72 whitespace-nowrap text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Nội dung
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -260,12 +255,12 @@ export default function MessagesPage() {
                 const actionItems = getMessageActionItems(row);
                 return (
                   <tr key={row.id} className="group transition-colors hover:bg-surface-container-low/30">
-                    <td className="px-6 py-3 align-top">
+                    <td className="min-w-72 max-w-md px-6 py-3 align-top">
                       <p
-                        className="max-w-md text-sm text-on-surface line-clamp-3"
+                        className="whitespace-pre-wrap break-words text-sm text-on-surface"
                         title={row.content}
                       >
-                        {truncateText(row.content, 200)}
+                        {row.content}
                       </p>
                     </td>
                     <td className="px-6 py-3 align-top text-sm text-on-surface">
@@ -308,6 +303,7 @@ export default function MessagesPage() {
             )}
           </tbody>
         </table>
+        </DataTableScroll>
 
         <div className="flex flex-col gap-4 border-t border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-on-surface-variant">{pageSummary}</div>

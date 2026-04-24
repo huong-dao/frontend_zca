@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
 import { getZaloGroups } from "@/lib/api/zalo-groups";
 import type { PaginationMeta, ZaloGroup } from "@/lib/api/types";
+import { DataTableScroll, dataTableClassName } from "@/components/ui/DataTableScroll";
 
 const DEFAULT_LIMIT = 20;
 
@@ -113,7 +114,8 @@ export default function ZaloGroupsPage() {
           <div className="border-b border-error/20 bg-error/10 px-6 py-4 text-sm text-error">{error}</div>
         ) : null}
 
-        <table className="w-full border-collapse text-left">
+        <DataTableScroll>
+        <table className={dataTableClassName}>
           <thead>
             <tr className="bg-surface-container-low/50">
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
@@ -170,6 +172,7 @@ export default function ZaloGroupsPage() {
             )}
           </tbody>
         </table>
+        </DataTableScroll>
 
         <div className="flex flex-col gap-4 border-t border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-on-surface-variant">{pageSummary}</div>
