@@ -21,7 +21,7 @@ import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
-import { buildSendMessageFormData } from "@/lib/api/messages";
+import { buildSendMessageFormData, MESSAGE_SEND_REQUEST_TIMEOUT_MS } from "@/lib/api/messages";
 import { apiRequest } from "@/lib/api/client";
 import { getZaloGroupsByAccountId, inviteMemberToZaloGroup, removeMemberFromZaloGroup } from "@/lib/api/zalo-groups";
 import { getCurrentZaloSession } from "@/lib/zalo/client";
@@ -598,6 +598,7 @@ export default function ZaloAccountDetailsPage() {
       await apiRequest<SendMessageResponse>("/messages/send", {
         method: "POST",
         body: formData,
+        timeoutMs: MESSAGE_SEND_REQUEST_TIMEOUT_MS,
       });
       showToast("Đã gửi tin nhắn test thành công.", "success");
       closeTestMessageModal();

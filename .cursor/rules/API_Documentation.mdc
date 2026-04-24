@@ -2108,18 +2108,44 @@ Example:
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Roles: authenticated `ADMIN` or `USER`
 
-### DELETE `/messages/:id`
+### POST `/zalo/actions/undo`
 #### Endpoint
-- Method: `DELETE`
-- Full path: `/messages/:id`
-- Function: `MessagesController.remove`
+- Method: `POST`
+- Full path: `/zalo/actions/undo`
+- Function: `ZaloActionsController.undo`
 
 #### Description
-**App-level “delete” / recall:** does **not** remove the row. Sets `status` to **`RECALL`** on the `messages` table (history kept for analytics / foreign keys).
+Low-level Zalo session call: runs zca-js **`api.undo(UndoPayload, threadId, threadType?)`** with a stored **`sessionId`**. Same contract as `docs/Zalo_Integration.mdc` (**API: undo**). This service does **not** wrap `deleteMessage`.
 
-Only the **same app user** who can act as the **sender** may call this: the JWT user must have a stored **`zalo_login_sessions`** row for the message sender’s `zalo_id` (same rule as sending with that child account). If the message is already `RECALL`, the response is still **200** with the current row (idempotent).
+#### Request
+- Body (JSON):
+  - `sessionId`: `string`, UUID — `zalo_login_sessions.id`
+  - `msgId`: `string` — Zalo global message id (same as persisted `message_zalo_id` when available)
+  - `cliMsgId`: `string` — client message id (same as `cli_msg_id` on `messages`)
+  - `threadId`: `string` — group **grid** id or DM peer id (same as `sendMessage` `threadId`)
+  - `threadType` (optional): `ThreadType` from zca-js — omit for **group** (handler default)
 
-This does **not** call Zalo’s `deleteMessage` API — it only updates your database. Sync with Zalo separately if needed.
+#### Response
+- `result`: zca `UndoResponse` (e.g. `{ status: number }`)
+
+#### Error cases
+- `400`: validation; Zalo rejected undo (e.g. message too old, missing ids)
+- `401`: missing/invalid JWT
+- `500`: Zalo / session error
+
+#### Authentication
+- JWT required; roles `ADMIN` or `USER`
+
+### POST `/messages/undo/:id`
+#### Endpoint
+- Method: `POST`
+- Full path: `/messages/undo/:id`
+- Function: `MessagesController.undo`
+
+#### Description
+App-level **withdraw** (no row delete): calls Zalo **`undo`** with ids from the `messages` row and `zalo_account_groups.group_zalo_id` for the sender + group, then sets **`status`** to **`RECALL`**. The row is kept (same as the former recall behaviour, but the Zalo side now uses **`api.undo`**, not `deleteMessage`).
+
+The JWT user must have a **QR session** for the sender’s `zalo_id` (child account). The message must be **`SENT`**, and must have both **`message_zalo_id`** and **`cli_msg_id`**. If already **`RECALL`**, **200** returns the current row (idempotent).
 
 #### Request
 - Params:
@@ -2128,39 +2154,14 @@ This does **not** call Zalo’s `deleteMessage` API — it only updates your dat
 - Body: none
 
 #### Response
-Full message object (same shape as list items in `GET /messages`), with `status: "RECALL"`.
+- `result`: zca `UndoResponse` from the undo call
+- `message`: persisted message row (same select shape as `GET /messages` items) with `status: "RECALL"`
 
 #### Error cases
-- `400`: invalid UUID; sender account removed or missing `zalo_id`; message not in `SENT` status
+- `400`: invalid UUID; sender or account not allowed; **missing `message_zalo_id` / `cli_msg_id`**; not `SENT`; `group_zalo_id` empty; Zalo error
 - `401`: missing/invalid JWT
-- `404`: message not found; **no QR session** for this user + sender’s `zalo_id` (must be logged in as that child on this app user)
+- `404`: message not found; no mapping; no child session
 - `500`: unexpected error
-
-#### Authentication
-- JWT required
-- Guards: `JwtAuthGuard`, `RolesGuard`
-- Roles: authenticated `ADMIN` or `USER`
-
-### POST `/messages/recall/:id`
-#### Endpoint
-- Method: `POST`
-- Full path: `/messages/recall/:id`
-- Function: `MessagesController.recall`
-
-#### Description
-Same behavior as **`DELETE /messages/:id`** (sets `status` to `RECALL`, no row delete). Kept for clients that prefer POST for this action.
-
-#### Request
-- Params:
-  - `id`: `string`, UUID
-- Query: none
-- Body: none
-
-#### Response
-Same as **`DELETE /messages/:id`**.
-
-#### Error cases
-Same as **`DELETE /messages/:id`**.
 
 #### Authentication
 - JWT required

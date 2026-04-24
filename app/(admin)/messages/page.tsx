@@ -7,7 +7,7 @@ import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import { useToast } from "@/components/features/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMessages, recallMessage } from "@/lib/api/messages";
+import { getMessages, undoMessage } from "@/lib/api/messages";
 import type { MessageLog, MessageLogStatus, PaginationMeta } from "@/lib/api/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -138,7 +138,7 @@ export default function MessagesPage() {
       }
       setRecallingId(row.id);
       try {
-        const updated = await recallMessage(row.id);
+        const { message: updated } = await undoMessage(row.id);
         setMessages((previous) => previous.map((item) => (item.id === row.id ? updated : item)));
         showToast("Đã thu hồi tin nhắn.", "success");
       } catch (requestError) {

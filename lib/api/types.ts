@@ -370,6 +370,12 @@ export interface MessageLogGroup {
   groupZaloId: string;
 }
 
+/** POST `/messages/undo/:id` — thu hồi (Zalo `api.undo` + `status: RECALL`). */
+export interface UndoMessageResponse {
+  result: unknown;
+  message: MessageLog;
+}
+
 /** GET `/messages` — một dòng trong `data`. */
 export interface MessageLog {
   id: string;

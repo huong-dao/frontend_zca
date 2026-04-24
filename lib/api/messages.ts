@@ -1,5 +1,15 @@
 import { apiRequest } from "@/lib/api/client";
-import type { MessageLog, MessageLogStatus, PaginatedResponse, SendMessagePayload, SendMessageResponse } from "@/lib/api/types";
+import type {
+  MessageLog,
+  MessageLogStatus,
+  PaginatedResponse,
+  SendMessagePayload,
+  SendMessageResponse,
+  UndoMessageResponse,
+} from "@/lib/api/types";
+
+/** Upload multipart + gọi Zalo nền có thể lâu; tăng nếu mạng rất chậm. */
+export const MESSAGE_SEND_REQUEST_TIMEOUT_MS = 600_000;
 
 export interface GetMessagesParams {
   page?: number;
@@ -40,12 +50,13 @@ export function sendMessage(data: SendMessagePayload) {
   return apiRequest<SendMessageResponse>("/messages/send", {
     method: "POST",
     body: buildSendMessageFormData(data),
+    timeoutMs: MESSAGE_SEND_REQUEST_TIMEOUT_MS,
   });
 }
 
-/** DELETE `/messages/:id` — đặt trạng thái RECALL (thu hồi ở mức app). */
-export function recallMessage(messageId: string) {
-  return apiRequest<MessageLog>(`/messages/${encodeURIComponent(messageId)}`, {
-    method: "DELETE",
+/** POST `/messages/undo/:id` — thu hồi (undo Zalo, giữ bản ghi, `status: RECALL`). */
+export function undoMessage(messageId: string) {
+  return apiRequest<UndoMessageResponse>(`/messages/undo/${encodeURIComponent(messageId)}`, {
+    method: "POST",
   });
 }

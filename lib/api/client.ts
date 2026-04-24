@@ -16,6 +16,11 @@ export class ApiError extends Error {
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | object | null;
+  /**
+   * Hủy request sau N ms (AbortController). Dùng cho gửi file / thao tác nền lâu;
+   * tránh treo mãi khi server hoặc reverse proxy chưa trả hỏi.
+   */
+  timeoutMs?: number;
 };
 
 function buildUrl(path: string) {
@@ -52,33 +57,68 @@ function normalizeErrorMessage(
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, headers, ...restOptions } = options;
+  const { body, headers, timeoutMs, signal: userSignal, ...restOptions } = options;
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
-  const response = await fetch(buildUrl(path), {
-    ...restOptions,
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...headers,
-    },
-    body:
-      body == null || typeof body === "string" || body instanceof Blob || isFormData
-        ? (body as BodyInit | null | undefined)
-        : JSON.stringify(body),
-    credentials: "include",
-    cache: "no-store",
-  });
+  const timeoutController = new AbortController();
+  let timedOut = false;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  if (typeof timeoutMs === "number" && timeoutMs > 0) {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      timeoutController.abort();
+    }, timeoutMs);
+  }
+
+  if (userSignal) {
+    if (userSignal.aborted) {
+      timeoutController.abort();
+    } else {
+      userSignal.addEventListener("abort", () => timeoutController.abort(), { once: true });
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path), {
+      ...restOptions,
+      signal: timeoutController.signal,
+      headers: {
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...headers,
+      },
+      body:
+        body == null || typeof body === "string" || body instanceof Blob || isFormData
+          ? (body as BodyInit | null | undefined)
+          : JSON.stringify(body),
+      credentials: "include",
+      cache: "no-store",
+    });
+  } catch (caught) {
+    if (caught instanceof Error && caught.name === "AbortError" && timedOut) {
+      throw new ApiError(
+        "Hết thời gian chờ phản hồi từ server. Với gửi kèm file, kiểm tra log backend (Nest), phiên gọi Zalo, và tăng read_timeout / client_max_body_size ở reverse proxy (nginx) nếu có.",
+        0,
+      );
+    }
+    throw caught;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 
   const contentType = response.headers.get("content-type");
-  const payload = isJsonResponse(contentType) ? await response.json() : await response.text();
+  const responsePayload = isJsonResponse(contentType) ? await response.json() : await response.text();
 
   if (!response.ok) {
     throw new ApiError(
-      normalizeErrorMessage(`Request failed with status ${response.status}`, payload),
+      normalizeErrorMessage(`Request failed with status ${response.status}`, responsePayload),
       response.status,
-      payload,
+      responsePayload,
     );
   }
 
-  return payload as T;
+  return responsePayload as T;
 }
