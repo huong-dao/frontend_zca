@@ -21,7 +21,7 @@ const CONFIG_FORM_FIELDS: {
     key: "message_interval",
     label: "Thời gian giữa các lần gửi tin",
     description:
-      "Khoảng tối thiểu (phút) giữa hai tin cùng người gửi tới cùng nhóm (cấu hình server, key `message_interval`).",
+      "Khoảng tối thiểu (phút) giữa hai tin cùng người gửi tới cùng nhóm",
     min: 0,
     max: 10_080,
   },
