@@ -444,3 +444,25 @@ export interface ApiKey {
 export interface CreateApiKeyPayload {
   name: string;
 }
+
+/** GET `/users` — một phần tử trong mảng; PUT `/users/:id` trả về cùng dạng. */
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateUserPayload {
+  email: string;
+  password: string;
+  role: UserRole;
+}
+
+export interface UpdateUserPayload {
+  email?: string;
+  role?: UserRole;
+  isActive?: boolean;
+}

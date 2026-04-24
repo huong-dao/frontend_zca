@@ -237,29 +237,40 @@ Return the currently authenticated user resolved from the auth cookie or bearer 
 - Function: `UsersController.findAll`
 
 #### Description
-Return all users ordered by newest first.
+Return users in pages ordered by newest first (`createdAt` descending). Uses the same paginated response shape as `GET /messages` (`data` + `meta`).
 
 #### Request
 - Params: none
-- Query: none
+- Query:
+  - `page`: `number`, optional, integer ≥ `1`, default `1`
+  - `limit`: `number`, optional, integer ≥ `1`, default `20`
 - Body: none
 
 #### Response
 
 ```json
-[
-  {
-    "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0001",
-    "email": "admin@zca.local",
-    "role": "ADMIN",
-    "isActive": true,
-    "createdAt": "2026-04-15T08:00:00.000Z",
-    "updatedAt": "2026-04-15T08:00:00.000Z"
+{
+  "data": [
+    {
+      "id": "0ec2b3f2-1c2d-4a14-9e6e-4f10f9ea0001",
+      "email": "admin@zca.local",
+      "role": "ADMIN",
+      "isActive": true,
+      "createdAt": "2026-04-15T08:00:00.000Z",
+      "updatedAt": "2026-04-15T08:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
   }
-]
+}
 ```
 
 #### Error cases
+- `400`: invalid query validation (e.g. `page` or `limit` not a positive integer)
 - `401`: missing/invalid JWT
 - `403`: role is not `ADMIN`
 - `500`: unexpected server error
