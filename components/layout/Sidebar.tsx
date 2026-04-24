@@ -47,7 +47,7 @@ export default function Sidebar() {
                 <h1 className="text-lg font-bold text-white tracking-tight">Project ZCA</h1>
                 <p className="text-xs text-slate-400 font-medium tracking-wider uppercase mt-1">Automation Hub</p>
             </div>
-            <nav className="flex-1 space-y-1">
+            <nav className="flex-1 space-y-1 mt-[30px] md:mt-0">
                 <Link onClick={closeMobileMenu} className={`${isActive('/dashboard') ? activeClass : inactiveClass}`} href="/dashboard">
                     <HiHome className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Dashboard</span>
