@@ -11,11 +11,13 @@ import {
 } from "@/lib/zalo/client";
 import { useToast } from "@/components/features/Toast";
 import ZaloSessionCombobox from "@/components/features/ZaloSessionCombobox";
-import { HiOutlineArrowRightOnRectangle } from "react-icons/hi2";
+import { HiOutlineArrowRightOnRectangle, HiOutlineBars3 } from "react-icons/hi2";
 import Button from "../ui/Button";
 import type { ZaloSessionPublic } from "@/lib/zalo/types";
+import { useAdminNav } from "@/contexts/AdminNavContext";
 
 export default function Header() {
+  const { toggleMobileMenu } = useAdminNav();
   const { showToast } = useToast();
   const [loggingOut, setLoggingOut] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
@@ -99,64 +101,80 @@ export default function Header() {
 
   const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0] ?? null;
 
-  return sessions.length > 0 ? (
-    <header className="sticky top-0 z-40 flex h-16 flex-wrap items-center justify-between gap-3 bg-white/80 px-8 shadow-sm shadow-slate-200/50 backdrop-blur-md dark:bg-slate-950/80">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          {activeSession?.user.avatar ? (
-            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-200">
-              <Image
-                alt="Zalo User"
-                className="h-full w-full object-cover"
-                src={activeSession.user.avatar}
-                width={32}
-                height={32}
-                unoptimized
-              />
+  return (
+    <header className="sticky top-0 z-50 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 bg-white/80 px-4 py-2 shadow-sm shadow-slate-200/50 backdrop-blur-md sm:px-6 lg:px-8 dark:border-slate-800/60 dark:bg-slate-950/80">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-4">
+        <button
+          type="button"
+          aria-label="Mở menu điều hướng"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#004ac6] lg:hidden dark:text-slate-200 dark:hover:bg-slate-800"
+          onClick={toggleMobileMenu}
+        >
+          <HiOutlineBars3 className="h-6 w-6" />
+        </button>
+        {sessions.length > 0 ? (
+          <>
+            <div className="flex min-w-0 items-center gap-3">
+              {activeSession?.user.avatar ? (
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-200">
+                  <Image
+                    alt="Zalo User"
+                    className="h-full w-full object-cover"
+                    src={activeSession.user.avatar}
+                    width={32}
+                    height={32}
+                    unoptimized
+                  />
+                </div>
+              ) : null}
+              <div className="min-w-0">
+                <p className="text-xs font-normal text-black dark:text-slate-100">Phiên Zalo đang chọn</p>
+                <p className="truncate text-xs font-medium text-[#004ac6]">
+                  {activeSession?.user.displayName || "Chưa xác định"}
+                </p>
+                <p className="text-[10px] text-on-surface-variant">
+                  {sessions.length} phiên đăng nhập
+                </p>
+              </div>
             </div>
-          ) : null}
-          <div className="min-w-0">
-            <p className="text-xs font-normal text-black">Phiên Zalo đang chọn</p>
-            <p className="truncate text-xs font-medium text-[#004ac6]">
-              {activeSession?.user.displayName || "Chưa xác định"}
-            </p>
-            <p className="text-[10px] text-on-surface-variant">
-              {sessions.length} phiên đăng nhập
-            </p>
-          </div>
+
+            {sessions.length > 1 ? (
+              <ZaloSessionCombobox
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onSelectSession={(nextId) => void handleChangeActiveSession(nextId)}
+                switching={sessionSwitching}
+              />
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm text-slate-600 dark:text-slate-400">Chưa có phiên Zalo đăng nhập</p>
+        )}
+      </div>
+
+      {sessions.length > 0 ? (
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          <Button
+            size="sm"
+            variant="destructive"
+            startIcon={<HiOutlineArrowRightOnRectangle />}
+            loading={loggingOut}
+            disabled={loggingOutAll || !activeSession}
+            onClick={() => activeSession && void handleLogoutOne(activeSession.id)}
+          >
+            Đăng xuất phiên này
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            loading={loggingOutAll}
+            disabled={loggingOut}
+            onClick={() => void handleLogoutAll()}
+          >
+            Đăng xuất tất cả
+          </Button>
         </div>
-
-        {sessions.length > 1 ? (
-          <ZaloSessionCombobox
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={(nextId) => void handleChangeActiveSession(nextId)}
-            switching={sessionSwitching}
-          />
-        ) : null}
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <Button
-          size="sm"
-          variant="destructive"
-          startIcon={<HiOutlineArrowRightOnRectangle />}
-          loading={loggingOut}
-          disabled={loggingOutAll || !activeSession}
-          onClick={() => activeSession && void handleLogoutOne(activeSession.id)}
-        >
-          Đăng xuất phiên này
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          loading={loggingOutAll}
-          disabled={loggingOut}
-          onClick={() => void handleLogoutAll()}
-        >
-          Đăng xuất tất cả
-        </Button>
-      </div>
+      ) : null}
     </header>
-  ) : null;
+  );
 }

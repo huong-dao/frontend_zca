@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminNavProvider } from "@/contexts/AdminNavContext";
 import { ZaloGroupNameSyncProvider } from "@/contexts/ZaloGroupNameSyncContext";
 
 export default function AdminLayout({
@@ -31,11 +32,13 @@ export default function AdminLayout({
 
   return (
     <ZaloGroupNameSyncProvider>
-      <Sidebar />
-      <main className="ml-64 min-h-screen">
-        <Header />
-        {children}
-      </main>
+      <AdminNavProvider>
+        <Sidebar />
+        <main className="min-h-screen w-full lg:ml-64">
+          <Header />
+          {children}
+        </main>
+      </AdminNavProvider>
     </ZaloGroupNameSyncProvider>
   );
 }
