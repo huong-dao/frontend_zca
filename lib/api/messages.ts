@@ -25,7 +25,7 @@ export function getMessages(params: GetMessagesParams = {}) {
   });
 }
 
-export function sendMessage(data: SendMessagePayload) {
+export function buildSendMessageFormData(data: SendMessagePayload): FormData {
   const formData = new FormData();
   formData.append("zaloAccountId", data.zaloAccountId);
   formData.append("groupId", data.groupId);
@@ -33,9 +33,13 @@ export function sendMessage(data: SendMessagePayload) {
   for (const file of data.files ?? []) {
     formData.append("files", file, file.name);
   }
+  return formData;
+}
+
+export function sendMessage(data: SendMessagePayload) {
   return apiRequest<SendMessageResponse>("/messages/send", {
     method: "POST",
-    body: formData,
+    body: buildSendMessageFormData(data),
   });
 }
 

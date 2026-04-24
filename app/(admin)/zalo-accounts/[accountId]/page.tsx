@@ -21,10 +21,17 @@ import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import { cancelFriendZaloAccounts, getZaloAccounts, makeFriendZaloAccounts } from "@/lib/api/zalo-accounts";
-import { sendMessage } from "@/lib/api/messages";
+import { buildSendMessageFormData } from "@/lib/api/messages";
+import { apiRequest } from "@/lib/api/client";
 import { getZaloGroupsByAccountId, inviteMemberToZaloGroup, removeMemberFromZaloGroup } from "@/lib/api/zalo-groups";
 import { getCurrentZaloSession } from "@/lib/zalo/client";
-import type { PaginationMeta, ZaloAccount, ZaloAccountChild, ZaloGroup } from "@/lib/api/types";
+import type {
+  PaginationMeta,
+  SendMessageResponse,
+  ZaloAccount,
+  ZaloAccountChild,
+  ZaloGroup,
+} from "@/lib/api/types";
 
 const TABLE_PAGE_SIZE = 10;
 const GROUP_FILTER_DEBOUNCE_MS = 350;
@@ -441,6 +448,7 @@ export default function ZaloAccountDetailsPage() {
   };
 
   const openTestMessageModal = async () => {
+    testSendFilesRef.current = [];
     setTestSendChildId("");
     setTestSendGroupId("");
     setTestSendText("");
@@ -474,6 +482,7 @@ export default function ZaloAccountDetailsPage() {
   };
 
   const closeTestMessageModal = () => {
+    testSendFilesRef.current = [];
     setTestMessageModalOpen(false);
     setTestSendChildId("");
     setTestSendGroupId("");
@@ -515,22 +524,28 @@ export default function ZaloAccountDetailsPage() {
           );
         });
       }
-      return [...prev, ...toAdd];
+      const next = [...prev, ...toAdd];
+      testSendFilesRef.current = next;
+      return next;
     });
   };
 
   const handleRemoveTestMessageFile = (index: number) => {
-    setTestSendFiles((prev) => prev.filter((_, i) => i !== index));
+    setTestSendFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      testSendFilesRef.current = next;
+      return next;
+    });
   };
 
   const handleTestSendSubmit = async () => {
     const trimmed = testSendText.trim();
-    const filesToSend = testSendFilesRef.current;
+    const fileList = testSendFilesRef.current;
     if (!testSendChildId || !testSendGroupId) {
       showToast("Vui lòng chọn tài khoản con và nhóm.", "error");
       return;
     }
-    if (!trimmed && filesToSend.length === 0) {
+    if (!trimmed && fileList.length === 0) {
       showToast("Nhập nội dung hoặc chọn ít nhất một file đính kèm.", "error");
       return;
     }
@@ -538,11 +553,15 @@ export default function ZaloAccountDetailsPage() {
     setTestSendSubmitting(true);
 
     try {
-      await sendMessage({
+      const formData = buildSendMessageFormData({
         zaloAccountId: testSendChildId,
         groupId: testSendGroupId,
         text: trimmed,
-        files: filesToSend.length > 0 ? [...filesToSend] : undefined,
+        files: fileList.length > 0 ? [...fileList] : undefined,
+      });
+      await apiRequest<SendMessageResponse>("/messages/send", {
+        method: "POST",
+        body: formData,
       });
       showToast("Đã gửi tin nhắn test thành công.", "success");
       closeTestMessageModal();
