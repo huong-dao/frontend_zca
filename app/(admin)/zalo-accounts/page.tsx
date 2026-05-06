@@ -660,6 +660,17 @@ export default function ZaloAccountsPage() {
       return;
     }
 
+    const childBelongsToMaster =
+      (targetAccount.masters?.length ?? 0) > 0 || targetAccount.masterId != null;
+
+    if (!targetAccount.isMaster && !childBelongsToMaster) {
+      showToast(
+        "Tài khoản child chỉ quét nhóm sau khi đã được gán cho ít nhất một tài khoản master.",
+        "error",
+      );
+      return;
+    }
+
     const matchingSession = sessionList.find((session) => session.user.uid === targetAccount.zaloId);
 
     if (!matchingSession) {
@@ -865,13 +876,16 @@ export default function ZaloAccountsPage() {
     ];
 
     if (!account.isMaster) {
-      items.push(
-        {
+      const childCanScanGroups =
+        (account.masters?.length ?? 0) > 0 || account.masterId != null;
+      if (childCanScanGroups) {
+        items.push({
           label: "Quét nhóm Zalo",
           icon: <HiOutlineUserGroup />,
           onClick: () => handleScanGroups(account.id),
-        },
-        {
+        });
+      }
+      items.push({
         label: "Set Master",
         icon: <HiOutlineUserCircle />,
         onClick: () => handleSetMaster(account.id),
