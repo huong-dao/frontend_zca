@@ -16,6 +16,7 @@ import {
   HiOutlineExclamationTriangle,
   HiOutlineFunnel,
   HiTrash,
+  HiMiniFaceFrown,
 } from "react-icons/hi2";
 import { useToast } from "@/components/features/Toast";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
@@ -1001,7 +1002,7 @@ export default function ZaloAccountsPage() {
               }}
             >
               <option value="">Chọn hành động</option>
-              <option value={BULK_ACTION_ADD_CHILD}>Add child</option>
+              <option value={BULK_ACTION_ADD_CHILD}>Thêm vào tài khoản Master</option>
             </select>
 
             {selectedBulkAction === BULK_ACTION_ADD_CHILD ? (
@@ -1121,7 +1122,12 @@ export default function ZaloAccountsPage() {
                         <Badge variant="success" className="text-xs" icon={<HiMiniFaceSmile />}>
                           Đang đăng nhập
                         </Badge>
-                      ) : null}
+                      ) : (
+                        <Badge variant="warning" className="text-xs" icon={<HiMiniFaceFrown />}>
+                          Chưa đăng nhập
+                        </Badge>
+                      )}
+                 
                       {account.master ? (
                         <div className="text-xs text-outline">Thuộc master: {account.master.name}</div>
                       ) : null}
