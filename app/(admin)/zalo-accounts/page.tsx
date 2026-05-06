@@ -1128,9 +1128,18 @@ export default function ZaloAccountsPage() {
                         </Badge>
                       )}
                  
-                      {account.master ? (
-                        <div className="text-xs text-outline">Thuộc master: {account.master.name}</div>
+                      {account.masters && account.masters.length > 0 ? (
+                        <div className="text-xs text-outline">
+                          Thuộc master:{" "}
+                          {account.masters.map((master: any, idx: number) =>
+                            <span key={master.id}>
+                              {master.name}
+                              {idx < account.masters.length - 1 ? ', ' : ''}
+                            </span>
+                          )}
+                        </div>
                       ) : null}
+                 
                     </div>
                   </td>
 
@@ -1148,15 +1157,13 @@ export default function ZaloAccountsPage() {
 
                   <td className="px-6 py-3">
                     <div className="text-sm text-on-surface-variant">
-                      {account.isMaster && (
-                        hasGroupData(account.groupData, account.id) ? (
-                          <Badge className="text-xs" variant="success" icon={<HiOutlineCheckCircle />}>
-                            Đã quét
-                          </Badge>
-                        ) : (
-                          <Badge className="text-xs" variant="warning">Chưa quét</Badge>
-                        )
-                      )}
+                      {hasGroupData(account.groupData, account.id) ? (
+                        <Badge className="text-xs" variant="success" icon={<HiOutlineCheckCircle />}>
+                          Đã quét
+                        </Badge>
+                      ) : (
+                        <Badge className="text-xs" variant="warning">Chưa quét</Badge>
+                      )}                 
                     </div>
                   </td>
 

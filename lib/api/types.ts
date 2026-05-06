@@ -65,7 +65,7 @@ export interface ZaloAccount {
   groupData: Record<string, string>;
   createdAt: string;
   updatedAt: string;
-  master: ZaloAccountMaster | null;
+  masters: ZaloAccountMaster[]; // Danh sách các master mà account này thuộc về
   children: ZaloAccountChild[];
   friends: ZaloAccountFriend[];
 }
