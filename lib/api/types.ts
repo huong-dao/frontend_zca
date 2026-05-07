@@ -466,3 +466,27 @@ export interface UpdateUserPayload {
   role?: UserRole;
   isActive?: boolean;
 }
+
+/** `GET /background-jobs/group-metadata-sync/status` */
+export type BackgroundJobLifecycleStatus = "IDLE" | "RUNNING";
+
+export interface GroupMetadataSyncStatus {
+  jobKey: string;
+  jobType: string;
+  status: BackgroundJobLifecycleStatus;
+  groupSyncEnabled: boolean;
+  startedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string | null;
+}
+
+/** Một phần tử từ `GET /background-jobs/child-group-scan/status` (chỉ các job RUNNING). */
+export interface ChildGroupScanRunningStatus {
+  jobKey: string;
+  jobType: string;
+  zaloAccountId: string;
+  status: BackgroundJobLifecycleStatus;
+  startedAt: string | null;
+  finishedAt: string | null;
+  updatedAt: string | null;
+}

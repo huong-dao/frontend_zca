@@ -12,6 +12,7 @@ This document is intended for the NextJS frontend team and is generated from the
 - [Users API](#users-api)
 - [Zalo Groups API](#zalo-groups-api)
 - [Zalo Accounts API](#zalo-accounts-api)
+- [Background Jobs API](#background-jobs-api)
 - [Messages API](#messages-api)
 - [Configs API](#configs-api)
 - [API Keys API](#api-keys-api)
@@ -62,6 +63,7 @@ This document is intended for the NextJS frontend team and is generated from the
   - `configs` is ADMIN only
   - `api-keys` is ADMIN only
 - Message endpoints require JWT, but do not restrict by role
+- `background-jobs` status endpoints (`GET /background-jobs/...`) allow `ADMIN` and `USER`
 
 ## Enums
 ### UserRole
@@ -1869,6 +1871,8 @@ Example request:
 
 **Environment:** set **`GROUP_SYNC_ENABLED=true`** (và Redis như job master). Tuỳ chọn điều chỉnh `CHILD_GROUP_SYNC_*` cho batch, delay, cache — xem `.env.example`.
 
+**Job status (UI polling):** ngoài `ZaloAccount.status === INACTIVE`, frontend có thể gọi **`GET /background-jobs/child-group-scan/status`** để lấy danh sách các child đang có job quét nhóm ở trạng thái **`RUNNING`** trong DB (xem [Background Jobs API](#background-jobs-api)).
+
 #### Request
 - Params:
   - `id`: `string`, UUID — child `zalo_accounts.id` (`isMaster` must be `false`)
@@ -1961,6 +1965,113 @@ Mark an existing account as a master account. The account is updated with `isMas
 - JWT required
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
+
+## Background Jobs API
+
+Trạng thái **`RUNNING` / `IDLE`** được ghi vào bảng **`background_job_states`** (Prisma: `BackgroundJobState`) khi worker BullMQ chạy: master **`group-metadata-sync`** (`tick`) và child **`child-group-scan`** (`sync`). Chi tiết hành vi nền: `docs/Background_Jobs_Overview.mdc`.
+
+- Khi **`GROUP_SYNC_ENABLED` ≠ `true`**: cron/worker master không chạy; `GET .../group-metadata-sync/status` vẫn trả về **`status: IDLE`** và **`groupSyncEnabled: false`**. Child scan API vẫn tắt như cũ.
+- **`GET .../child-group-scan/status`** chỉ liệt kê các bản ghi **`CHILD_GROUP_SCAN`** đang **`RUNNING`** (có thể nhiều child song song vì worker có `concurrency` > 1).
+
+### GET `/background-jobs/group-metadata-sync/status`
+#### Endpoint
+- Method: `GET`
+- Full path: `/background-jobs/group-metadata-sync/status`
+- Function: `BackgroundJobsStatusController.getGroupMetadataSyncStatus` → `BackgroundJobStateService.getGroupMetadataSyncStatus`
+
+#### Description
+Trả về trạng thái job đồng bộ **tên nhóm + `globalId`** cho các `ZaloGroup` pending (queue Bull **`group-metadata-sync`**, job name **`tick`**). Một bản ghi cố định với **`jobKey`** = `"group-metadata-sync"`.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "jobKey": "group-metadata-sync",
+  "jobType": "GROUP_METADATA_SYNC",
+  "status": "IDLE",
+  "groupSyncEnabled": true,
+  "startedAt": null,
+  "finishedAt": "2026-05-07T10:15:30.000Z",
+  "updatedAt": "2026-05-07T10:15:30.000Z"
+}
+```
+
+- `status`: `IDLE` hoặc `RUNNING`. Nếu **`groupSyncEnabled`** là `false`, backend luôn trả **`status: IDLE`** (kể cả khi DB còn bản ghi cũ).
+- `startedAt` / `finishedAt` / `updatedAt`: ISO 8601 hoặc `null` nếu chưa từng có vòng ghi DB tương ứng.
+
+Ví dụ khi worker đang xử lý một tick:
+
+```json
+{
+  "jobKey": "group-metadata-sync",
+  "jobType": "GROUP_METADATA_SYNC",
+  "status": "RUNNING",
+  "groupSyncEnabled": true,
+  "startedAt": "2026-05-07T10:16:00.123Z",
+  "finishedAt": null,
+  "updatedAt": "2026-05-07T10:16:00.125Z"
+}
+```
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role không thuộc `ADMIN` hoặc `USER`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`, `USER`
+
+### GET `/background-jobs/child-group-scan/status`
+#### Endpoint
+- Method: `GET`
+- Full path: `/background-jobs/child-group-scan/status`
+- Function: `BackgroundJobsStatusController.listChildGroupScanStatus` → `BackgroundJobStateService.listRunningChildGroupScans`
+
+#### Description
+Trả về **mảng** các tài khoản **child** đang có job **`child-group-scan`** ở trạng thái **`RUNNING`** trong DB (mỗi child một **`jobKey`** dạng `child-group-scan:<zalo_accounts.id>`). Hữu ích khi UI cần hiển thị đồng thời nhiều phiên quét; song song với đó, `ZaloAccount.status === INACTIVE` vẫn phản ánh “đang quét” trên từng account.
+
+#### Request
+- Params: none
+- Query: none
+- Body: none
+
+#### Response
+
+Mảng JSON; khi không có job chạy thì `[]`.
+
+```json
+[
+  {
+    "jobKey": "child-group-scan:fd87478e-14ae-46b5-8aec-e3800b800c91",
+    "jobType": "CHILD_GROUP_SCAN",
+    "zaloAccountId": "fd87478e-14ae-46b5-8aec-e3800b800c91",
+    "status": "RUNNING",
+    "startedAt": "2026-05-07T10:20:00.000Z",
+    "finishedAt": null,
+    "updatedAt": "2026-05-07T10:20:15.500Z"
+  }
+]
+```
+
+- Thứ tự phần tử: **`updatedAt` giảm dần** (hoạt động gần đây nhất trước).
+- Endpoint này **chỉ** trả các bản ghi **`RUNNING`**; bản ghi **`IDLE`** không nằm trong danh sách (frontend có thể coi “không có trong mảng” = không còn job DB cho child đó).
+
+#### Error cases
+- `401`: missing/invalid JWT
+- `403`: role không thuộc `ADMIN` hoặc `USER`
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Required role: `ADMIN`, `USER`
 
 ## Messages API
 ### GET `/messages`

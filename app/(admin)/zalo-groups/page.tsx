@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import { useAuth } from "@/contexts/AuthContext";
 import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
+import { getGroupMetadataSyncStatus } from "@/lib/api/background-jobs";
 import { getZaloGroups } from "@/lib/api/zalo-groups";
-import type { PaginationMeta, ZaloGroup } from "@/lib/api/types";
+import type { GroupMetadataSyncStatus, PaginationMeta, ZaloGroup } from "@/lib/api/types";
 import {
   DataTableScroll,
   dataTableClassName,
@@ -26,6 +27,8 @@ const EMPTY_META: PaginationMeta = {
   totalPages: 1,
 };
 
+const GROUP_METADATA_SYNC_POLL_MS = 3 * 60 * 1000;
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
@@ -42,6 +45,9 @@ export default function ZaloGroupsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [serverGroupMetadataSync, setServerGroupMetadataSync] =
+    useState<GroupMetadataSyncStatus | null>(null);
+  const prevServerMetadataSyncRunningRef = useRef(false);
 
   const loadGroups = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -86,6 +92,44 @@ export default function ZaloGroupsPage() {
     void loadGroups(page);
   }, [authLoading, lastCompletedAt, loadGroups, page, user]);
 
+  useEffect(() => {
+    if (authLoading || !user?.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const refreshServerSyncStatus = async () => {
+      try {
+        const status = await getGroupMetadataSyncStatus();
+        if (cancelled) {
+          return;
+        }
+
+        const running = status.groupSyncEnabled && status.status === "RUNNING";
+
+        if (prevServerMetadataSyncRunningRef.current && !running) {
+          void loadGroups(page);
+        }
+
+        prevServerMetadataSyncRunningRef.current = running;
+        setServerGroupMetadataSync(status);
+      } catch {
+        if (!cancelled) {
+          setServerGroupMetadataSync(null);
+        }
+      }
+    };
+
+    void refreshServerSyncStatus();
+    const intervalId = window.setInterval(refreshServerSyncStatus, GROUP_METADATA_SYNC_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [authLoading, loadGroups, page, user?.id]);
+
   const pageSummary = useMemo(() => {
     if (meta.total === 0) {
       return "Chưa có dữ liệu";
@@ -97,6 +141,20 @@ export default function ZaloGroupsPage() {
     return `Hiển thị ${start}-${end} / ${meta.total} nhóm`;
   }, [meta]);
 
+  const serverMetadataSyncBanner =
+    serverGroupMetadataSync?.groupSyncEnabled === true &&
+    serverGroupMetadataSync.status === "RUNNING";
+
+  const serverSyncStartedHint = serverGroupMetadataSync?.startedAt
+    ? ` (bắt đầu ${new Intl.DateTimeFormat("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(serverGroupMetadataSync.startedAt))})`
+    : "";
+
   return (
     <div className="min-w-0 flex-1 overflow-y-auto p-8">
       <PageHeader
@@ -105,6 +163,13 @@ export default function ZaloGroupsPage() {
       />
 
       <div className="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
+        {serverMetadataSyncBanner ? (
+          <div className="border-b border-amber-500/25 bg-amber-500/10 px-6 py-4 text-sm text-amber-900 dark:text-amber-100">
+            <span className="font-medium">Lưu ý:</span> Hệ thống đang đồng bộ metadata nhóm Zalo từ tài khoản master (cron nền). Danh sách nhóm có thể
+            cập nhật sau khi đợt đồng bộ hoàn tất.{serverSyncStartedHint}
+          </div>
+        ) : null}
+
         {isSyncing ? (
           <div className="border-b border-primary/10 bg-primary/5 px-6 py-4 text-sm text-primary">
             Đang cập nhật tên nhóm... Đợt này xử lý {currentBatchSize} nhóm, còn khoảng{" "}

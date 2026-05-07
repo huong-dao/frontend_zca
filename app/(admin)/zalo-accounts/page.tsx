@@ -32,6 +32,7 @@ import {
   dataTableFrozenFirstColumnInnerClass,
 } from "@/components/ui/DataTableScroll";
 import { useAuth } from "@/contexts/AuthContext";
+import { getGroupMetadataSyncStatus, listChildGroupScanStatus } from "@/lib/api/background-jobs";
 import { createZaloGroupsBulk } from "@/lib/api/zalo-groups";
 import {
   addChildZaloAccounts,
@@ -45,7 +46,7 @@ import {
   updateZaloAccountGroupData,
 } from "@/lib/api/zalo-accounts";
 import { ApiError } from "@/lib/api/client";
-import type { BulkCreateZaloGroupInput, ZaloAccount, ZaloAccountFilterType } from "@/lib/api/types";
+import type { BulkCreateZaloGroupInput, ZaloAccount, ZaloAccountFilterType, GroupMetadataSyncStatus } from "@/lib/api/types";
 import {
   bakeZaloSessionCookies,
   getAllGroups,
@@ -85,6 +86,12 @@ const QR_FINISHED_STATUSES: PendingQrLoginStatus[] = [
   "error",
 ];
 const BULK_ACTION_ADD_CHILD = "add_child";
+
+const GROUP_METADATA_SYNC_POLL_MS = 3 * 60 * 1000;
+/** Poll trạng thái job quét nhóm child (không có socket). */
+const CHILD_GROUP_SCAN_POLL_MS = 60 * 1000;
+/** Sau khi enqueue: nếu API luôn trả [] mà không thấy RUNNING, ngừng poll để tránh vòng lặp vô hạn. */
+const MAX_CHILD_SCAN_IDLE_POLLS = 45;
 
 // SECTION: SHARED HELPERS
 // Các helper bên dưới được dùng lại ở nhiều flow như render bảng, login QR và validate dữ liệu.
@@ -187,6 +194,10 @@ export default function ZaloAccountsPage() {
     () => new Set(),
   );
   const childScanLockedRef = useRef<Set<string>>(new Set());
+  const childScanPollTimerRef = useRef<number | null>(null);
+  const childScanPrevRunningRef = useRef<Set<string>>(new Set());
+  const childScanSawRunningRef = useRef(false);
+  const childScanOnlyEmptyPollsRef = useRef(0);
 
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const persistedSessionIdRef = useRef<string | null>(null);
@@ -261,6 +272,102 @@ export default function ZaloAccountsPage() {
       setLoading(false);
     }
   }, [accountFilter, showToast]);
+
+  const loadAccountsRef = useRef(loadAccounts);
+  useEffect(() => {
+    loadAccountsRef.current = loadAccounts;
+  }, [loadAccounts]);
+
+  const [groupMetadataSyncStatus, setGroupMetadataSyncStatus] =
+    useState<GroupMetadataSyncStatus | null>(null);
+
+  const runChildScanStatusPollTick = useCallback(async () => {
+    try {
+      const rows = await listChildGroupScanStatus();
+      const next = new Set(rows.map((r) => r.zaloAccountId));
+
+      if (next.size > 0) {
+        childScanSawRunningRef.current = true;
+        childScanOnlyEmptyPollsRef.current = 0;
+      } else if (!childScanSawRunningRef.current) {
+        childScanOnlyEmptyPollsRef.current += 1;
+      }
+
+      const prev = childScanPrevRunningRef.current;
+      if (prev.size > 0) {
+        for (const id of prev) {
+          if (!next.has(id)) {
+            await loadAccountsRef.current();
+            break;
+          }
+        }
+      }
+
+      childScanPrevRunningRef.current = next;
+
+      const shouldStop =
+        (next.size === 0 && childScanSawRunningRef.current) ||
+        childScanOnlyEmptyPollsRef.current >= MAX_CHILD_SCAN_IDLE_POLLS;
+
+      if (shouldStop && childScanPollTimerRef.current != null) {
+        window.clearInterval(childScanPollTimerRef.current);
+        childScanPollTimerRef.current = null;
+        childScanPrevRunningRef.current = new Set();
+        childScanSawRunningRef.current = false;
+        childScanOnlyEmptyPollsRef.current = 0;
+      }
+    } catch {
+      /* bỏ qua lần poll lỗi mạng tạm thời */
+    }
+  }, []);
+
+  const startOrRefreshChildScanPolling = useCallback(() => {
+    if (childScanPollTimerRef.current == null) {
+      childScanPollTimerRef.current = window.setInterval(
+        () => void runChildScanStatusPollTick(),
+        CHILD_GROUP_SCAN_POLL_MS,
+      );
+    }
+
+    void runChildScanStatusPollTick();
+  }, [runChildScanStatusPollTick]);
+
+  useEffect(() => {
+    if (authLoading || !user?.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const status = await getGroupMetadataSyncStatus();
+        if (!cancelled) {
+          setGroupMetadataSyncStatus(status);
+        }
+      } catch {
+        if (!cancelled) {
+          setGroupMetadataSyncStatus(null);
+        }
+      }
+    };
+
+    void tick();
+    const intervalId = window.setInterval(tick, GROUP_METADATA_SYNC_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [authLoading, user?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (childScanPollTimerRef.current != null) {
+        window.clearInterval(childScanPollTimerRef.current);
+        childScanPollTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const loadMasterAccountOptions = useCallback(async () => {
     try {
@@ -679,6 +786,20 @@ export default function ZaloAccountsPage() {
     }
 
     if (!targetAccount.isMaster) {
+      try {
+        const syncMeta = await getGroupMetadataSyncStatus();
+        setGroupMetadataSyncStatus(syncMeta);
+        if (syncMeta.groupSyncEnabled && syncMeta.status === "RUNNING") {
+          showToast(
+            "Đang đồng bộ nhóm của tài khoản master (cron). Vui lòng đợi hoàn tất trước khi quét nhóm cho tài khoản con.",
+            "warning",
+          );
+          return;
+        }
+      } catch {
+        /* Không chặn quét child nếu không đọc được trạng thái cron. */
+      }
+
       if (childScanLockedRef.current.has(accountId)) {
         return;
       }
@@ -694,6 +815,7 @@ export default function ZaloAccountsPage() {
           "Hoàn tất. Tài khoản con tạm INACTIVE trong lúc đồng bộ nền.\nTự động đóng popup sau 3 giây…",
         );
         showToast("Đã gửi quét nhóm Zalo. Hệ thống sẽ đồng bộ nhóm trong nền.", "success");
+        startOrRefreshChildScanPolling();
         closeScanGroupsModalAfterDelay();
       } catch (requestError) {
         setScanGroupMessage("Gửi yêu cầu quét nhóm thất bại. Bạn có thể đóng popup và thử lại.");
@@ -752,7 +874,13 @@ export default function ZaloAccountsPage() {
       setScanGroupMessage("Quá trình quét hoặc tạo nhóm Zalo thất bại. Bạn có thể đóng popup và thử lại.");
       showToast(getErrorMessage(requestError, "Không thể quét nhóm Zalo."), "error");
     }
-  }, [buildBulkCreateGroupsPayload, closeScanGroupsModalAfterDelay, loadAccounts, showToast]);
+  }, [
+    buildBulkCreateGroupsPayload,
+    closeScanGroupsModalAfterDelay,
+    loadAccounts,
+    showToast,
+    startOrRefreshChildScanPolling,
+  ]);
 
   // SECTION: BULK ACTIONS
   // Checkbox đầu bảng dùng để chọn nhanh các row đang hiển thị, phục vụ các thao tác hàng loạt như add child.
@@ -938,6 +1066,10 @@ export default function ZaloAccountsPage() {
     }
   }, [accountFilter, keywordSearch, loadAccounts, showToast]);
 
+  const masterCronSyncRunning =
+    groupMetadataSyncStatus?.groupSyncEnabled === true &&
+    groupMetadataSyncStatus.status === "RUNNING";
+
   // SECTION: RENDER
   return (
     <div className="min-w-0 flex-1 p-8">
@@ -956,6 +1088,13 @@ export default function ZaloAccountsPage() {
 
       {/* SECTION: SEARCH BAR + ACCOUNTS TABLE */}
       <div className="rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
+        {masterCronSyncRunning ? (
+          <div className="border-b border-amber-500/25 bg-amber-500/10 px-6 py-3 text-sm text-amber-900 dark:text-amber-100">
+            <span className="font-medium">Lưu ý:</span> Hệ thống đang đồng bộ nhóm từ tài khoản master (cron). Không thể{" "}
+            <span className="font-medium">quét nhóm Zalo cho tài khoản con</span> trong lúc này.
+          </div>
+        ) : null}
+
         <div className="bg-surface-container-lowest pl-6 pr-6 py-4 rounded-xl">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             {(["all", "master", "child"] as const).map((type) => {
