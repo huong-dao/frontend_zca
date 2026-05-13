@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HiOutlineFunnel } from "react-icons/hi2";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
+import Button from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
 import { getGroupMetadataSyncStatus } from "@/lib/api/background-jobs";
@@ -45,6 +47,8 @@ export default function ZaloGroupsPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [keywordSearch, setKeywordSearch] = useState("");
+  const [activeKeyword, setActiveKeyword] = useState("");
   const [serverGroupMetadataSync, setServerGroupMetadataSync] =
     useState<GroupMetadataSyncStatus | null>(null);
   const prevServerMetadataSyncRunningRef = useRef(false);
@@ -54,9 +58,11 @@ export default function ZaloGroupsPage() {
     setError("");
 
     try {
+      const trimmed = activeKeyword.trim();
       const response = await getZaloGroups({
         page: nextPage,
         limit: DEFAULT_LIMIT,
+        ...(trimmed ? { keyword: trimmed } : {}),
       });
 
       setGroups(response.data);
@@ -74,7 +80,7 @@ export default function ZaloGroupsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeKeyword]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -129,6 +135,11 @@ export default function ZaloGroupsPage() {
       window.clearInterval(intervalId);
     };
   }, [authLoading, loadGroups, page, user?.id]);
+
+  const handleSearch = useCallback(() => {
+    setPage(1);
+    setActiveKeyword(keywordSearch.trim());
+  }, [keywordSearch]);
 
   const pageSummary = useMemo(() => {
     if (meta.total === 0) {
@@ -187,6 +198,30 @@ export default function ZaloGroupsPage() {
           <div className="border-b border-error/20 bg-error/10 px-6 py-4 text-sm text-error">{error}</div>
         ) : null}
 
+        <div className="rounded-xl bg-surface-container-lowest px-6 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="w-80 rounded-xl border-none bg-surface-container-low py-2 pl-4 pr-4 text-sm transition-all placeholder:text-black focus:bg-white focus:ring-2 focus:ring-primary/20"
+              placeholder="Tìm theo tên nhóm"
+              type="text"
+              value={keywordSearch}
+              onChange={(event) => setKeywordSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  void handleSearch();
+                }
+              }}
+            />
+            <Button
+              className="h-9"
+              startIcon={<HiOutlineFunnel className="h-5 w-5" />}
+              onClick={() => handleSearch()}
+            >
+              Tìm kiếm
+            </Button>
+          </div>
+        </div>
+
         <DataTableScroll freezeFirstColumn={true}>
         <table className={dataTableClassName}>
           <thead>
@@ -211,20 +246,20 @@ export default function ZaloGroupsPage() {
           <tbody className="divide-y divide-outline-variant/10">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   Đang tải danh sách nhóm Zalo...
                 </td>
               </tr>
             ) : groups.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-10 text-center text-sm text-on-surface-variant">
-                  Chưa có nhóm Zalo nào.
+                <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                  {activeKeyword.trim()
+                    ? "Không có nhóm Zalo nào khớp từ khóa."
+                    : "Chưa có nhóm Zalo nào."}
                 </td>
               </tr>
             ) : (
               groups.map((group) => (
-                // console.log(group),
-                <>
                 <tr key={group.id} className="group transition-colors hover:bg-surface-container-low/30">
                   <td className={`px-6 py-3 ${FROZEN_GROUP_NAME_COL}`}>
                     <div
@@ -246,7 +281,6 @@ export default function ZaloGroupsPage() {
                     <div className="text-sm text-on-surface-variant">{formatDate(group.createdAt)}</div>
                   </td>
                 </tr>
-                </>
               ))
             )}
           </tbody>

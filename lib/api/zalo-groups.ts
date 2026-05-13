@@ -16,6 +16,8 @@ import type {
 interface GetZaloGroupsParams {
   page?: number;
   limit?: number;
+  /** GET `/zalo-groups?keyword=` — không phân biệt hoa thường, khớp một phần `group_name` hoặc `origin_name`. */
+  keyword?: string;
   /** Lọc chứa chuỗi (không phân biệt hoa thường), theo GET `/zalo-groups/account/:id?group_name=`. */
   group_name?: string;
 }
@@ -29,6 +31,11 @@ export function getZaloGroups(params: GetZaloGroupsParams = {}) {
 
   if (params.limit) {
     searchParams.set("limit", String(params.limit));
+  }
+
+  const trimmedKeyword = params.keyword?.trim();
+  if (trimmedKeyword) {
+    searchParams.set("keyword", trimmedKeyword);
   }
 
   const queryString = searchParams.toString();

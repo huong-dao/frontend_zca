@@ -477,7 +477,7 @@ Delete a user by id.
 - Function: `ZaloGroupsController.findAll`
 
 #### Description
-Return paginated Zalo groups stored in the database.
+Return paginated Zalo groups stored in the database. Optional **`keyword`** filters rows by a case-insensitive substring match on **`groupName`** and **`originName`** (database semantics equivalent to `ILIKE '%keyword%'`, not an exact equality match). If **`keyword`** and **`global_id`** are both provided, the result must satisfy **both** filters (AND).
 
 #### Request
 - Params: none
@@ -485,15 +485,15 @@ Return paginated Zalo groups stored in the database.
   - `page`: `number`, optional, default `1`
   - `limit`: `number`, optional, default `20`
   - `global_id`: `string`, optional — exact match on `zalo_groups.global_id` (server-side filter; **`globalId` is not included in response objects**)
+  - `keyword`: `string`, optional — case-insensitive partial search on `group_name` **or** `origin_name`; empty/whitespace-only values are ignored
 - Body: none
 
-Example request:
+Example (query string):
 
-```json
-{
-  "page": 1,
-  "limit": 20
-}
+```
+GET /zalo-groups?page=1&limit=20
+GET /zalo-groups?page=1&limit=20&keyword=Marketing
+GET /zalo-groups?global_id=EPHPVTP4JNKHS9M7F4QP0UK2I8978C00&keyword=Team
 ```
 
 #### Response
