@@ -36,7 +36,6 @@ import type {
 
 const TABLE_PAGE_SIZE = 10;
 const GROUP_FILTER_DEBOUNCE_MS = 350;
-const TEST_MODAL_GROUPS_LIMIT = 500;
 const MAX_TEST_MESSAGE_FILES = 20;
 const MAX_TEST_MESSAGE_FILE_BYTES = 25 * 1024 * 1024;
 /** Bật `true`: chỉ log ra console (và toast), không gọi `POST /messages/send` — tắt khi xong thử. */
@@ -98,10 +97,8 @@ export default function ZaloAccountDetailsPage() {
 
   const [testMessageModalOpen, setTestMessageModalOpen] = useState(false);
   const [testSendChildId, setTestSendChildId] = useState("");
-  const [testSendGroupId, setTestSendGroupId] = useState("");
+  const [testSendSelectedGroup, setTestSendSelectedGroup] = useState<ZaloGroup | null>(null);
   const [testSendText, setTestSendText] = useState("");
-  const [testModalGroups, setTestModalGroups] = useState<ZaloGroup[]>([]);
-  const [testModalGroupsLoading, setTestModalGroupsLoading] = useState(false);
   const [testSendSubmitting, setTestSendSubmitting] = useState(false);
   const [testSendFiles, setTestSendFiles] = useState<File[]>([]);
   const [testFileInputKey, setTestFileInputKey] = useState(0);
@@ -447,47 +444,24 @@ export default function ZaloAccountDetailsPage() {
     }
   };
 
-  const openTestMessageModal = async () => {
+  const openTestMessageModal = () => {
     testSendFilesRef.current = [];
     setTestSendChildId("");
-    setTestSendGroupId("");
+    setTestSendSelectedGroup(null);
     setTestSendText("");
     setTestSendFiles([]);
     setTestFileInputKey((k) => k + 1);
     setTestMessageModalOpen(true);
-
-    if (!accountId) {
-      return;
-    }
-
-    setTestModalGroupsLoading(true);
-    setTestModalGroups([]);
-
-    try {
-      const response = await getZaloGroupsByAccountId(accountId, {
-        page: 1,
-        limit: TEST_MODAL_GROUPS_LIMIT,
-      });
-      setTestModalGroups(response.data);
-    } catch (requestError) {
-      showToast(
-        requestError instanceof Error ? requestError.message : "Không thể tải danh sách nhóm.",
-        "error",
-      );
-    } finally {
-      setTestModalGroupsLoading(false);
-    }
   };
 
   const closeTestMessageModal = () => {
     testSendFilesRef.current = [];
     setTestMessageModalOpen(false);
     setTestSendChildId("");
-    setTestSendGroupId("");
+    setTestSendSelectedGroup(null);
     setTestSendText("");
     setTestSendFiles([]);
     setTestFileInputKey((k) => k + 1);
-    setTestModalGroups([]);
   };
 
   const handleTestMessageFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -547,7 +521,7 @@ export default function ZaloAccountDetailsPage() {
           ? [...fromState]
           : fromInput;
 
-    if (!testSendChildId || !testSendGroupId) {
+    if (!testSendChildId || !testSendSelectedGroup) {
       showToast("Vui lòng chọn tài khoản con và nhóm.", "error");
       return;
     }
@@ -561,7 +535,7 @@ export default function ZaloAccountDetailsPage() {
     try {
       const formData = buildSendMessageFormData({
         zaloAccountId: testSendChildId,
-        groupId: testSendGroupId,
+        groupId: testSendSelectedGroup.id,
         text: trimmed,
         files: fileList.length > 0 ? fileList : undefined,
       });
@@ -578,7 +552,7 @@ export default function ZaloAccountDetailsPage() {
       console.log("[Gửi tin test] snapshot trước khi gửi:", {
         dryRun: TEST_MESSAGE_DRY_RUN,
         zaloAccountId: testSendChildId,
-        groupId: testSendGroupId,
+        groupId: testSendSelectedGroup.id,
         text: trimmed,
         fileCount: fileList.length,
         fromRef: fromRef.length,
@@ -851,29 +825,22 @@ export default function ZaloAccountDetailsPage() {
             </select>
           </label>
 
-          <label className="block text-sm font-medium text-on-surface">
-            Nhóm (của master đang xem)
-            {testModalGroupsLoading ? (
-              <p className="mt-2 text-sm text-on-surface-variant">Đang tải danh sách nhóm…</p>
-            ) : (
-              <select
-                className="mt-2 block w-full rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                value={testSendGroupId}
-                onChange={(event) => setTestSendGroupId(event.target.value)}
-                disabled={testSendSubmitting || testModalGroups.length === 0}
-              >
-                <option value="">— Chọn nhóm —</option>
-                {testModalGroups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.groupName}
-                  </option>
-                ))}
-              </select>
-            )}
+          <div>
+            <span className="block text-sm font-medium text-on-surface">Nhóm (của master đang xem)</span>
+            <div className="mt-2">
+              <GroupSearchCombobox
+                accountId={accountId}
+                disabled={testSendSubmitting || !accountId}
+                value={testSendSelectedGroup}
+                onChange={setTestSendSelectedGroup}
+                placeholder="Gõ để tìm theo tên nhóm…"
+              />
+            </div>
             <p className="mt-1 text-xs text-on-surface-variant">
-              Backend yêu cầu tài khoản con có trong nhóm và đã đăng nhập Zalo (QR) dưới user hiện tại.
+              Danh sách lọc theo nhóm đã liên kết với master này. Backend yêu cầu tài khoản con có trong nhóm và đã đăng
+              nhập Zalo (QR) dưới user hiện tại.
             </p>
-          </label>
+          </div>
 
           <label className="block text-sm font-medium text-on-surface">
             Nội dung
@@ -941,7 +908,7 @@ export default function ZaloAccountDetailsPage() {
               type="button"
               variant="outline"
               startIcon={<HiChatBubbleLeftRight className="h-4 w-4" />}
-              onClick={() => void openTestMessageModal()}
+              onClick={openTestMessageModal}
               disabled={loading || !account?.isMaster}
             >
               Gửi tin nhắn test
