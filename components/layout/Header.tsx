@@ -72,6 +72,13 @@ export default function Header() {
   };
 
   const handleLogoutOne = async (sessionId: string) => {
+    const confirmed = window.confirm(
+      "Bạn có chắc chắn muốn đăng xuất phiên đăng nhập này hay không?"
+    );
+    if (!confirmed) {
+      return;
+    }
+
     setLoggingOut(true);
 
     try {
@@ -164,7 +171,7 @@ export default function Header() {
           >
             Đăng xuất phiên này
           </Button>
-          <Button
+          {/* <Button
             size="sm"
             variant="outline"
             loading={loggingOutAll}
@@ -172,7 +179,7 @@ export default function Header() {
             onClick={() => void handleLogoutAll()}
           >
             Đăng xuất tất cả
-          </Button>
+          </Button> */}
         </div>
       ) : null}
     </header>
