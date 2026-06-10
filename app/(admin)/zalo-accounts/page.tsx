@@ -968,7 +968,7 @@ export default function ZaloAccountsPage() {
   const handleDeleteAccount = useCallback(
     async (account: ZaloAccount) => {
       const confirmed = window.confirm(
-        `Bạn có chắc chắn muốn xóa tài khoản "${account.name}"? Tài khoản sẽ bị ẩn khỏi hệ thống (xóa mềm).`,
+        `Bạn có chắc chắn muốn xóa tài khoản "${account.name}"? Tài khoản sẽ bị ẩn khỏi hệ thống (xóa mềm). Nếu tài khoản là master, tất cả nhóm của tài khoản sẽ bị xóa khỏi hệ thống.`,
       );
       if (!confirmed) {
         return;

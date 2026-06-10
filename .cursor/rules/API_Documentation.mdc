@@ -1673,11 +1673,23 @@ Get one **active** (not soft-deleted) Zalo account with full relation details. I
 - Function: `ZaloAccountsController.softDelete`
 
 #### Description
-**Soft delete** a Zalo account: sets `isDeleted` and `deletedAt` in the database (row is not physically removed, to preserve foreign keys and history). The account is then **excluded** from listings, filters, and all other features that resolve an account (invite/remove member, group bulk, `POST /messages/send`, etc.). `GET /zalo-accounts/...` will return `404` for that id. Historical **`messages`** rows still reference the sender; **`GET /messages`** includes `sender.isDeleted` / `sender.deletedAt` so the client can show the correct UI.
+**Soft delete** a Zalo account: sets `isDeleted` and `deletedAt` on `zalo_accounts` (row is **not** physically removed, to preserve foreign keys and message history). After removal the account is **excluded** from listings, filters, and all features that resolve an account (`POST /zalo-groups/invite-member`, `POST /zalo-groups/remove-member`, `POST /zalo-groups/bulk/:id`, `POST /messages/send`, child group scan, public send, etc.). `GET /zalo-accounts/:id` returns **`404`** for that id.
 
-All **`ZaloLoginSession`** rows whose `zalo_uid` matches this account’s `zalo_id` are **deleted** (real delete), in the same transaction as the soft delete — so no orphaned QR/cookie sessions remain for that Zalo identity. If the account has no `zalo_id`, no session rows are removed.
+All side effects run in **one database transaction**:
 
-Idempotent: if the account is already soft-deleted, still runs session cleanup (returns how many `zalo_login_sessions` rows were removed, often `0`).
+| Target | Action |
+|--------|--------|
+| `zalo_accounts` (this id) | `isDeleted = true`, `deletedAt = now`; if was master → `isMaster = false` |
+| `zalo_login_sessions` | **Hard delete** rows where `zalo_uid` = this account’s `zalo_id` (no-op if `zalo_id` is null/empty) |
+| `zalo_groups` | **Hard delete** every group this account is linked to via `zalo_account_groups` |
+| `zalo_account_groups` | **Hard delete** **all** mapping rows for those groups (master **and** child accounts); affected accounts get refreshed `groupCount` |
+| `messages` | **Kept**; `group_id` set to `null` first so group hard-delete is allowed (historical log remains; `sender_id` unchanged) |
+| `zalo_account_relations` | **Not** removed — master/child links stay unless changed elsewhere |
+| `zalo_account_friends` | **Not** removed |
+
+**Group purge scope:** only groups where **this** account has a `zalo_account_groups` row. For each such group, child mappings to the same `group_id` are removed too, then the `zalo_groups` row is deleted.
+
+**Idempotent:** if the account is already soft-deleted, the API still runs session cleanup, group purge, and master demotion when applicable (counters are often `0`). Response message is `Zalo account was already removed.` and **`deletedAt` is omitted**.
 
 #### Request
 - Params:
@@ -1687,17 +1699,60 @@ Idempotent: if the account is already soft-deleted, still runs session cleanup (
 
 #### Response
 
+Success (first removal):
+
 ```json
 {
   "message": "Zalo account removed.",
   "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
   "isDeleted": true,
   "deletedAt": "2026-04-21T12:00:00.000Z",
-  "loginSessionsRemoved": 1
+  "loginSessionsRemoved": 1,
+  "groupsRemoved": 3,
+  "accountGroupMapsRemoved": 5,
+  "messagesDetached": 12,
+  "demotedFromMaster": true
 }
 ```
 
-`loginSessionsRemoved` is the number of `zalo_login_sessions` rows deleted (may be `0` if there was no `zalo_id` or no stored session). The idempotent (already-removed) response includes `loginSessionsRemoved` but omits `deletedAt`.
+Already removed (idempotent):
+
+```json
+{
+  "message": "Zalo account was already removed.",
+  "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+  "isDeleted": true,
+  "loginSessionsRemoved": 0,
+  "groupsRemoved": 0,
+  "accountGroupMapsRemoved": 0,
+  "messagesDetached": 0,
+  "demotedFromMaster": false
+}
+```
+
+Response fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | `string` | Human-readable outcome |
+| `id` | `string` (UUID) | Account id |
+| `isDeleted` | `true` | Always `true` on success |
+| `deletedAt` | `string` (ISO) | Set on first removal only; omitted when already removed |
+| `loginSessionsRemoved` | `number` | Count of `zalo_login_sessions` rows hard-deleted |
+| `groupsRemoved` | `number` | Count of `zalo_groups` rows hard-deleted |
+| `accountGroupMapsRemoved` | `number` | Count of `zalo_account_groups` rows hard-deleted (includes child links) |
+| `messagesDetached` | `number` | Count of `messages` whose `group_id` was cleared to `null` |
+| `demotedFromMaster` | `boolean` | `true` if account had `isMaster = true` and was demoted in this call |
+
+#### Frontend notes
+- **Breaking change is not required** for the delete call itself: method/path/body are unchanged; existing clients that only check HTTP status or `message` keep working.
+- **Recommended UI updates** after a successful delete:
+  - Remove the account from local list/cache (`GET /zalo-accounts` will no longer return it).
+  - If `groupsRemoved > 0`, refresh **group** views (`GET /zalo-groups`, `GET /zalo-groups/account/:childId`) — deleted groups disappear; child `groupCount` on account cards may drop.
+  - Refresh **message** list if shown: old group messages remain but `groupId` / nested `group` may be **`null`** (handle null-safe display, e.g. “Nhóm đã xóa” instead of `group.groupName`).
+- **Optional:** show a confirmation dialog when deleting a **master** — warn that linked groups will be permanently removed from the system and child group memberships for those groups will be cleared.
+- **Optional:** display new counters (`groupsRemoved`, `messagesDetached`, `demotedFromMaster`) in a toast/summary if useful for admin audit.
+- No change needed to request payload or auth headers.
 
 #### Error cases
 - `400`: invalid UUID
