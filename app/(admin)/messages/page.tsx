@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiArrowPath, HiArrowUturnLeft } from "react-icons/hi2";
+import { HiArrowPath, HiArrowUturnLeft, HiOutlineFunnel } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
@@ -37,6 +37,61 @@ const STATUS_FILTERS: { value: "" | MessageLogStatus; label: string }[] = [
   { value: "RECALL", label: "Thu hồi" },
 ];
 
+type MessageListFilters = {
+  content: string;
+  target: string;
+  sender: string;
+  phone: string;
+  sentFrom: string;
+  sentTo: string;
+};
+
+const EMPTY_LIST_FILTERS: MessageListFilters = {
+  content: "",
+  target: "",
+  sender: "",
+  phone: "",
+  sentFrom: "",
+  sentTo: "",
+};
+
+const FILTER_INPUT_CLASS =
+  "w-full rounded-xl border-none bg-surface-container-low py-2 pl-4 pr-4 text-sm transition-all placeholder:text-on-surface-variant focus:bg-white focus:ring-2 focus:ring-primary/20";
+
+function trimFilters(filters: MessageListFilters): MessageListFilters {
+  return {
+    content: filters.content.trim(),
+    target: filters.target.trim(),
+    sender: filters.sender.trim(),
+    phone: filters.phone.trim(),
+    sentFrom: filters.sentFrom.trim(),
+    sentTo: filters.sentTo.trim(),
+  };
+}
+
+function toIsoDateTime(localValue: string) {
+  if (!localValue) {
+    return undefined;
+  }
+  const date = new Date(localValue);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+  return date.toISOString();
+}
+
+function hasListFilters(filters: MessageListFilters) {
+  const trimmed = trimFilters(filters);
+  return Boolean(
+    trimmed.content ||
+      trimmed.target ||
+      trimmed.sender ||
+      trimmed.phone ||
+      trimmed.sentFrom ||
+      trimmed.sentTo,
+  );
+}
+
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
@@ -69,6 +124,8 @@ export default function MessagesPage() {
   const [meta, setMeta] = useState<PaginationMeta>(EMPTY_META);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"" | MessageLogStatus>("");
+  const [draftFilters, setDraftFilters] = useState<MessageListFilters>(EMPTY_LIST_FILTERS);
+  const [activeFilters, setActiveFilters] = useState<MessageListFilters>(EMPTY_LIST_FILTERS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -85,10 +142,19 @@ export default function MessagesPage() {
       setError("");
 
       try {
+        const trimmed = trimFilters(activeFilters);
+        const sentFrom = toIsoDateTime(trimmed.sentFrom);
+        const sentTo = toIsoDateTime(trimmed.sentTo);
         const response = await getMessages({
           page: nextPage,
           limit: DEFAULT_LIMIT,
           ...(statusFilter ? { status: statusFilter } : {}),
+          ...(trimmed.content ? { content: trimmed.content } : {}),
+          ...(trimmed.target ? { target: trimmed.target } : {}),
+          ...(trimmed.sender ? { sender: trimmed.sender } : {}),
+          ...(trimmed.phone ? { phone: trimmed.phone } : {}),
+          ...(sentFrom ? { sentFrom } : {}),
+          ...(sentTo ? { sentTo } : {}),
         });
         setMessages(response.data);
         setMeta(response.meta);
@@ -114,7 +180,7 @@ export default function MessagesPage() {
         }
       }
     },
-    [statusFilter],
+    [activeFilters, statusFilter],
   );
 
   useEffect(() => {
@@ -128,6 +194,25 @@ export default function MessagesPage() {
     setStatusFilter(next);
     setPage(1);
   };
+
+  const handleApplyFilters = () => {
+    const trimmed = trimFilters(draftFilters);
+    setDraftFilters(trimmed);
+    setActiveFilters(trimmed);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setDraftFilters(EMPTY_LIST_FILTERS);
+    setActiveFilters(EMPTY_LIST_FILTERS);
+    setPage(1);
+  };
+
+  const updateDraftFilter = (key: keyof MessageListFilters, value: string) => {
+    setDraftFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const hasActiveFilters = statusFilter !== "" || hasListFilters(activeFilters);
 
   const handleRefresh = () => {
     void loadMessages(page, { silent: true });
@@ -202,7 +287,7 @@ export default function MessagesPage() {
           <div className="border-b border-error/20 bg-error/10 px-6 py-4 text-sm text-error">{error}</div>
         ) : null}
 
-        <div className="bg-surface-container-lowest pl-6 pr-6 py-4 rounded-xl">
+        <div className="space-y-4 bg-surface-container-lowest px-6 py-4">
           <div className="flex flex-wrap items-center gap-2">
             {STATUS_FILTERS.map((item) => (
               <Button
@@ -215,6 +300,113 @@ export default function MessagesPage() {
                 {item.label}
               </Button>
             ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-on-surface-variant">Nội dung</label>
+              <input
+                className={FILTER_INPUT_CLASS}
+                placeholder="Tìm trong nội dung tin nhắn"
+                type="text"
+                value={draftFilters.content}
+                onChange={(event) => updateDraftFilter("content", event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleApplyFilters();
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-on-surface-variant">
+                Nhóm/Người dùng
+              </label>
+              <input
+                className={FILTER_INPUT_CLASS}
+                placeholder="Tên nhóm hoặc số điện thoại người nhận"
+                type="text"
+                value={draftFilters.target}
+                onChange={(event) => updateDraftFilter("target", event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleApplyFilters();
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-on-surface-variant">Người gửi</label>
+              <input
+                className={FILTER_INPUT_CLASS}
+                placeholder="Tên, số điện thoại hoặc Zalo ID"
+                type="text"
+                value={draftFilters.sender}
+                onChange={(event) => updateDraftFilter("sender", event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleApplyFilters();
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-on-surface-variant">Số điện thoại</label>
+              <input
+                className={FILTER_INPUT_CLASS}
+                placeholder="Số người nhận hoặc người gửi"
+                type="text"
+                value={draftFilters.phone}
+                onChange={(event) => updateDraftFilter("phone", event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleApplyFilters();
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-on-surface-variant">Gửi từ</label>
+              <input
+                className={FILTER_INPUT_CLASS}
+                type="datetime-local"
+                value={draftFilters.sentFrom}
+                onChange={(event) => updateDraftFilter("sentFrom", event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-on-surface-variant">Gửi đến</label>
+              <input
+                className={FILTER_INPUT_CLASS}
+                type="datetime-local"
+                value={draftFilters.sentTo}
+                onChange={(event) => updateDraftFilter("sentTo", event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              className="h-9"
+              startIcon={<HiOutlineFunnel className="h-5 w-5" />}
+              onClick={handleApplyFilters}
+              disabled={loading}
+            >
+              Lọc
+            </Button>
+            <Button
+              className="h-9"
+              variant="outline"
+              onClick={handleResetFilters}
+              disabled={loading || !hasActiveFilters}
+            >
+              Đặt lại
+            </Button>
           </div>
         </div>
 
@@ -255,7 +447,7 @@ export default function MessagesPage() {
             ) : messages.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
-                  {statusFilter
+                  {hasActiveFilters
                     ? "Không có tin nhắn nào phù hợp bộ lọc."
                     : "Chưa có tin nhắn nào."}
                 </td>

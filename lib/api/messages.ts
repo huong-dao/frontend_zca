@@ -15,6 +15,12 @@ export interface GetMessagesParams {
   page?: number;
   limit?: number;
   status?: MessageLogStatus;
+  content?: string;
+  target?: string;
+  sender?: string;
+  phone?: string;
+  sentFrom?: string;
+  sentTo?: string;
 }
 
 export function getMessages(params: GetMessagesParams = {}) {
@@ -27,6 +33,24 @@ export function getMessages(params: GetMessagesParams = {}) {
   }
   if (params.status) {
     searchParams.set("status", params.status);
+  }
+  if (params.content) {
+    searchParams.set("content", params.content);
+  }
+  if (params.target) {
+    searchParams.set("target", params.target);
+  }
+  if (params.sender) {
+    searchParams.set("sender", params.sender);
+  }
+  if (params.phone) {
+    searchParams.set("phone", params.phone);
+  }
+  if (params.sentFrom) {
+    searchParams.set("sentFrom", params.sentFrom);
+  }
+  if (params.sentTo) {
+    searchParams.set("sentTo", params.sentTo);
   }
   const queryString = searchParams.toString();
 

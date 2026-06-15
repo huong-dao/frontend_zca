@@ -1681,13 +1681,13 @@ All side effects run in **one database transaction**:
 |--------|--------|
 | `zalo_accounts` (this id) | `isDeleted = true`, `deletedAt = now`; if was master → `isMaster = false` |
 | `zalo_login_sessions` | **Hard delete** rows where `zalo_uid` = this account’s `zalo_id` (no-op if `zalo_id` is null/empty) |
-| `zalo_groups` | **Hard delete** every group this account is linked to via `zalo_account_groups` |
-| `zalo_account_groups` | **Hard delete** **all** mapping rows for those groups (master **and** child accounts); affected accounts get refreshed `groupCount` |
-| `messages` | **Kept**; `group_id` set to `null` first so group hard-delete is allowed (historical log remains; `sender_id` unchanged) |
-| `zalo_account_relations` | **Not** removed — master/child links stay unless changed elsewhere |
+| `zalo_groups` | **Hard delete** only when **no active master** (`is_master = true`, not soft-deleted) still maps to that group after unlinking this account; shared groups with another master are **kept** |
+| `zalo_account_groups` | **Hard delete** mapping rows for **this account** and **its children** in those groups; if the group is removed (no master left), any remaining child-only mappings on that group are deleted too; other masters’ mappings are untouched; affected accounts get refreshed `groupCount` |
+| `messages` | **Kept**; `group_id` cleared to `null` **only** for groups that are fully hard-deleted (messages in groups that still have a master keep their `group_id`) |
+| `zalo_account_relations` | **Hard delete** rows where `master_id` = this account (unlink all children from this master); rows where this account is `child_id` are **not** removed |
 | `zalo_account_friends` | **Not** removed |
 
-**Group purge scope:** only groups where **this** account has a `zalo_account_groups` row. For each such group, child mappings to the same `group_id` are removed too, then the `zalo_groups` row is deleted.
+**Group purge scope:** only groups where **this** account has a `zalo_account_groups` row. For each such group, mappings for **this account and its children** are removed. If **another active master** still maps to the same `group_id`, the `zalo_groups` row is **retained** and messages keep their `group_id`. The group is hard-deleted when **no active master** maps to it anymore (orphan child-only mappings on that group are removed as part of the delete).
 
 **Idempotent:** if the account is already soft-deleted, the API still runs session cleanup, group purge, and master demotion when applicable (counters are often `0`). Response message is `Zalo account was already removed.` and **`deletedAt` is omitted**.
 
@@ -1711,6 +1711,7 @@ Success (first removal):
   "groupsRemoved": 3,
   "accountGroupMapsRemoved": 5,
   "messagesDetached": 12,
+  "childRelationsRemoved": 2,
   "demotedFromMaster": true
 }
 ```
@@ -1726,6 +1727,7 @@ Already removed (idempotent):
   "groupsRemoved": 0,
   "accountGroupMapsRemoved": 0,
   "messagesDetached": 0,
+  "childRelationsRemoved": 0,
   "demotedFromMaster": false
 }
 ```
@@ -1739,9 +1741,10 @@ Response fields:
 | `isDeleted` | `true` | Always `true` on success |
 | `deletedAt` | `string` (ISO) | Set on first removal only; omitted when already removed |
 | `loginSessionsRemoved` | `number` | Count of `zalo_login_sessions` rows hard-deleted |
-| `groupsRemoved` | `number` | Count of `zalo_groups` rows hard-deleted |
-| `accountGroupMapsRemoved` | `number` | Count of `zalo_account_groups` rows hard-deleted (includes child links) |
-| `messagesDetached` | `number` | Count of `messages` whose `group_id` was cleared to `null` |
+| `groupsRemoved` | `number` | Count of `zalo_groups` rows hard-deleted (excludes groups that still have an active master mapping) |
+| `accountGroupMapsRemoved` | `number` | Count of `zalo_account_groups` rows hard-deleted for this account and its children only |
+| `messagesDetached` | `number` | Count of `messages` whose `group_id` was cleared (only for fully removed groups) |
+| `childRelationsRemoved` | `number` | Count of `zalo_account_relations` rows hard-deleted where this account was `master_id` |
 | `demotedFromMaster` | `boolean` | `true` if account had `isMaster = true` and was demoted in this call |
 
 #### Frontend notes
@@ -1749,8 +1752,9 @@ Response fields:
 - **Recommended UI updates** after a successful delete:
   - Remove the account from local list/cache (`GET /zalo-accounts` will no longer return it).
   - If `groupsRemoved > 0`, refresh **group** views (`GET /zalo-groups`, `GET /zalo-groups/account/:childId`) — deleted groups disappear; child `groupCount` on account cards may drop.
+  - If `childRelationsRemoved > 0`, refresh child account detail — `masters` array no longer includes the removed master (DB link is gone, not just filtered).
   - Refresh **message** list if shown: old group messages remain but `groupId` / nested `group` may be **`null`** (handle null-safe display, e.g. “Nhóm đã xóa” instead of `group.groupName`).
-- **Optional:** show a confirmation dialog when deleting a **master** — warn that linked groups will be permanently removed from the system and child group memberships for those groups will be cleared.
+- **Optional:** show a confirmation dialog when deleting a **master** — warn that the master and its children will be unlinked from their groups; groups **shared with other masters** stay in the system (only orphan groups with no remaining mappings are fully deleted).
 - **Optional:** display new counters (`groupsRemoved`, `messagesDetached`, `demotedFromMaster`) in a toast/summary if useful for admin audit.
 - No change needed to request payload or auth headers.
 
@@ -2136,24 +2140,40 @@ Mảng JSON; khi không có job chạy thì `[]`.
 - Function: `MessagesController.findAll`
 
 #### Description
-Return paginated message logs with optional filtering by message status. Each item’s **`sender`** includes **`isDeleted`** and **`deletedAt`** for the Zalo account that sent the message (so the UI can show when the sender was soft-deleted via `DELETE /zalo-accounts/:id`).
+Return paginated message logs with optional filters (status, content, recipient, sender, phone, send time). Ordered by **`createdAt` descending** (newest first).
+
+Each item includes nested **`sender`** (Zalo child account) and optional **`group`** (null for DM / public-API phone sends). The **`sender`** object includes **`status`**, **`isDeleted`**, and **`deletedAt`** so the UI can show inactive or soft-deleted senders.
+
+**Display hints for the frontend**
+
+| UI label | Field / filter |
+| -------- | -------------- |
+| Nội dung | `content` (query) or item `content` |
+| Nhóm / người nhận | `target` (query); item `group.groupName` / `group.originName` for groups, or `peerPhone` for DM |
+| Người gửi | `sender` (query) or item `sender.name` / `sender.phone` / `sender.zaloId` |
+| Số điện thoại | `phone` (query); item `peerPhone` (DM peer) or `sender.phone` |
+| Gửi lúc | `sentFrom` / `sentTo` (query); item `sentAt` (null when `FAILED`) or `createdAt` as fallback |
+| Trạng thái | `status` (query) or item `status` — `SENT` \| `FAILED` \| `RECALL` |
+| Lý do thất bại | item `failureReason` — human-readable text when `status` is `FAILED`; otherwise `null` |
 
 #### Request
 - Params: none
-- Query:
-  - `status`: `MessageStatus`, optional, one of `SENT | FAILED | RECALL`
-  - `page`: `number`, optional, default `1`
-  - `limit`: `number`, optional, default `20`
+- Query (all optional; combined with **AND**):
+  - `status`: `MessageStatus` — one of `SENT` \| `FAILED` \| `RECALL`
+  - `content`: `string`, max 500 — case-insensitive substring match on message body (`messages.content`)
+  - `target`: `string`, max 500 — **Nhóm / người nhận**: matches `group.groupName`, `group.originName`, or `peerPhone` (substring, case-insensitive)
+  - `sender`: `string`, max 255 — **Người gửi**: if value is a UUID v4, exact match on `senderId`; otherwise substring match on sender `name`, `phone`, or `zaloId`
+  - `phone`: `string`, max 50 — **Số điện thoại**: substring match on `peerPhone` or sender `phone`
+  - `sentFrom`: ISO 8601 date-time — inclusive lower bound for **Gửi lúc** (uses `sentAt` when set; for rows with `sentAt` null, e.g. `FAILED`, uses `createdAt`)
+  - `sentTo`: ISO 8601 date-time — inclusive upper bound (same rules as `sentFrom`)
+  - `page`: `number`, default `1`, min `1`
+  - `limit`: `number`, default `20`, min `1`
 - Body: none
 
-Example request:
+Example query string (filters map to typical frontend form fields):
 
-```json
-{
-  "status": "SENT",
-  "page": 1,
-  "limit": 20
-}
+```text
+GET /messages?status=FAILED&content=hello&target=Marketing&sender=0909&phone=0912&sentFrom=2026-06-01T00:00:00.000Z&sentTo=2026-06-15T23:59:59.999Z&page=1&limit=20
 ```
 
 #### Response
@@ -2169,42 +2189,79 @@ Example request:
       "content": "Hello group",
       "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
       "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "peerPhone": null,
+      "parentId": null,
       "sentAt": "2026-04-15T09:00:00.000Z",
       "status": "SENT",
+      "failureReason": null,
       "createdAt": "2026-04-15T09:00:00.000Z",
       "sender": {
         "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
         "zaloId": "1122334455",
         "name": "Child Account",
         "phone": "0909999999",
+        "status": "ACTIVE",
         "isDeleted": false,
         "deletedAt": null
       },
       "group": {
         "id": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
         "groupName": "Marketing Team",
-        "groupZaloId": "1234567890123456789"
+        "originName": "Marketing Team"
       }
+    },
+    {
+      "id": "2a1c87bd-d805-5e94-9f5d-21fb21bb1112",
+      "messageZaloId": null,
+      "cliMsgId": null,
+      "uidFrom": "1122334455",
+      "content": "Xin chào",
+      "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+      "groupId": null,
+      "peerPhone": "0912345678",
+      "parentId": null,
+      "sentAt": null,
+      "status": "FAILED",
+      "failureReason": "No Zalo login session for this user and child Zalo account. Log in with QR for that account first.",
+      "createdAt": "2026-06-15T08:30:00.000Z",
+      "sender": {
+        "id": "7c13f32f-90eb-483f-b5e0-c3b7fa120002",
+        "zaloId": "1122334455",
+        "name": "Child Account",
+        "phone": "0909999999",
+        "status": "ACTIVE",
+        "isDeleted": false,
+        "deletedAt": null
+      },
+      "group": null
     }
   ],
   "meta": {
     "page": 1,
     "limit": 20,
-    "total": 1,
+    "total": 2,
     "totalPages": 1
   }
 }
 ```
 
+**Field notes**
+- `group`: `null` for DM rows (`peerPhone` set, `groupId` null).
+- `peerPhone`: normalized VN phone for DM; `null` for group messages.
+- `parentId`: links file bubbles to the text row in a multi-part send; `null` for standalone text or failed attempts.
+- `sentAt`: time Zalo accepted the message; `null` when send never succeeded (`FAILED`).
+- `failureReason`: plain-text reason when `status` is `FAILED`; always `null` for `SENT` / `RECALL`.
+- `group` in the response does **not** include Zalo grid id (`group_zalo_id`); that lives on `zalo_account_groups` server-side only.
+
 #### Error cases
-- `400`: invalid query validation
+- `400`: invalid query validation (bad UUID in `sender` is still allowed as text search; invalid ISO dates for `sentFrom` / `sentTo`)
 - `401`: missing/invalid JWT
 - `500`: unexpected server error
 
 #### Authentication
 - JWT required
-- Guards: `JwtAuthGuard`
-- Roles: any authenticated `ADMIN` or `USER`
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
 
 ### POST `/messages/send`
 #### Endpoint
@@ -2218,9 +2275,10 @@ Send a **text** message and/or **one or more file attachments** to a **Zalo grou
 1. Loads `zalo_accounts` by `zaloAccountId` (must be **`is_master = false`**) and requires **`zalo_id`** on that row.
 2. Resolves the **child’s QR session** for the **current JWT user**: latest `zalo_login_sessions` row where `user_id` = app user and `zalo_uid` = that account’s `zalo_id` (the child must have logged in under this app user).
 3. Loads **`zalo_account_groups`** where `zalo_account_id` = `zaloAccountId` and `group_id` = `groupId` and uses **`group_zalo_id`** from that row as the Zalo **thread id** (this child’s device grid id for that group; populated by child group scan + mapping).
-4. Reads **`configurations`** key **`message_interval`** (minutes). If the value is **&gt; 0**, ensures the **previous** row in **`messages`** for the same `sender_id` + `group_id` (by `created_at` desc, then `id` desc) is older than that many minutes; otherwise returns **400** with a Vietnamese message (name, group name, time since last send, minutes to wait).
+4. Reads **`configurations`** key **`message_interval`** (minutes). If the value is **&gt; 0**, ensures the **previous** row in **`messages`** with **`status: SENT`** for the same `sender_id` + `group_id` (by `created_at` desc, then `id` desc) is older than that many minutes; otherwise returns **400** with a Vietnamese message (name, group name, time since last send, minutes to wait). Rows with **`status: FAILED`** do not count toward the interval.
 5. If files are present, they are written to a **temporary** path, then zca-js **`sendMessage`** is called with `MessageContent` (`msg` = trimmed `text` or empty string, `attachments` = absolute file paths) per `docs/Zalo_Integration.mdc`. If there are no files, **`sendMessage`** is called with plain text only. Default thread type: **`ThreadType.Group`** (same as `POST /zalo/actions/send-message`). When Zalo returns **several** bubbles in one `send` (e.g. one text + one per PDF), the zca `result` has `message` and/or `attachment[]` — the server creates **one `messages` row per bubble** (separate `message_zalo_id` / `cli_msg_id` for undo), e.g. one row for the caption and one per file. Same `sent_at` for the whole batch.
-6. On success, inserts one or more **`messages`** rows (`status: SENT`, `content` per bubble, same `sender_id` / `group_id`, `message_zalo_id` / `cli_msg_id` / `uid_from` from each part of the zca-js result when present). The **first** bubble in the batch (text block from zca) has **`parent_id: null`**. **Subsequent** rows for files in the same send set **`parent_id`** to the text row’s `id` so the client can group them; `POST /messages/undo/:id` on the **text** `id` undoes the text bubble and each file bubble, then sets **`RECALL`** on all those rows; undoing a **child** row (file) only undoes that bubble.
+6. On **success**, inserts one or more **`messages`** rows (`status: SENT`, `failureReason: null`, `content` per bubble, same `sender_id` / `group_id`, `message_zalo_id` / `cli_msg_id` / `uid_from` from each part of the zca-js result when present). The **first** bubble in the batch (text block from zca) has **`parent_id: null`**. **Subsequent** rows for files in the same send set **`parent_id`** to the text row’s `id` so the client can group them; `POST /messages/undo/:id` on the **text** `id` undoes the text bubble and each file bubble, then sets **`RECALL`** on all those rows; undoing a **child** row (file) only undoes that bubble.
+7. On **failure** (validation, missing session, rate limit, Zalo error, etc.), the server **still inserts one `messages` row** with **`status: FAILED`**, the attempted **`content`**, and **`failureReason`** (human-readable text matching the API error message). **`sentAt`** is `null`. The HTTP error response is unchanged (4xx/5xx); use **`GET /messages?status=FAILED`** to list failed attempts. No row is written when the child account id does not exist (**404** before a valid sender is resolved).
 
 `sessionId` is **not** sent by the client. For sending by explicit `sessionId` or raw `threadId`, use **`POST /zalo/actions/send-message`** (that route does **not** write to `messages`). File upload for app users is **only** via this endpoint, not the JSON `send-message` action.
 
@@ -2266,9 +2324,11 @@ Example (one text message only — `messages` has length 1):
     "content": "Hello group",
     "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
     "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "peerPhone": null,
     "parentId": null,
     "sentAt": "2026-04-21T12:00:00.000Z",
     "status": "SENT",
+    "failureReason": null,
     "createdAt": "2026-04-21T12:00:00.000Z"
   },
   "messages": [
@@ -2280,9 +2340,11 @@ Example (one text message only — `messages` has length 1):
       "content": "Hello group",
       "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
       "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "peerPhone": null,
       "parentId": null,
       "sentAt": "2026-04-21T12:00:00.000Z",
       "status": "SENT",
+      "failureReason": null,
       "createdAt": "2026-04-21T12:00:00.000Z"
     }
   ]
@@ -2292,10 +2354,10 @@ Example (one text message only — `messages` has length 1):
 If you send text + 2 files and Zalo returns **three** bubbles, `messages` contains **three** items (the text row has `parentId: null`, the two file rows have `parentId` = the text row’s `id`). **Undo the text** (`POST /messages/undo/:id` with the text `id`) runs `api.undo` for all three in order and returns **`RECALL`** on all; undo a **file** `id` only to withdraw that file bubble.
 
 #### Error cases
-- `400`: validation error; **no `text` and no `files`**; account is master; child has no `zalo_id`; `zalo_account_groups.group_zalo_id` is empty; **`message_interval` missing/invalid** in `configurations`; **rate limit** — last message from this child to this group was too recent (see `message_interval`); **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — child not in the group on Zalo, or content/length limits — run child **group scan** so `group_zalo_id` and mapping stay in sync, or re-invite; individual file &gt; 25 MB or &gt; 20 files
+- `400`: validation error; **no `text` and no `files`**; account is master; child has no `zalo_id`; `zalo_account_groups.group_zalo_id` is empty; **`message_interval` missing/invalid** in `configurations`; **rate limit** — last **`SENT`** message from this child to this group was too recent (see `message_interval`); **stored Zalo session cannot be restored** (cookies expired / Zalo returns e.g. “Đăng nhập thất bại”) — log in with QR again for that child; **Zalo rejected the send** (e.g. “Tham số không hợp lệ”) — child not in the group on Zalo, or content/length limits — run child **group scan** so `group_zalo_id` and mapping stay in sync, or re-invite; individual file &gt; 25 MB or &gt; 20 files. For each of these (except when the account id is unknown), a **`messages`** row with **`status: FAILED`** and **`failureReason`** is persisted before the error is returned.
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
-- `404`: Zalo account not found; no child session for this user + `zalo_id`; no `zalo_account_groups` row for this child and `groupId`
+- `404`: Zalo account not found (**no FAILED row** — invalid `zaloAccountId`); no child session for this user + `zalo_id`; no `zalo_account_groups` row for this child and `groupId`
 - `500`: Zalo API error after session restored; DB error after a successful Zalo send (rare)
 - `413` (or proxy error): payload too large if the reverse proxy is stricter than the app
 
@@ -2623,3 +2685,6 @@ Permanently delete an API key record. The secret key stops working immediately f
 - Pagination currently exists on:
   - `GET /messages`
   - `GET /zalo-groups`
+- **Message log screen (`GET /messages`)**: bind form fields to query params — `content` (nội dung), `target` (nhóm / người nhận), `sender` (người gửi — UUID or keyword), `phone` (số điện thoại), `sentFrom` / `sentTo` (gửi lúc, ISO 8601), `status`, `page`, `limit`. Display `failureReason` when `status === "FAILED"`; use `sentAt ?? createdAt` for the “Gửi lúc” column. See [GET `/messages`](#get-messages).
+- **`POST /messages/send`**: failed sends still appear in the log as `FAILED` rows (same list endpoint); refresh or poll `GET /messages?status=FAILED` after errors.
+- Public Zalo send (`POST /public/zalo/send`, API key) also writes `FAILED` rows when a child sender is known; details in `docs/Public_Zalo_Send_API.mdc`.
