@@ -77,3 +77,15 @@ export async function touchZaloSessionOnBackend(sessionId: string): Promise<void
     },
   );
 }
+
+export async function verifyZaloSessionOnBackend(sessionId: string): Promise<{
+  sessionId: string;
+  valid: boolean;
+  sessionDeleted: boolean;
+  reason?: string;
+}> {
+  return serverApiRequest("/zalo-sessions/verify", {
+    method: "POST",
+    body: { sessionId },
+  });
+}

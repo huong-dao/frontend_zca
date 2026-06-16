@@ -8,6 +8,7 @@ import type {
   RemoveFriendResponse,
   SendFriendRequestResponse,
   StartQrLoginResponse,
+  VerifyZaloSessionResponse,
   ZaloSessionResponse,
   getGroupInfoPayload,
 } from "@/lib/zalo/types";
@@ -132,6 +133,19 @@ export async function logoutZalo(sessionId?: string) {
 
   notifyZaloSessionChanged();
   return response;
+}
+
+export async function verifyZaloSession(sessionId: string) {
+  const result = await request<VerifyZaloSessionResponse>("/api/zalo/session/verify", {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
+  });
+
+  if (result.sessionDeleted) {
+    removeClientSessionId(sessionId);
+  }
+
+  return result;
 }
 
 export function findUserByPhone(phoneNumber: string, sessionId?: string) {

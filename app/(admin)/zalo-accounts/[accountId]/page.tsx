@@ -26,6 +26,7 @@ import { buildSendMessageFormData, MESSAGE_SEND_REQUEST_TIMEOUT_MS } from "@/lib
 import { apiRequest } from "@/lib/api/client";
 import { getZaloGroupsByAccountId, inviteMemberToZaloGroup, removeMemberFromZaloGroup } from "@/lib/api/zalo-groups";
 import { getCurrentZaloSession } from "@/lib/zalo/client";
+import { ensureZaloSessionValid } from "@/lib/zalo/session-verify";
 import type {
   PaginationMeta,
   SendMessageResponse,
@@ -330,6 +331,15 @@ export default function ZaloAccountDetailsPage() {
         return;
       }
 
+      const sessionValidity = await ensureZaloSessionValid(matchingSession.id, {
+        label: matchingSession.user.displayName || account.name,
+      });
+
+      if (!sessionValidity.ok) {
+        showToast(sessionValidity.reason, "error");
+        return;
+      }
+
       const phoneFromFriend = getChildFriendPhone(inviteTargetChild.id);
       const payload = {
         groupId: inviteSelectedGroup.id,
@@ -412,6 +422,15 @@ export default function ZaloAccountDetailsPage() {
           "Chưa có phiên Zalo cho master này. Vui lòng đăng nhập Zalo (QR) cho tài khoản master trước.",
           "error",
         );
+        return;
+      }
+
+      const sessionValidity = await ensureZaloSessionValid(matchingSession.id, {
+        label: matchingSession.user.displayName || account.name,
+      });
+
+      if (!sessionValidity.ok) {
+        showToast(sessionValidity.reason, "error");
         return;
       }
 

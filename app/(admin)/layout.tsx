@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminNavProvider } from "@/contexts/AdminNavContext";
 import { ZaloGroupNameSyncProvider } from "@/contexts/ZaloGroupNameSyncContext";
+import { ZaloSessionHealthProvider } from "@/contexts/ZaloSessionHealthContext";
 
 export default function AdminLayout({
   children,
@@ -32,13 +33,15 @@ export default function AdminLayout({
 
   return (
     <ZaloGroupNameSyncProvider>
-      <AdminNavProvider>
-        <Sidebar />
-        <main className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden lg:ml-64 lg:w-[calc(100%-16rem)]">
-          <Header />
-          {children}
-        </main>
-      </AdminNavProvider>
+      <ZaloSessionHealthProvider>
+        <AdminNavProvider>
+          <Sidebar />
+          <main className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden lg:ml-64 lg:w-[calc(100%-16rem)]">
+            <Header />
+            {children}
+          </main>
+        </AdminNavProvider>
+      </ZaloSessionHealthProvider>
     </ZaloGroupNameSyncProvider>
   );
 }

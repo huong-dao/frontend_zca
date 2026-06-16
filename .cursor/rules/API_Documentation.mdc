@@ -12,6 +12,7 @@ This document is intended for the NextJS frontend team and is generated from the
 - [Users API](#users-api)
 - [Zalo Groups API](#zalo-groups-api)
 - [Zalo Accounts API](#zalo-accounts-api)
+- [Zalo Sessions API](#zalo-sessions-api)
 - [Background Jobs API](#background-jobs-api)
 - [Messages API](#messages-api)
 - [Configs API](#configs-api)
@@ -2025,6 +2026,96 @@ Mark an existing account as a master account. The account is updated with `isMas
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Required role: `ADMIN`
 
+## Zalo Sessions API
+
+Persisted Zalo QR / cookie sessions in `zalo_login_sessions` (encrypted credentials). Sessions are a **shared pool**: any authenticated `ADMIN` or `USER` may read or verify by `sessionId` (not scoped to the JWT user’s `user_id` on read). Upsert stores `user_id` for audit; re-login for the same `zalo_uid` updates the canonical row and removes stale duplicates.
+
+Use **`POST /zalo-sessions/verify`** when the UI shows a session as “online” but Zalo may have invalidated it (logged in elsewhere, expired cookies). The backend calls Zalo `getUserInfo` via zca-js; if restore or the API call fails, the session row is **hard-deleted** and the response tells the frontend to prompt re-QR.
+
+### POST `/zalo-sessions/verify`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-sessions/verify`
+- Function: `ZaloLoginSessionsController.verify` → `ZaloLoginSessionsService.verifyAndCleanup`
+
+#### Description
+Health-check a stored Zalo session for the frontend:
+
+1. Load `zalo_login_sessions` by `sessionId`.
+2. Restore the zca-js client from stored credentials (`imei`, `userAgent`, `cookies`).
+3. Call **`getUserInfo`** for the session owner (`getOwnId()` → `user_profile.uid` → `zalo_uid`).
+4. On **success**: refresh stored cookies if Zalo rotated them, touch `updated_at`, return `valid: true`.
+5. On **failure** (decrypt error, restore error, or `getUserInfo` error — typical when the account logged in on another device): **hard-delete** that session row and return `valid: false`, `sessionDeleted: true`.
+
+Always returns **200** with a result object (no `4xx` for invalid/expired sessions) so the frontend can branch on `valid` / `sessionDeleted` instead of parsing HTTP errors.
+
+Recommended FE usage: poll periodically or before actions that need a live Zalo session; if `sessionDeleted === true`, remove the session from the online list and show re-login (QR). If `valid === false` and `sessionDeleted === false`, the id is not in DB (e.g. replaced after re-login on another tab) — refresh `GET /zalo-sessions` or drop the stale id locally.
+
+#### Request
+- Params: none
+- Query: none
+- Body (JSON):
+  - `sessionId`: `string`, UUID v4 — `zalo_login_sessions.id`
+
+Example request:
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa"
+}
+```
+
+#### Response
+
+**Session still works on Zalo:**
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "valid": true,
+  "sessionDeleted": false
+}
+```
+
+**Session invalid — row removed from DB (re-login elsewhere / expired):**
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "valid": false,
+  "sessionDeleted": true,
+  "reason": "Zalo session could not be restored (Đăng nhập thất bại). The account may have logged in elsewhere; log in with QR again."
+}
+```
+
+**`sessionId` not found in DB** (already deleted or superseded by upsert):
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "valid": false,
+  "sessionDeleted": false,
+  "reason": "Zalo session not found in database."
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `sessionId` | `string` | Echo of the requested session id |
+| `valid` | `boolean` | `true` only if restore + `getUserInfo` succeeded |
+| `sessionDeleted` | `boolean` | `true` if this call hard-deleted the session row |
+| `reason` | `string`, optional | Human-readable detail when `valid` is `false` |
+
+#### Error cases
+- `400`: validation error (invalid UUID `sessionId`)
+- `401`: missing/invalid JWT
+- `403`: role is not `ADMIN` or `USER`
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ## Background Jobs API
 
 Trạng thái **`RUNNING` / `IDLE`** được ghi vào bảng **`background_job_states`** (Prisma: `BackgroundJobState`) khi worker BullMQ chạy: master **`group-metadata-sync`** (`tick`) và child **`child-group-scan`** (`sync`). Chi tiết hành vi nền: `docs/Background_Jobs_Overview.mdc`.
@@ -2681,7 +2772,8 @@ Permanently delete an API key record. The secret key stops working immediately f
 - Frontend should restore session after reload by calling `GET /auth/me`.
 - `Authorization` header is optional for frontend cookie-based auth, but still supported as a fallback.
 - Backend no longer performs `zca-js` interactions; those flows now belong to the frontend.
-- Backend does not keep Zalo login sessions.
+- Backend stores Zalo QR sessions in `zalo_login_sessions` (`POST /zalo-sessions` upsert from FE after QR login); low-level Zalo API calls use `sessionId` on routes such as `/zalo/actions/*`.
+- **Stale Zalo sessions**: if the UI lists sessions from `GET /zalo-sessions` as “online” but Zalo invalidated them (login elsewhere), call **`POST /zalo-sessions/verify`** per `sessionId`; when `sessionDeleted` is `true`, remove the session from the UI and prompt QR login again. See [POST `/zalo-sessions/verify`](#post-zalo-sessionsverify).
 - Pagination currently exists on:
   - `GET /messages`
   - `GET /zalo-groups`

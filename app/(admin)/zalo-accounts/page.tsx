@@ -57,6 +57,7 @@ import {
   startQrLogin,
   ZALO_SESSION_CHANGED_EVENT,
 } from "@/lib/zalo/client";
+import { ensureZaloSessionValid } from "@/lib/zalo/session-verify";
 import type { PendingQrLoginSnapshot, PendingQrLoginStatus, ZaloSessionPublic } from "@/lib/zalo/types";
 
 const PAGE_SIZE = 20;
@@ -785,6 +786,16 @@ export default function ZaloAccountsPage() {
       return;
     }
 
+    const sessionValidity = await ensureZaloSessionValid(matchingSession.id, {
+      label: matchingSession.user.displayName || targetAccount.name,
+    });
+
+    if (!sessionValidity.ok) {
+      showToast(sessionValidity.reason, "error");
+      await syncZaloSession();
+      return;
+    }
+
     if (!targetAccount.isMaster) {
       try {
         const syncMeta = await getGroupMetadataSyncStatus();
@@ -880,6 +891,7 @@ export default function ZaloAccountsPage() {
     loadAccounts,
     showToast,
     startOrRefreshChildScanPolling,
+    syncZaloSession,
   ]);
 
   // SECTION: BULK ACTIONS

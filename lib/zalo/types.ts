@@ -79,6 +79,14 @@ export interface LogoutZaloResponse {
   success: boolean;
 }
 
+/** Kết quả health-check phiên Zalo qua POST /zalo-sessions/verify. */
+export interface VerifyZaloSessionResponse {
+  sessionId: string;
+  valid: boolean;
+  sessionDeleted: boolean;
+  reason?: string;
+}
+
 export interface FindUserByPhonePayload {
   phoneNumber: string;
 }
