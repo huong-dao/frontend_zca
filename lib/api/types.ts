@@ -218,6 +218,20 @@ export interface ZaloGroup {
   _count: ZaloGroupCounts;
 }
 
+export type ZaloGroupLinkedAccountType = "Master" | "Child";
+
+export interface ZaloGroupLinkedAccount {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  accountType: ZaloGroupLinkedAccountType;
+  joinedAt: string;
+}
+
+export interface ZaloGroupLinkedAccountsResponse {
+  data: ZaloGroupLinkedAccount[];
+}
+
 export interface BulkCreateZaloGroupInput {
   group_name: string;
   group_zalo_id: string;

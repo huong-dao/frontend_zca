@@ -11,6 +11,7 @@ import type {
   UpdateZaloGroupPayload,
   UpdateZaloGroupResponse,
   ZaloGroup,
+  ZaloGroupLinkedAccountsResponse,
 } from "@/lib/api/types";
 
 interface GetZaloGroupsParams {
@@ -46,6 +47,12 @@ export function getZaloGroups(params: GetZaloGroupsParams = {}) {
       method: "GET",
     },
   );
+}
+
+export function getLinkedAccountsByGroupId(groupId: string) {
+  return apiRequest<ZaloGroupLinkedAccountsResponse>(`/zalo-groups/${groupId}/accounts`, {
+    method: "GET",
+  });
 }
 
 export function getZaloGroupsByAccountId(accountId: string, params: GetZaloGroupsParams = {}) {

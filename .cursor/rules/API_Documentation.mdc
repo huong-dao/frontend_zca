@@ -645,6 +645,66 @@ Optional query **`global_id`**: exact match on **`zalo_groups.global_id`** (not 
 - Guards: `JwtAuthGuard`, `RolesGuard`
 - Roles: authenticated `ADMIN` or `USER`
 
+### GET `/zalo-groups/:id/accounts`
+#### Endpoint
+- Method: `GET`
+- Full path: `/zalo-groups/:id/accounts`
+- Function: `ZaloGroupsController.findLinkedAccountsByGroupId`
+
+#### Description
+Return all Zalo accounts linked to a specific Zalo group (no pagination). Each item includes the account’s display name, phone, and account type (`Master` or `Child`). Only non–soft-deleted accounts (`isDeleted = false`) are included. Results are ordered with **Master** accounts first, then by `joinedAt` ascending.
+
+Data is read from `zalo_account_groups` for the given internal `zalo_groups.id`.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID of the target `ZaloGroup` (`zalo_groups.id`)
+- Query: none
+- Body: none
+
+#### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Nguyễn Văn A",
+      "phone": "0901234567",
+      "accountType": "Master",
+      "joinedAt": "2026-04-15T08:20:00.000Z"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Trần Thị B",
+      "phone": "0912345678",
+      "accountType": "Child",
+      "joinedAt": "2026-04-16T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | UUID of `zalo_accounts.id` |
+| `name` | `string \| null` | Display name (Họ tên) |
+| `phone` | `string \| null` | Phone number (Số điện thoại) |
+| `accountType` | `"Master" \| "Child"` | Account type from `zalo_accounts.is_master` |
+| `joinedAt` | `string` (ISO 8601) | When the account was linked to this group |
+
+#### Error cases
+- `400`: invalid UUID in path
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: Zalo group not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
 ### POST `/zalo-groups`
 #### Endpoint
 - Method: `POST`

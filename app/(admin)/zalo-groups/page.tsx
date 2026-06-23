@@ -1,15 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HiOutlineFunnel } from "react-icons/hi2";
+import { HiOutlineFunnel, HiOutlineUserGroup } from "react-icons/hi2";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
+import Modal from "@/components/features/Modal";
 import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
 import { getGroupMetadataSyncStatus } from "@/lib/api/background-jobs";
-import { getZaloGroups } from "@/lib/api/zalo-groups";
-import type { GroupMetadataSyncStatus, PaginationMeta, ZaloGroup } from "@/lib/api/types";
+import { getLinkedAccountsByGroupId, getZaloGroups } from "@/lib/api/zalo-groups";
+import type {
+  GroupMetadataSyncStatus,
+  PaginationMeta,
+  ZaloGroup,
+  ZaloGroupLinkedAccount,
+} from "@/lib/api/types";
 import {
   DataTableScroll,
   dataTableClassName,
@@ -39,6 +46,16 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export default function ZaloGroupsPage() {
   const { user, loading: authLoading } = useAuth();
   const { currentBatchSize, isSyncing, lastCompletedAt, lastError, pendingCount } = useZaloGroupNameSync();
@@ -52,6 +69,11 @@ export default function ZaloGroupsPage() {
   const [serverGroupMetadataSync, setServerGroupMetadataSync] =
     useState<GroupMetadataSyncStatus | null>(null);
   const prevServerMetadataSyncRunningRef = useRef(false);
+  const [openLinkedAccountsModal, setOpenLinkedAccountsModal] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<ZaloGroup | null>(null);
+  const [linkedAccounts, setLinkedAccounts] = useState<ZaloGroupLinkedAccount[]>([]);
+  const [linkedAccountsLoading, setLinkedAccountsLoading] = useState(false);
+  const [linkedAccountsError, setLinkedAccountsError] = useState("");
 
   const loadGroups = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -140,6 +162,34 @@ export default function ZaloGroupsPage() {
     setPage(1);
     setActiveKeyword(keywordSearch.trim());
   }, [keywordSearch]);
+
+  const handleCloseLinkedAccountsModal = useCallback(() => {
+    setOpenLinkedAccountsModal(false);
+    setSelectedGroup(null);
+    setLinkedAccounts([]);
+    setLinkedAccountsError("");
+  }, []);
+
+  const handleOpenLinkedAccountsModal = useCallback(async (group: ZaloGroup) => {
+    setSelectedGroup(group);
+    setOpenLinkedAccountsModal(true);
+    setLinkedAccounts([]);
+    setLinkedAccountsError("");
+    setLinkedAccountsLoading(true);
+
+    try {
+      const response = await getLinkedAccountsByGroupId(group.id);
+      setLinkedAccounts(response.data);
+    } catch (requestError) {
+      setLinkedAccountsError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể tải danh sách tài khoản liên kết.",
+      );
+    } finally {
+      setLinkedAccountsLoading(false);
+    }
+  }, []);
 
   const pageSummary = useMemo(() => {
     if (meta.total === 0) {
@@ -240,19 +290,22 @@ export default function ZaloGroupsPage() {
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Ngày tạo
               </th>
+              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+                Thao tác
+              </th>
             </tr>
           </thead>
 
           <tbody className="divide-y divide-outline-variant/10">
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={5} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   Đang tải danh sách nhóm Zalo...
                 </td>
               </tr>
             ) : groups.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={5} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   {activeKeyword.trim()
                     ? "Không có nhóm Zalo nào khớp từ khóa."
                     : "Chưa có nhóm Zalo nào."}
@@ -280,6 +333,18 @@ export default function ZaloGroupsPage() {
                   <td className="px-6 py-3">
                     <div className="text-sm text-on-surface-variant">{formatDate(group.createdAt)}</div>
                   </td>
+
+                  <td className="px-6 py-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      startIcon={<HiOutlineUserGroup className="h-4 w-4" />}
+                      disabled={group._count.accountMaps === 0}
+                      onClick={() => void handleOpenLinkedAccountsModal(group)}
+                    >
+                      Tài khoản liên kết
+                    </Button>
+                  </td>
                 </tr>
               ))
             )}
@@ -298,6 +363,104 @@ export default function ZaloGroupsPage() {
           />
         </div>
       </div>
+
+      <Modal
+        open={openLinkedAccountsModal}
+        title={
+          selectedGroup
+            ? `Tài khoản liên kết — ${selectedGroup.groupName}`
+            : "Tài khoản liên kết"
+        }
+        buttonText=""
+        modalWidth="800px"
+        onClose={handleCloseLinkedAccountsModal}
+      >
+        {linkedAccountsError ? (
+          <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">
+            {linkedAccountsError}
+          </div>
+        ) : null}
+
+        <DataTableScroll>
+          <table className={dataTableClassName}>
+            <thead>
+              <tr className="bg-surface-container-low/50">
+                <th className="text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface">
+                  Tên
+                </th>
+                <th className="text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface">
+                  Số điện thoại
+                </th>
+                <th className="text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface">
+                  Loại tài khoản
+                </th>
+                <th className="text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface">
+                  Ngày liên kết
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-outline-variant/10">
+              {linkedAccountsLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                    Đang tải danh sách tài khoản...
+                  </td>
+                </tr>
+              ) : linkedAccounts.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                    {linkedAccountsError
+                      ? "Không thể hiển thị danh sách tài khoản."
+                      : "Chưa có tài khoản nào liên kết với nhóm này."}
+                  </td>
+                </tr>
+              ) : (
+                linkedAccounts.map((account) => (
+                  <tr
+                    key={account.id}
+                    className="group transition-colors hover:bg-surface-container-low/30"
+                  >
+                    <td className="px-6 py-3">
+                      <div className={`body-md text-sm font-semibold text-on-surface ${dataTableFrozenFirstColumnInnerClass}`}>
+                        {account.name || "—"}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-3 text-sm">
+                      <div className="body-md text-[#004ac6]">{account.phone || "—"}</div>
+                    </td>
+
+                    <td className="px-6 py-3">
+                      {account.accountType === "Master" ? (
+                        <Badge className="text-xs" variant="error">
+                          Master
+                        </Badge>
+                      ) : (
+                        <Badge className="text-xs" variant="default">
+                          Child
+                        </Badge>
+                      )}
+                    </td>
+
+                    <td className="px-6 py-3">
+                      <div className="text-sm text-on-surface-variant">
+                        {formatDateTime(account.joinedAt)}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </DataTableScroll>
+
+        {!linkedAccountsLoading && linkedAccounts.length > 0 ? (
+          <p className="text-sm text-on-surface-variant">
+            Tổng cộng {linkedAccounts.length} tài khoản liên kết.
+          </p>
+        ) : null}
+      </Modal>
     </div>
   );
 }
