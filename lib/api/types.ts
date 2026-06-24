@@ -406,6 +406,7 @@ export interface MessageLog {
   peerPhone: string;
   sentAt: string;
   status: MessageLogStatus;
+  failureReason: string | null;
   createdAt: string;
   sender: MessageLogSender;
   group: MessageLogGroup;

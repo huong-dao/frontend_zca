@@ -462,6 +462,9 @@ export default function MessagesPage() {
                 Trạng thái
               </th>
               <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
+                Lý do gửi thất bại
+              </th>
+              <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                 Gửi lúc
               </th>
               <th className="text-sm px-6 py-3 text-label-sm text-right text-on-surface font-normal" />
@@ -470,13 +473,13 @@ export default function MessagesPage() {
           <tbody className="divide-y divide-outline-variant/10">
             {loading && messages.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={8} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   Đang tải danh sách tin nhắn…
                 </td>
               </tr>
             ) : messages.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                <td colSpan={8} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                   {hasActiveFilters
                     ? "Không có tin nhắn nào phù hợp bộ lọc."
                     : "Chưa có tin nhắn nào."}
@@ -519,6 +522,14 @@ export default function MessagesPage() {
                       <Badge variant={statusBadgeVariant(row.status)} className="text-xs">
                         {row.status}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-3 align-top text-sm text-on-surface-variant">
+                      <p
+                        className="max-w-[min(42vw,11rem)] whitespace-pre-wrap sm:max-w-44 md:max-w-52 lg:max-w-md"
+                        title={row.failureReason ?? undefined}
+                      >
+                        {row.failureReason?.trim() ? row.failureReason : "—"}
+                      </p>
                     </td>
                     <td className="px-6 py-3 align-top text-sm text-on-surface-variant">
                       {row.sentAt ? formatDateTime(row.sentAt) : formatDateTime(row.createdAt)}
