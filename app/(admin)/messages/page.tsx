@@ -521,7 +521,7 @@ export default function MessagesPage() {
                       </Badge>
                     </td>
                     <td className="px-6 py-3 align-top text-sm text-on-surface-variant">
-                      {row.sentAt ? formatDateTime(row.sentAt) : "—"}
+                      {row.sentAt ? formatDateTime(row.sentAt) : formatDateTime(row.createdAt)}
                     </td>
                     <td className="px-6 py-3 text-right align-top">
                       <div className="inline-flex">

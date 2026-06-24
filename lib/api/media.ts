@@ -37,6 +37,33 @@ export function getMedia(params: GetMediaParams = {}) {
   });
 }
 
+export interface DeleteMediaResponse {
+  message: string;
+  id: string;
+  fileName: string;
+}
+
+export interface DeleteMediaBatchResponse {
+  message: string;
+  deletedCount: number;
+  ids: string[];
+}
+
+/** DELETE `/media/:id` — xóa một file media và bản ghi trên server. */
+export function deleteMedia(mediaId: string) {
+  return apiRequest<DeleteMediaResponse>(`/media/${encodeURIComponent(mediaId)}`, {
+    method: "DELETE",
+  });
+}
+
+/** DELETE `/media/batch` — xóa nhiều file (tối đa 100 id, all-or-nothing). */
+export function deleteMediaBatch(ids: string[]) {
+  return apiRequest<DeleteMediaBatchResponse>("/media/batch", {
+    method: "DELETE",
+    body: { ids },
+  });
+}
+
 export function buildMediaFileUrl(mediaId: string) {
   return `${API_BASE_URL}/media/${encodeURIComponent(mediaId)}/file`;
 }

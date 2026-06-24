@@ -1,12 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiArrowDownTray, HiArrowPath, HiEye, HiOutlineFunnel } from "react-icons/hi2";
+import {
+  HiArrowDownTray,
+  HiArrowPath,
+  HiEye,
+  HiOutlineFunnel,
+  HiOutlineTrash,
+} from "react-icons/hi2";
+import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import { useToast } from "@/components/features/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { downloadMediaFile, getMedia, openMediaFileInNewTab } from "@/lib/api/media";
+import {
+  deleteMedia,
+  deleteMediaBatch,
+  downloadMediaFile,
+  getMedia,
+  openMediaFileInNewTab,
+} from "@/lib/api/media";
 import type { MediaItem, MessageLogStatus, PaginationMeta } from "@/lib/api/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -106,7 +119,9 @@ export default function MediaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [fileActionId, setFileActionId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [batchDeleting, setBatchDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const loadMedia = useCallback(
     async (nextPage: number, options?: { silent?: boolean }) => {
@@ -163,6 +178,10 @@ export default function MediaPage() {
     void loadMedia(page);
   }, [authLoading, loadMedia, page, user]);
 
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, activeFilters]);
+
   const handleApplyFilters = () => {
     const trimmed = trimFilters(draftFilters);
     setDraftFilters(trimmed);
@@ -187,26 +206,125 @@ export default function MediaPage() {
   };
 
   const handleDownload = async (row: MediaItem) => {
-    setFileActionId(row.id);
     try {
       await downloadMediaFile(row.id, row.fileName);
     } catch (requestError) {
       showToast(getErrorMessage(requestError, "Không thể tải file."), "error");
-    } finally {
-      setFileActionId(null);
     }
   };
 
   const handlePreview = async (row: MediaItem) => {
-    setFileActionId(row.id);
     try {
       await openMediaFileInNewTab(row.id);
     } catch (requestError) {
       showToast(getErrorMessage(requestError, "Không thể mở file."), "error");
-    } finally {
-      setFileActionId(null);
     }
   };
+
+  const handleDelete = useCallback(
+    async (row: MediaItem) => {
+      const confirmed = window.confirm(
+        `Bạn có chắc chắn muốn xóa file "${row.fileName}"? Hành động này không thể hoàn tác.`,
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      setDeletingId(row.id);
+      try {
+        await deleteMedia(row.id);
+        setSelectedIds((previous) => {
+          const next = new Set(previous);
+          next.delete(row.id);
+          return next;
+        });
+        showToast(`Đã xóa file "${row.fileName}".`, "success");
+        await loadMedia(page, { silent: true });
+      } catch (requestError) {
+        showToast(getErrorMessage(requestError, "Không thể xóa file."), "error");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [loadMedia, page, showToast],
+  );
+
+  const handleBatchDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn xóa ${ids.length} file đã chọn? Hành động này không thể hoàn tác.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setBatchDeleting(true);
+    try {
+      const response = await deleteMediaBatch(ids);
+      setSelectedIds(new Set());
+      showToast(`Đã xóa ${response.deletedCount} file.`, "success");
+      await loadMedia(page, { silent: true });
+    } catch (requestError) {
+      showToast(getErrorMessage(requestError, "Không thể xóa các file đã chọn."), "error");
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
+
+  const toggleRowSelection = (id: string, checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const pageIds = useMemo(() => items.map((item) => item.id), [items]);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  const toggleSelectAllOnPage = (checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      for (const id of pageIds) {
+        if (checked) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      }
+      return next;
+    });
+  };
+
+  const getMediaActionItems = useCallback(
+    (row: MediaItem): ActionItem[] => [
+      {
+        label: "Xem",
+        icon: <HiEye className="h-4 w-4" />,
+        onClick: () => void handlePreview(row),
+      },
+      {
+        label: "Tải",
+        icon: <HiArrowDownTray className="h-4 w-4" />,
+        onClick: () => void handleDownload(row),
+      },
+      {
+        label: deletingId === row.id ? "Đang xóa…" : "Xóa",
+        icon: <HiOutlineTrash className="h-4 w-4" />,
+        danger: true,
+        onClick: () => void handleDelete(row),
+      },
+    ],
+    [deletingId, handleDelete],
+  );
 
   const pageSummary = useMemo(() => {
     if (meta.total === 0) {
@@ -216,6 +334,8 @@ export default function MediaPage() {
     const end = Math.min(meta.page * meta.limit, meta.total);
     return `Hiển thị ${start}-${end} / ${meta.total} file`;
   }, [meta]);
+
+  const selectedCount = selectedIds.size;
 
   return (
     <div className="min-w-0 flex-1 overflow-y-auto p-8">
@@ -300,10 +420,48 @@ export default function MediaPage() {
           </div>
         </div>
 
+        {selectedCount > 0 ? (
+          <div className="flex flex-wrap items-center gap-3 border-b border-outline-variant/10 bg-surface-container-low/40 px-6 py-3">
+            <span className="text-sm text-on-surface">
+              Đã chọn <strong>{selectedCount}</strong> file
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              startIcon={<HiOutlineTrash className="h-4 w-4" />}
+              disabled={batchDeleting || loading}
+              loading={batchDeleting}
+              onClick={() => void handleBatchDelete()}
+            >
+              Xóa
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={batchDeleting}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Bỏ chọn
+            </Button>
+          </div>
+        ) : null}
+
         <DataTableScroll>
           <table className={dataTableClassName}>
             <thead>
               <tr className="bg-surface-container-low/50">
+                <th className="w-10 px-4 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-outline-variant/40 text-primary focus:ring-primary/30"
+                    aria-label="Chọn tất cả file trên trang này"
+                    checked={allPageSelected}
+                    disabled={loading || items.length === 0}
+                    onChange={(event) => toggleSelectAllOnPage(event.target.checked)}
+                  />
+                </th>
                 <th className="text-sm px-6 py-3 text-label-sm tracking-wider text-on-surface font-normal">
                   Tên file
                 </th>
@@ -325,21 +483,32 @@ export default function MediaPage() {
             <tbody className="divide-y divide-outline-variant/10">
               {loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                  <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                     Đang tải danh sách file…
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                  <td colSpan={7} className="px-6 py-10 text-center text-sm text-on-surface-variant">
                     {hasActiveFilters ? "Không có file nào phù hợp bộ lọc." : "Chưa có file nào."}
                   </td>
                 </tr>
               ) : (
                 items.map((row) => {
-                  const busy = fileActionId === row.id;
+                  const actionItems = getMediaActionItems(row);
+                  const isSelected = selectedIds.has(row.id);
                   return (
                     <tr key={row.id} className="group transition-colors hover:bg-surface-container-low/30">
+                      <td className="px-4 py-3 align-top">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-outline-variant/40 text-primary focus:ring-primary/30"
+                          aria-label={`Chọn ${row.fileName}`}
+                          checked={isSelected}
+                          disabled={loading || batchDeleting}
+                          onChange={(event) => toggleRowSelection(row.id, event.target.checked)}
+                        />
+                      </td>
                       <td className="px-6 py-3 align-top text-sm text-on-surface">
                         <div className="max-w-md truncate font-medium" title={row.fileName}>
                           {row.fileName}
@@ -360,29 +529,8 @@ export default function MediaPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-3 text-right align-top">
-                        <div className="inline-flex flex-wrap justify-end gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            startIcon={<HiEye className="h-4 w-4" />}
-                            disabled={busy}
-                            loading={busy}
-                            onClick={() => void handlePreview(row)}
-                          >
-                            Xem
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            startIcon={<HiArrowDownTray className="h-4 w-4" />}
-                            disabled={busy}
-                            loading={busy}
-                            onClick={() => void handleDownload(row)}
-                          >
-                            Tải
-                          </Button>
+                        <div className="inline-flex">
+                          <ActionMenu items={actionItems} />
                         </div>
                       </td>
                     </tr>

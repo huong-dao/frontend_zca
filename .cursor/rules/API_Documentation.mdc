@@ -2703,6 +2703,10 @@ Persisted **file attachments** from message sends (`POST /messages/send`, public
 - Default directory: `./storage/media` under the project root (override with env **`MEDIA_STORAGE_PATH`**).
 - **`storagePath`** is **never** returned by the API.
 
+**Delete behaviour**
+
+- **`DELETE /media/:id`** and **`DELETE /media/batch`** remove the **`media`** row and delete the file on disk (best effort). The linked **`messages`** row is **kept** (message history / resend metadata remain; resend will fail if files were deleted).
+
 ### GET `/media`
 #### Endpoint
 - Method: `GET`
@@ -2724,6 +2728,7 @@ Each item includes nested **`message`** (sender / target context): **`senderId`*
 | Kích thước | item `sizeBytes` (bytes) |
 | Tin nhắn gốc | item `messageId`; nested `message` for group vs DM |
 | Tải / xem | `GET /media/:id/file` |
+| Xóa | `DELETE /media/:id` or `DELETE /media/batch` |
 
 #### Request
 - Params: none
@@ -2840,6 +2845,106 @@ GET /media/a1b2c3d4-e5f6-7890-abcd-ef1234567890/file
 - `401`: missing/invalid JWT
 - `403`: role is not allowed
 - `404`: **`media`** row not found, or file missing on disk (`Media file is missing on storage.`)
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### DELETE `/media/:id`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/media/:id`
+- Function: `MediaController.remove`
+
+#### Description
+Hard-delete one **`media`** row and remove its file from server storage. The linked **`messages`** row is **not** deleted.
+
+If the file is already missing on disk, the **`media`** row is still removed.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID — `media.id`
+- Query: none
+- Body: none
+
+Example:
+
+```text
+DELETE /media/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+#### Response
+
+```json
+{
+  "message": "Media deleted.",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "fileName": "invoice.pdf"
+}
+```
+
+#### Error cases
+- `400`: invalid UUID
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: **`media`** row not found
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### DELETE `/media/batch`
+#### Endpoint
+- Method: `DELETE`
+- Full path: `/media/batch`
+- Function: `MediaController.deleteBatch`
+
+#### Description
+Hard-delete **many** **`media`** rows in one request. Each file is removed from storage; linked **`messages`** rows are kept.
+
+**All-or-nothing lookup:** every **`id`** in the body must exist. If any id is missing, the API returns **404** and **no** rows are deleted.
+
+Duplicate ids in the body are de-duplicated before processing (max **100** unique ids per request).
+
+#### Request
+- Params: none
+- Query: none
+- Body (JSON):
+  - `ids`: `array`, required, length **1–100** — each item: UUID v4 (`media.id`)
+
+Example:
+
+```json
+{
+  "ids": [
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+  ]
+}
+```
+
+#### Response
+
+```json
+{
+  "message": "Media deleted.",
+  "deletedCount": 2,
+  "ids": [
+    "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+  ]
+}
+```
+
+#### Error cases
+- `400`: validation error (empty `ids`, invalid UUID, more than 100 ids)
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: one or more ids not found (message lists missing ids; nothing deleted)
 - `500`: unexpected server error
 
 #### Authentication
