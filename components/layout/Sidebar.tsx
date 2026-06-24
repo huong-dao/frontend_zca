@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { HiHome, HiMiniUserCircle, HiMiniUsers, HiMiniUserGroup, HiChatBubbleLeftRight, HiCog, HiKey, HiOutlineArrowRightStartOnRectangle } from "react-icons/hi2";
+import { HiHome, HiMiniUserCircle, HiMiniUsers, HiMiniUserGroup, HiChatBubbleLeftRight, HiPhoto, HiCog, HiKey, HiOutlineArrowRightStartOnRectangle } from "react-icons/hi2";
 import { useAdminNav } from "@/contexts/AdminNavContext";
 import { useAuth } from "@/contexts/AuthContext";
 export default function Sidebar() {
@@ -70,6 +70,10 @@ export default function Sidebar() {
                 <Link onClick={closeMobileMenu} className={`${isActive('/messages') ? activeClass : inactiveClass}`} href="/messages">
                     <HiChatBubbleLeftRight className="w-5 h-5" />
                     <span className="font-inter body-md tracking-normal">Tin nhắn</span>
+                </Link>
+                <Link onClick={closeMobileMenu} className={`${isActive('/media') ? activeClass : inactiveClass}`} href="/media">
+                    <HiPhoto className="w-5 h-5" />
+                    <span className="font-inter body-md tracking-normal">Media</span>
                 </Link>
                 <Link onClick={closeMobileMenu} className={`${isActive('/configs') ? activeClass : inactiveClass}`} href="/configs">
                     <HiCog className="w-5 h-5" />

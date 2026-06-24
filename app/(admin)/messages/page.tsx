@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiArrowPath, HiArrowUturnLeft, HiOutlineFunnel } from "react-icons/hi2";
+import { HiArrowPath, HiArrowUturnLeft, HiOutlineFunnel, HiPaperAirplane } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import { useToast } from "@/components/features/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMessages, undoMessage } from "@/lib/api/messages";
+import { getMessages, resendMessage, undoMessage } from "@/lib/api/messages";
 import type { MessageLog, MessageLogStatus, PaginationMeta } from "@/lib/api/types";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -130,6 +130,7 @@ export default function MessagesPage() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [recallingId, setRecallingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const loadMessages = useCallback(
     async (nextPage: number, options?: { silent?: boolean }) => {
@@ -240,18 +241,47 @@ export default function MessagesPage() {
     [showToast],
   );
 
+  const handleResendMessage = useCallback(
+    async (row: MessageLog) => {
+      if (resendingId === row.id) {
+        return;
+      }
+      setResendingId(row.id);
+      try {
+        await resendMessage(row.id);
+        showToast("Đã gửi lại tin nhắn.", "success");
+        await loadMessages(page, { silent: true });
+      } catch (requestError) {
+        showToast(
+          getErrorMessage(requestError, "Không thể gửi lại tin nhắn."),
+          "error",
+        );
+      } finally {
+        setResendingId(null);
+      }
+    },
+    [loadMessages, page, resendingId, showToast],
+  );
+
   const getMessageActionItems = (row: MessageLog): ActionItem[] => {
-    if (row.status !== "SENT") {
-      return [];
-    }
-    return [
+    const items: ActionItem[] = [
       {
+        label: resendingId === row.id ? "Đang gửi lại…" : "Gửi lại",
+        icon: <HiPaperAirplane />,
+        onClick: () => void handleResendMessage(row),
+      },
+    ];
+
+    if (row.status === "SENT") {
+      items.push({
         label: recallingId === row.id ? "Đang thu hồi…" : "Thu hồi",
         icon: <HiArrowUturnLeft />,
         danger: true,
         onClick: () => void handleRecallMessage(row),
-      },
-    ];
+      });
+    }
+
+    return items;
   };
 
   const pageSummary = useMemo(() => {
@@ -494,13 +524,9 @@ export default function MessagesPage() {
                       {row.sentAt ? formatDateTime(row.sentAt) : "—"}
                     </td>
                     <td className="px-6 py-3 text-right align-top">
-                      {actionItems.length > 0 ? (
-                        <div className="inline-flex">
-                          <ActionMenu items={actionItems} />
-                        </div>
-                      ) : (
-                        <span className="text-xs text-on-surface-variant">—</span>
-                      )}
+                      <div className="inline-flex">
+                        <ActionMenu items={actionItems} />
+                      </div>
                     </td>
                   </tr>
                 );

@@ -3,6 +3,7 @@ import type {
   MessageLog,
   MessageLogStatus,
   PaginatedResponse,
+  ResendMessageResponse,
   SendMessagePayload,
   SendMessageResponse,
   UndoMessageResponse,
@@ -82,5 +83,13 @@ export function sendMessage(data: SendMessagePayload) {
 export function undoMessage(messageId: string) {
   return apiRequest<UndoMessageResponse>(`/messages/undo/${encodeURIComponent(messageId)}`, {
     method: "POST",
+  });
+}
+
+/** POST `/messages/resend/:id` — gửi lại tin nhắn đã lưu (text + file khi có media). */
+export function resendMessage(messageId: string) {
+  return apiRequest<ResendMessageResponse>(`/messages/resend/${encodeURIComponent(messageId)}`, {
+    method: "POST",
+    timeoutMs: MESSAGE_SEND_REQUEST_TIMEOUT_MS,
   });
 }

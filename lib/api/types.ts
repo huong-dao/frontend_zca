@@ -365,7 +365,11 @@ export interface SendMessagePersistedRow {
 export interface SendMessageResponse {
   result: unknown;
   message: SendMessagePersistedRow;
+  messages?: SendMessagePersistedRow[];
 }
+
+/** POST `/messages/resend/:id` — gửi lại tin nhắn (cùng shape với send). */
+export type ResendMessageResponse = SendMessageResponse;
 
 export type MessageLogStatus = "SENT" | "FAILED" | "RECALL";
 
@@ -405,6 +409,28 @@ export interface MessageLog {
   createdAt: string;
   sender: MessageLogSender;
   group: MessageLogGroup;
+}
+
+/** GET `/media` — tin nhắn gốc gắn với file. */
+export interface MediaLinkedMessage {
+  id: string;
+  senderId: string;
+  groupId: string | null;
+  peerPhone: string | null;
+  status: MessageLogStatus;
+}
+
+/** GET `/media` — một dòng trong `data`. */
+export interface MediaItem {
+  id: string;
+  messageId: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number;
+  sentAt: string;
+  attachmentIndex: number;
+  createdAt: string;
+  message: MediaLinkedMessage;
 }
 
 export interface ChildGroupScanPayload {

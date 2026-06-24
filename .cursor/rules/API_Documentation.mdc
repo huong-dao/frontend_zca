@@ -15,6 +15,7 @@ This document is intended for the NextJS frontend team and is generated from the
 - [Zalo Sessions API](#zalo-sessions-api)
 - [Background Jobs API](#background-jobs-api)
 - [Messages API](#messages-api)
+- [Media API](#media-api)
 - [Configs API](#configs-api)
 - [API Keys API](#api-keys-api)
 
@@ -2575,6 +2576,271 @@ The JWT user must have a **QR session** for the sender’s `zalo_id` (child acco
 - `401`: missing/invalid JWT
 - `404`: message not found; no mapping; no child session
 - `500`: unexpected error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### POST `/messages/resend/:id`
+#### Endpoint
+- Method: `POST`
+- Full path: `/messages/resend/:id`
+- Function: `MessagesController.resend`
+
+#### Description
+**Send again** using the stored target, text, and (when available) persisted **`media`** files from an existing **`messages`** row. The server **does not modify** the original row; it performs a **new** Zalo send and inserts **new** **`messages`** rows (and **new** **`media`** rows when files are re-sent), with the same response shape as **`POST /messages/send`**.
+
+**How the source message is resolved**
+
+1. Load **`messages`** by **`id`** from the URL.
+2. If the row is a **file child** (`parentId` set), resolve the **batch root** (the parent text row, or the first bubble of that send).
+3. **Text**: taken from the root row’s **`content`**. If the batch had attachments, a combined caption like `…\n\n(Đính kèm: …)` is stripped back to the text part only.
+4. **Files**: all **`media`** rows linked to the root or its **child** file bubbles, ordered by **`attachmentIndex`**, are read from disk, copied to new storage paths, and uploaded to Zalo again.
+5. **Target**: same as the original — **`groupId`** (group) or **`peerPhone`** (DM) on the root row; same **`senderId`** (child Zalo account).
+
+The call then runs the same pipeline as **`POST /messages/send`** (session check, **`message_interval`**, Zalo **`sendMessage`**, persist success/failure). You may pass **`id`** of the **parent** (text) row, any **child** (file) row, or a **single-row** send (text-only or failed batch).
+
+**Attachments and legacy messages**
+
+- Files are only available when **`media`** rows exist (sends **after** persistent attachment storage was enabled). If **`content`** indicates attachments (`(Đính kèm: …)` or starts with `Đính kèm:`) but there is **no** **`media`**, the API returns **400** with a clear message.
+- **Text-only** messages (including older sends without **`media`**) can still be resent.
+
+**Typical use cases**
+
+- Resend a **`FAILED`** attempt (same content/files without re-entering the form).
+- Send again after **`RECALL`** (new Zalo message; original row stays **`RECALL`**).
+- Duplicate a **`SENT`** message (new log entries; subject to **`message_interval`**).
+
+#### Request
+- Params:
+  - `id`: `string`, UUID — internal **`messages.id`** (parent, child, or single-row)
+- Query: none
+- Body: none
+
+Example:
+
+```text
+POST /messages/resend/1f0b96fc-c694-4d83-8f4c-20fa20aa0001
+```
+
+#### Response
+Same structure as **`POST /messages/send`**:
+
+- `result`: zca-js **`sendMessage`** return for the new send.
+- `message`: first **new** persisted row (`messages[0]`).
+- `messages`: all **new** rows for this send (one per bubble when text + files).
+
+Example (text-only resend — one new row):
+
+```json
+{
+  "result": {
+    "message": { "msgId": 9876543211 },
+    "attachment": []
+  },
+  "message": {
+    "id": "3c4d5e6f-a7b8-9012-cdef-345678901234",
+    "messageZaloId": "9876543211",
+    "cliMsgId": null,
+    "uidFrom": "1122334455667788990",
+    "content": "Hello group",
+    "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+    "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+    "peerPhone": null,
+    "parentId": null,
+    "sentAt": "2026-06-24T14:00:00.000Z",
+    "status": "SENT",
+    "failureReason": null,
+    "createdAt": "2026-06-24T14:00:00.000Z"
+  },
+  "messages": [
+    {
+      "id": "3c4d5e6f-a7b8-9012-cdef-345678901234",
+      "messageZaloId": "9876543211",
+      "cliMsgId": null,
+      "uidFrom": "1122334455667788990",
+      "content": "Hello group",
+      "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+      "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+      "peerPhone": null,
+      "parentId": null,
+      "sentAt": "2026-06-24T14:00:00.000Z",
+      "status": "SENT",
+      "failureReason": null,
+      "createdAt": "2026-06-24T14:00:00.000Z"
+    }
+  ]
+}
+```
+
+When the original send had text + files and **`media`** exists, the new send again produces multiple **`messages`** rows and new **`media`** rows (see **`GET /media`**).
+
+#### Error cases
+- `400`: invalid UUID; **sender Zalo account removed**; **no text and no stored files** to resend; **attachments implied in `content` but no `media`** (pre-storage messages); **file missing on disk** for a stored **`media`** row; same validation / rate-limit / Zalo errors as **`POST /messages/send`** during the internal send (including **`message_interval`**, master account, inactive child, missing session, invalid DM phone, empty `group_zalo_id`, etc.). On send failure after resend starts, a **new** **`FAILED`** row may be written (same as send).
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: message not found; no child session for sender; no `zalo_account_groups` mapping (group resend)
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+## Media API
+
+Persisted **file attachments** from message sends (`POST /messages/send`, public `POST /public/zalo/send`). Each row in **`media`** stores metadata plus a server-side file path; the binary is **not** embedded in JSON responses. Use **`GET /media/:id/file`** to download or preview.
+
+**When rows are created**
+
+- On **successful** send with at least one uploaded file: one **`media`** row per file bubble, linked to the corresponding **`messages`** child row (or the single row when there is no separate text bubble). **`sentAt`** on **`media`** matches the linked message’s **`sentAt`**.
+- On **failed** send with files: files are still stored and linked to the **`FAILED`** **`messages`** row ( **`sentAt`** on **`media`** uses the failure timestamp).
+- Messages sent **before** this feature was deployed have **no** **`media`** rows; **`POST /messages/resend/:id`** cannot re-attach those files.
+
+**Storage**
+
+- Default directory: `./storage/media` under the project root (override with env **`MEDIA_STORAGE_PATH`**).
+- **`storagePath`** is **never** returned by the API.
+
+### GET `/media`
+#### Endpoint
+- Method: `GET`
+- Full path: `/media`
+- Function: `MediaController.findAll`
+
+#### Description
+Return a paginated list of persisted attachments. Ordered by **`sentAt` descending**, then **`id` descending** (newest first).
+
+Each item includes nested **`message`** (sender / target context): **`senderId`**, **`groupId`**, **`peerPhone`**, **`status`**. Use this to show which send the file belonged to.
+
+**Display hints for the frontend**
+
+| UI label | Field / filter |
+| -------- | -------------- |
+| Tên file | `fileName` (query) or item `fileName` |
+| Gửi lúc | `sentFrom` / `sentTo` (query); item `sentAt` |
+| Loại file | item `mimeType` |
+| Kích thước | item `sizeBytes` (bytes) |
+| Tin nhắn gốc | item `messageId`; nested `message` for group vs DM |
+| Tải / xem | `GET /media/:id/file` |
+
+#### Request
+- Params: none
+- Query (all optional; combined with **AND**):
+  - `fileName`: `string`, max 255 — case-insensitive **substring** match on `media.file_name`
+  - `sentFrom`: ISO 8601 date-time — inclusive lower bound on **`media.sent_at`**
+  - `sentTo`: ISO 8601 date-time — inclusive upper bound on **`media.sent_at`**
+  - `page`: `number`, default `1`, min `1`
+  - `limit`: `number`, default `20`, min `1`
+- Body: none
+
+Example:
+
+```text
+GET /media?fileName=invoice&sentFrom=2026-06-01T00:00:00.000Z&sentTo=2026-06-30T23:59:59.999Z&page=1&limit=20
+```
+
+#### Response
+
+```json
+{
+  "data": [
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "messageId": "1f0b96fc-c694-4d83-8f4c-20fa20aa0002",
+      "fileName": "invoice.pdf",
+      "mimeType": "application/pdf",
+      "sizeBytes": 245760,
+      "sentAt": "2026-06-24T10:30:00.000Z",
+      "attachmentIndex": 0,
+      "createdAt": "2026-06-24T10:30:00.000Z",
+      "message": {
+        "id": "1f0b96fc-c694-4d83-8f4c-20fa20aa0002",
+        "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+        "groupId": "5d6a8d48-b45c-43d8-9b0d-5cc3bd110001",
+        "peerPhone": null,
+        "status": "SENT"
+      }
+    },
+    {
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "messageId": "2a1c87bd-d805-5e94-9f5d-21fb21bb1112",
+      "fileName": "photo.jpg",
+      "mimeType": "image/jpeg",
+      "sizeBytes": 102400,
+      "sentAt": "2026-06-15T08:30:00.000Z",
+      "attachmentIndex": 0,
+      "createdAt": "2026-06-15T08:30:00.000Z",
+      "message": {
+        "id": "2a1c87bd-d805-5e94-9f5d-21fb21bb1112",
+        "senderId": "7c13f32f-90eb-483f-b5e0-c3b7fa120001",
+        "groupId": null,
+        "peerPhone": "0912345678",
+        "status": "FAILED"
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 2,
+    "totalPages": 1
+  }
+}
+```
+
+**Field notes**
+
+- `messageId`: internal **`messages.id`** for the **file bubble** row (child row when text + files were sent in one batch).
+- `attachmentIndex`: zero-based order of the file within the original upload batch (matches Zalo `attachment[]` order).
+- `mimeType`: from the upload; may be `null` for some rows (e.g. after resend copy); file download still works (`application/octet-stream` fallback).
+- Nested **`message.groupId`**: set for group sends; **`peerPhone`** set for DM; both null only in edge cases.
+
+#### Error cases
+- `400`: validation error (invalid date query, etc.)
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `500`: unexpected server error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### GET `/media/:id/file`
+#### Endpoint
+- Method: `GET`
+- Full path: `/media/:id/file`
+- Function: `MediaController.streamFile`
+
+#### Description
+Stream the **binary file** for a **`media`** row. Response **`Content-Type`** is the stored **`mimeType`**, or **`application/octet-stream`** if missing. **`Content-Disposition`** is **`inline`** with the stored **`fileName`** (suitable for browser preview; use a download attribute on the client if you need “Save as…”).
+
+This route returns **raw bytes**, not JSON. Open in a new tab, `<img src="…">`, `<iframe>`, or `fetch` + blob as needed.
+
+#### Request
+- Params:
+  - `id`: `string`, UUID — `media.id`
+- Query: none
+- Body: none
+
+Example:
+
+```text
+GET /media/a1b2c3d4-e5f6-7890-abcd-ef1234567890/file
+```
+
+#### Response
+- **Success (`200`)**: file stream; headers include `Content-Type` and `Content-Disposition: inline; filename="…"`.
+- Body: binary (PDF, image, etc.).
+
+#### Error cases
+- `400`: invalid UUID
+- `401`: missing/invalid JWT
+- `403`: role is not allowed
+- `404`: **`media`** row not found, or file missing on disk (`Media file is missing on storage.`)
+- `500`: unexpected server error
 
 #### Authentication
 - JWT required
