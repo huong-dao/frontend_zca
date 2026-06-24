@@ -12,6 +12,7 @@ import {
   HiUserMinus,
 } from "react-icons/hi2";
 import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
+import ChildAccountFilterCombobox from "@/components/features/ChildAccountFilterCombobox";
 import GroupFilterSearchField from "@/components/features/GroupFilterSearchField";
 import GroupSearchCombobox from "@/components/features/GroupSearchCombobox";
 import Modal from "@/components/features/Modal";
@@ -83,6 +84,7 @@ export default function ZaloAccountDetailsPage() {
   const [groupsError, setGroupsError] = useState("");
   const [groupFilterQuery, setGroupFilterQuery] = useState("");
   const [debouncedGroupFilter, setDebouncedGroupFilter] = useState("");
+  const [groupFilterChildId, setGroupFilterChildId] = useState<string | null>(null);
   const [submittingFriendChildId, setSubmittingFriendChildId] = useState<string | null>(null);
   const [submittingFriendAction, setSubmittingFriendAction] = useState<"make" | "unfriend" | null>(null);
 
@@ -155,6 +157,16 @@ export default function ZaloAccountDetailsPage() {
   }, [loadAccountDetails]);
 
   const childAccounts = useMemo<ZaloAccountChild[]>(() => account?.children ?? [], [account]);
+  const childFilterOptions = useMemo(
+    () =>
+      childAccounts.map((child) => ({
+        id: child.id,
+        name: child.name,
+        phone: account?.friends.find((friend) => friend.id === child.id)?.phone?.trim() ?? "",
+      })),
+    [account?.friends, childAccounts],
+  );
+  const groupsFilterAccountId = groupFilterChildId ?? accountId;
   const friendStatusById = useMemo(
     () =>
       new Map(
@@ -199,7 +211,7 @@ export default function ZaloAccountDetailsPage() {
   }, [groupsMeta]);
 
   const loadAccountGroups = useCallback(async () => {
-    if (!accountId) {
+    if (!groupsFilterAccountId) {
       return;
     }
 
@@ -207,7 +219,7 @@ export default function ZaloAccountDetailsPage() {
     setGroupsError("");
 
     try {
-      const response = await getZaloGroupsByAccountId(accountId, {
+      const response = await getZaloGroupsByAccountId(groupsFilterAccountId, {
         page: groupPage,
         limit: TABLE_PAGE_SIZE,
         ...(debouncedGroupFilter ? { group_name: debouncedGroupFilter } : {}),
@@ -227,7 +239,7 @@ export default function ZaloAccountDetailsPage() {
     } finally {
       setGroupsLoading(false);
     }
-  }, [accountId, groupPage, debouncedGroupFilter]);
+  }, [groupsFilterAccountId, groupPage, debouncedGroupFilter]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -238,7 +250,7 @@ export default function ZaloAccountDetailsPage() {
 
   useLayoutEffect(() => {
     setGroupPage(1);
-  }, [debouncedGroupFilter]);
+  }, [debouncedGroupFilter, groupFilterChildId]);
 
   useEffect(() => {
     if (!account?.isMaster) {
@@ -265,6 +277,7 @@ export default function ZaloAccountDetailsPage() {
     setGroupPage(1);
     setGroupFilterQuery("");
     setDebouncedGroupFilter("");
+    setGroupFilterChildId(null);
   }, [accountId]);
 
   const getFriendStatus = (childId: string) => friendStatusById.get(childId) ?? null;
@@ -1041,12 +1054,23 @@ export default function ZaloAccountDetailsPage() {
         <section className="overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm shadow-slate-200/50">
           <div className="flex flex-col gap-3 border-b border-outline-variant/10 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <h3 className="shrink-0 text-lg font-semibold text-on-surface">Nhóm</h3>
-            <div className="min-w-0 w-full sm:max-w-sm lg:max-w-md">
-              <GroupFilterSearchField
-                value={groupFilterQuery}
-                onChange={setGroupFilterQuery}
-                placeholder="Gõ để lọc theo tên nhóm…"
-              />
+            <div className="flex min-w-0 w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center lg:max-w-2xl">
+              <div className="min-w-0 flex-1">
+                <GroupFilterSearchField
+                  value={groupFilterQuery}
+                  onChange={setGroupFilterQuery}
+                  placeholder="Gõ để lọc theo tên nhóm…"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <ChildAccountFilterCombobox
+                  options={childFilterOptions}
+                  value={groupFilterChildId}
+                  onChange={setGroupFilterChildId}
+                  disabled={loading || childFilterOptions.length === 0}
+                  placeholder="Lọc theo tài khoản child"
+                />
+              </div>
             </div>
           </div>
 
@@ -1076,7 +1100,7 @@ export default function ZaloAccountDetailsPage() {
               ) : groups.length === 0 ? (
                 <tr>
                   <td className="px-6 py-10 text-center text-sm text-on-surface-variant">
-                    {debouncedGroupFilter
+                    {debouncedGroupFilter || groupFilterChildId
                       ? "Không có nhóm nào khớp bộ lọc."
                       : "Tài khoản master này chưa có dữ liệu group."}
                   </td>
