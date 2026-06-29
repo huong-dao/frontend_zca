@@ -1,16 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HiOutlineFunnel, HiOutlineUserGroup } from "react-icons/hi2";
+import { HiOutlineFunnel, HiOutlinePencilSquare, HiOutlineUserGroup } from "react-icons/hi2";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import Modal from "@/components/features/Modal";
+import ActionMenu, { type ActionItem } from "@/components/features/ActionMenu";
+import { useToast } from "@/components/features/Toast";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
+import FormError from "@/components/ui/FormError";
 import { useAuth } from "@/contexts/AuthContext";
 import { useZaloGroupNameSync } from "@/contexts/ZaloGroupNameSyncContext";
 import { getGroupMetadataSyncStatus } from "@/lib/api/background-jobs";
-import { getLinkedAccountsByGroupId, getZaloGroups } from "@/lib/api/zalo-groups";
+import { filterZaloAccountsByType } from "@/lib/api/zalo-accounts";
+import {
+  changeZaloGroupName,
+  getLinkedAccountsByGroupId,
+  getZaloGroups,
+} from "@/lib/api/zalo-groups";
+import { getCurrentZaloSession } from "@/lib/zalo/client";
+import { ensureZaloSessionValid } from "@/lib/zalo/session-verify";
 import type {
   GroupMetadataSyncStatus,
   PaginationMeta,
@@ -58,6 +68,7 @@ function formatDateTime(value: string) {
 
 export default function ZaloGroupsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const { currentBatchSize, isSyncing, lastCompletedAt, lastError, pendingCount } = useZaloGroupNameSync();
   const [groups, setGroups] = useState<ZaloGroup[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>(EMPTY_META);
@@ -74,6 +85,11 @@ export default function ZaloGroupsPage() {
   const [linkedAccounts, setLinkedAccounts] = useState<ZaloGroupLinkedAccount[]>([]);
   const [linkedAccountsLoading, setLinkedAccountsLoading] = useState(false);
   const [linkedAccountsError, setLinkedAccountsError] = useState("");
+  const [openRenameModal, setOpenRenameModal] = useState(false);
+  const [renameGroup, setRenameGroup] = useState<ZaloGroup | null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [renameError, setRenameError] = useState("");
+  const [renameSubmitting, setRenameSubmitting] = useState(false);
 
   const loadGroups = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -190,6 +206,125 @@ export default function ZaloGroupsPage() {
       setLinkedAccountsLoading(false);
     }
   }, []);
+
+  const handleCloseRenameModal = useCallback(() => {
+    setOpenRenameModal(false);
+    setRenameGroup(null);
+    setNewGroupName("");
+    setRenameError("");
+    setRenameSubmitting(false);
+  }, []);
+
+  const handleOpenRenameModal = useCallback((group: ZaloGroup) => {
+    setRenameGroup(group);
+    setNewGroupName(group.groupName);
+    setRenameError("");
+    setOpenRenameModal(true);
+  }, []);
+
+  const handleSubmitRenameGroup = useCallback(async () => {
+    if (!renameGroup) {
+      return;
+    }
+
+    const trimmedName = newGroupName.trim();
+
+    if (!trimmedName) {
+      setRenameError("Tên nhóm không được để trống.");
+      return;
+    }
+
+    if (trimmedName.length > 255) {
+      setRenameError("Tên nhóm tối đa 255 ký tự.");
+      return;
+    }
+
+    setRenameError("");
+    setRenameSubmitting(true);
+
+    try {
+      const linkedResponse = await getLinkedAccountsByGroupId(renameGroup.id);
+      const masterAccount = linkedResponse.data.find((account) => account.accountType === "Master");
+
+      if (!masterAccount) {
+        setRenameError("Không tìm thấy tài khoản master liên kết với nhóm này.");
+        return;
+      }
+
+      const masters = await filterZaloAccountsByType("master");
+      const masterRecord = masters.find((account) => account.id === masterAccount.id);
+
+      if (!masterRecord) {
+        setRenameError("Không tìm thấy thông tin tài khoản master.");
+        return;
+      }
+
+      const sessionResponse = await getCurrentZaloSession();
+      const sessionList =
+        sessionResponse.sessions.length > 0
+          ? sessionResponse.sessions
+          : sessionResponse.session
+            ? [sessionResponse.session]
+            : [];
+
+      const matchingSession = sessionList.find((session) => session.user.uid === masterRecord.zaloId);
+
+      if (!matchingSession) {
+        setRenameError(
+          "Chưa có phiên Zalo cho tài khoản master. Vui lòng đăng nhập Zalo (QR) cho master trước.",
+        );
+        return;
+      }
+
+      const sessionValidity = await ensureZaloSessionValid(matchingSession.id, {
+        label: matchingSession.user.displayName || masterRecord.name,
+      });
+
+      if (!sessionValidity.ok) {
+        setRenameError(sessionValidity.reason);
+        return;
+      }
+
+      await changeZaloGroupName(renameGroup.id, {
+        group_name: trimmedName,
+        sessionId: matchingSession.id,
+        masterZaloAccountId: masterRecord.id,
+      });
+
+      showToast("Đã đổi tên nhóm trên Zalo.", "success");
+      handleCloseRenameModal();
+      await loadGroups(page);
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : "Không thể đổi tên nhóm.";
+      setRenameError(message);
+    } finally {
+      setRenameSubmitting(false);
+    }
+  }, [handleCloseRenameModal, loadGroups, newGroupName, page, renameGroup, showToast]);
+
+  const getGroupActionItems = useCallback(
+    (group: ZaloGroup): ActionItem[] => {
+      const items: ActionItem[] = [];
+
+      if (group._count.accountMaps > 0) {
+        items.push({
+          label: "Tài khoản liên kết",
+          icon: <HiOutlineUserGroup className="h-5 w-5" />,
+          onClick: () => void handleOpenLinkedAccountsModal(group),
+        });
+      }
+
+      items.push({
+        label: "Đổi tên nhóm",
+        icon: <HiOutlinePencilSquare className="h-5 w-5" />,
+        onClick: () => handleOpenRenameModal(group),
+      });
+
+      return items;
+    },
+    [handleOpenLinkedAccountsModal, handleOpenRenameModal],
+  );
 
   const pageSummary = useMemo(() => {
     if (meta.total === 0) {
@@ -334,16 +469,8 @@ export default function ZaloGroupsPage() {
                     <div className="text-sm text-on-surface-variant">{formatDate(group.createdAt)}</div>
                   </td>
 
-                  <td className="px-6 py-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      startIcon={<HiOutlineUserGroup className="h-4 w-4" />}
-                      disabled={group._count.accountMaps === 0}
-                      onClick={() => void handleOpenLinkedAccountsModal(group)}
-                    >
-                      Tài khoản liên kết
-                    </Button>
+                  <td className="px-6 py-3 text-right">
+                    <ActionMenu items={getGroupActionItems(group)} />
                   </td>
                 </tr>
               ))
@@ -460,6 +587,55 @@ export default function ZaloGroupsPage() {
             Tổng cộng {linkedAccounts.length} tài khoản liên kết.
           </p>
         ) : null}
+      </Modal>
+
+      <Modal
+        open={openRenameModal}
+        title={renameGroup ? `Đổi tên nhóm — ${renameGroup.groupName}` : "Đổi tên nhóm"}
+        onClose={() => {
+          if (!renameSubmitting) {
+            handleCloseRenameModal();
+          }
+        }}
+        onSubmit={() => void handleSubmitRenameGroup()}
+        loading={renameSubmitting}
+        loadingText="Đang đổi tên..."
+        buttonText="Lưu tên mới"
+        cancelText="Hủy"
+      >
+        <div>
+          <label className="block text-sm font-medium text-on-surface" htmlFor="group-rename-input">
+            Tên nhóm mới
+          </label>
+          <input
+            id="group-rename-input"
+            className="mt-2 w-full rounded-lg border-transparent bg-surface-container-low px-4 py-2.5 text-sm transition-all placeholder:text-outline focus:border-primary focus:ring-2 focus:ring-primary-fixed"
+            placeholder="Nhập tên nhóm mới"
+            type="text"
+            value={newGroupName}
+            maxLength={255}
+            disabled={renameSubmitting}
+            onChange={(event) => {
+              setNewGroupName(event.target.value);
+              if (renameError) {
+                setRenameError("");
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                void handleSubmitRenameGroup();
+              }
+            }}
+          />
+          {renameError ? (
+            <div className="mt-2">
+              <FormError message={renameError} />
+            </div>
+          ) : null}
+          <p className="mt-2 text-xs text-on-surface-variant">
+            Tên sẽ được cập nhật trên Zalo (qua tài khoản master) và trong hệ thống.
+          </p>
+        </div>
       </Modal>
     </div>
   );

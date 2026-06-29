@@ -2,6 +2,8 @@ import { apiRequest } from "@/lib/api/client";
 import type {
   BulkCreateZaloGroupsPayload,
   BulkCreateZaloGroupsResponse,
+  ChangeZaloGroupNamePayload,
+  ChangeZaloGroupNameResponse,
   InviteMemberToZaloGroupPayload,
   InviteMemberToZaloGroupResponse,
   RemoveMemberFromZaloGroupPayload,
@@ -97,6 +99,13 @@ export function getPendingNameUpdateZaloGroups() {
 export function updateZaloGroup(groupId: string, data: UpdateZaloGroupPayload) {
   return apiRequest<UpdateZaloGroupResponse>(`/zalo-groups/${groupId}`, {
     method: "PUT",
+    body: data,
+  });
+}
+
+export function changeZaloGroupName(groupId: string, data: ChangeZaloGroupNamePayload) {
+  return apiRequest<ChangeZaloGroupNameResponse>(`/zalo-groups/${groupId}/group-name`, {
+    method: "PATCH",
     body: data,
   });
 }

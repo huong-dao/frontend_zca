@@ -202,6 +202,7 @@ export default function ZaloAccountsPage() {
 
   const phoneNumberRef = useRef<HTMLInputElement>(null);
   const persistedSessionIdRef = useRef<string | null>(null);
+  const qrLoginForExistingAccountRef = useRef(false);
   const selectAllVisibleCheckboxRef = useRef<HTMLInputElement>(null);
   const [zaloSessions, setZaloSessions] = useState<ZaloSessionPublic[]>([]);
   const [zaloLoggedIds, setZaloLoggedIds] = useState<Set<string>>(() => new Set());
@@ -224,6 +225,7 @@ export default function ZaloAccountsPage() {
     setRequestedPhoneNumber("");
     setSavingAccount(false);
     persistedSessionIdRef.current = null;
+    qrLoginForExistingAccountRef.current = false;
   }, []);
 
   // SECTION: CURRENT ZALO SESSION
@@ -482,6 +484,7 @@ export default function ZaloAccountsPage() {
     setSubmittingAddAccount(true);
 
     try {
+      qrLoginForExistingAccountRef.current = false;
       await beginQrLogin(normalizedPhoneNumber);
     } catch (requestError) {
       setPhoneNumberError(
@@ -527,6 +530,7 @@ export default function ZaloAccountsPage() {
       return;
     }
 
+    qrLoginForExistingAccountRef.current = true;
     await beginQrLogin(normalizedPhoneNumber);
   };
 
@@ -635,7 +639,11 @@ export default function ZaloAccountsPage() {
         }
 
         if (requestError instanceof ApiError && requestError.status === 409) {
-          showToast("Tài khoản Zalo đã tồn tại trong hệ thống.", "warning");
+          if (qrLoginForExistingAccountRef.current) {
+            showToast("Đăng nhập Zalo thành công.", "success");
+          } else {
+            showToast("Tài khoản Zalo đã tồn tại trong hệ thống.", "warning");
+          }
           await loadAccounts();
           await syncZaloSession();
           notifyZaloSessionChanged();
@@ -1000,20 +1008,15 @@ export default function ZaloAccountsPage() {
   // SECTION: ROW ACTION MENU
   // Tập trung toàn bộ action hiển thị ở mỗi dòng để dễ tìm nơi thêm / bớt menu thao tác.
   const getActionItems = (account: ZaloAccount): ActionItem[] => {
-    const items: ActionItem[] = [
-      // zaloLoggedIds.has(account.zaloId)
-      //   ? {
-      //       label: "Đăng xuất Zalo",
-      //       icon: <HiOutlineArrowRightOnRectangle />,
-      //       danger: true,
-      //       onClick: () => void handleLogoutZaloForAccount(account),
-      //     }
-      //   : {
-      //       label: "Đăng nhập Zalo",
-      //       icon: <HiMiniQrCode />,
-      //       onClick: () => void handleBeginQrLogin(account.phone),
-      //     },
-    ];
+    const items: ActionItem[] = [];
+
+    if (!zaloLoggedIds.has(account.zaloId)) {
+      items.push({
+        label: "Đăng nhập",
+        icon: <HiMiniQrCode />,
+        onClick: () => void handleBeginQrLogin(account.phone),
+      });
+    }
 
     if (!account.isMaster) {
       const childCanScanGroups =

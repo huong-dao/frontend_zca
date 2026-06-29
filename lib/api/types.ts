@@ -283,6 +283,28 @@ export interface UpdateZaloGroupResponse {
   updatedAt: string;
 }
 
+/** PATCH `/zalo-groups/:id/group-name` — đổi tên trên Zalo (master session) rồi cập nhật DB. */
+export interface ChangeZaloGroupNamePayload {
+  group_name: string;
+  sessionId: string;
+  masterZaloAccountId: string;
+}
+
+export interface ChangeZaloGroupNameResponse {
+  success: boolean;
+  group: {
+    id: string;
+    groupName: string;
+    originName: string;
+    isUpdateName: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+  zalo: {
+    status: number;
+  };
+}
+
 /** POST `/zalo-groups/invite-member` — có `groupId` thì bỏ qua lookup theo tên. */
 export interface InviteMemberToZaloGroupPayload {
   sessionId: string;

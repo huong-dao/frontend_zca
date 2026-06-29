@@ -122,7 +122,7 @@ console.log(zaloId);
 ### Description
 Retrieve the list of all Zalo groups that the current account has joined.
 
-This API returns metadata about groups, including group IDs, which can be used to fetch detailed group information.
+The response includes a version string and a map from each joined group’s **group id** to that group’s **origin name** (`origin_name`): the name Zalo associates with that group in this payload (useful for syncing with your DB `origin_name` / display).
 
 ---
 
@@ -138,20 +138,74 @@ api.getAllGroups()
 ---
 
 ### Return
-{
+
+TypeScript shape (matches typical zca-js usage; alias as needed in your project):
+
+```ts
+export type GetAllGroupsResponse = {
   version: string;
+  /** Keys: Zalo `groupId`. Values: that group’s `origin_name` string. */
   gridVerMap: {
     [groupId: string]: string;
   };
-}
+};
+```
+
+- `version`: protocol / list version from Zalo.
+- `gridVerMap`: map of **`groupId` → `origin_name`** (value is the origin name string for that group).
 
 ---
 
 ### Example
 
 ```ts
-const groups = await api.getAllGroups();
-console.log(groups);
+const groups: GetAllGroupsResponse = await api.getAllGroups();
+console.log(groups.version, groups.gridVerMap);
+```
+
+## API: changeGroupName
+
+### Description
+Cập nhật **tên nhóm** trên Zalo (API `/api/group/updateinfo` qua zca-js).
+
+Backend Nest: `ZcaApiHelper.changeGroupName` — dùng trong **`PATCH /zalo-groups/:id/group-name`** (đổi tên trên Zalo rồi cập nhật `ZaloGroup` trong DB). Cần **`group_zalo_id`** (grid id) của master và session master có quyền admin nhóm.
+
+---
+
+### Method (zca-js)
+api.changeGroupName(name, groupId)
+
+---
+
+### Parameters
+
+- name: string  
+  → Tên nhóm mới
+
+- groupId: string  
+  → Zalo group grid id (`group_zalo_id` trên thiết bị master)
+
+---
+
+### Return
+
+```ts
+export type ChangeGroupNameResponse = {
+  status: number;
+};
+```
+
+`Promise<ChangeGroupNameResponse>`
+
+---
+
+### Example
+
+```ts
+api
+  .changeGroupName('Tên Mới', '0000000000000000000')
+  .then(console.log)
+  .catch(console.error);
 ```
 
 ## API: getUserInfo
@@ -419,6 +473,67 @@ await api.addUserToGroup(memberIds, groupId);
 
 ---
 
+## API: removeUserFromGroup
+
+### Description
+Xóa thành viên khỏi nhóm.
+
+Remove one or more members from a Zalo group by their Zalo user id(s), scoped to a `groupId`.
+
+---
+
+### Method (zca-js)
+api.removeUserFromGroup(memberId, groupId)
+
+---
+
+### Parameters
+
+- memberId: string | string[]  
+  → Zalo user ID or list of user IDs to remove from the group
+
+- groupId: string  
+  → Target group ID
+
+---
+
+### Return
+`Promise<RemoveUserFromGroupResponse>`
+
+TypeScript:
+
+```ts
+export type RemoveUserFromGroupResponse = {
+  errorMembers: string[];
+};
+```
+
+- `errorMembers`: list of user IDs for which removal failed (empty if all succeeded)
+
+---
+
+### Example
+
+```ts
+const groupId = "0000000000000000000";
+
+// Remove one member
+const memberId = "0000000000000000001";
+api
+  .removeUserFromGroup(memberId, groupId)
+  .then(console.log)
+  .catch(console.error);
+
+// Remove several members
+const memberIds = ["0000000000000000001", "0000000000000000002"];
+api
+  .removeUserFromGroup(memberIds, groupId)
+  .then(console.log)
+  .catch(console.error);
+```
+
+---
+
 ## API: sendMessage
 
 ### Description
@@ -592,81 +707,23 @@ Used in **Message Module**:
    - group
    - timestamp
 
----
+#### Backend (this repo)
 
-## API: deleteMessage
-
-### Description
-Delete a message sent by yourself or a group member.
-
-This API allows removing a message from a conversation.  
-By default, the message is only deleted on the current account (local delete).
-
----
-
-### Method (zca-js)
-api.deleteMessage(options, threadId[, type])
+- **Helper:** `ZcaApiHelper.prototype.sendMessage` in `src/zalo/zca-api.helper.ts` — thin wrapper around `api.sendMessage(message, threadId, type)` from zca-js. The first argument may be a **string** or a **`MessageContent` object** (e.g. `{ msg, attachments: [absolute file paths] }` per the zca-js docs above). Re-export: `ThreadType` from the same module (and `src/zalo/index.ts`).
+- **App send (child account + `messages` rows):** `POST /messages/send` with **`multipart/form-data`**: `zaloAccountId`, `groupId`, optional `text`, optional repeated `files`. The service writes uploaded buffers to temp paths, calls `ZcaApiHelper.sendMessage` with `MessageContent` when files are present, then deletes the temp files. **Implementation note:** zca-js finishes many file uploads only after a WebSocket `file_done` event; the backend therefore calls `api.listener.start()`, waits for `cipher_key`, runs `sendMessage`, then `api.listener.stop()` (same requirement as the zca-js README for `listener.start()`). **Nhiều “bubble” trên Zalo:** với nội dung kiểu chữ + nhiều file (ví dụ 2 PDF), thư viện thường gửi **từng phần** (một lần gọi `sendMessage` vẫn trả về `result.message` cho đoạn chữ và `result.attachment[]` — mỗi phần tử tương ứng một file). Trong app Zalo bạn sẽ thấy **nhiều tin** (1 dòng chữ + 1 tin/file). Backend lưu **một bản ghi `messages` cho mỗi bubble** (cùng `sent_at`, `message_zalo_id` / `cli_msg_id` riêng). Bản ghi bubble chữ có `parent_id` null; mỗi bản ghi file trong cùng lần gửi trỏ `parent_id` về id dòng chữ — để frontend biết nhóm tin; **`POST /messages/undo/:id` với id dòng chữ** sẽ gọi `api.undo` lần lượt cho chữ và mọi file con, rồi gắn `RECALL` toàn bộ; thu hồi một dòng file (id con) chỉ thu hồi bubble đó. `message` đầu trong response send trùng bubble chữ, `messages` liệt kê tất cả.
+- **Group self-echo for `cliMsgId`:** the **text** bubble’s echo can arrive on the WebSocket *while* `sendMessage` is still running (before file parts finish). The server registers a **pre-send** listener for that `threadId`, buffers matching self echos, then passes them into the post-send merge so the **parent** row gets `cli_msg_id` the same way as file rows (avoids a race where only `merge` after the HTTP return would see file echos, not the text). Matching uses **all** of `msgId` / `messageId` / `globalMsgId` / `realMsgId` on both the HTTP part and the echo so the text part still matches if Zalo uses a different field than our single `parseMsgBlock` “primary” id.
+- **HTTP (stored QR session, raw session):** `POST /zalo/actions/send-message` with JSON body:
+  - `sessionId` (UUID) — `zalo_login_sessions.id`
+  - `text` (string) — required for JSON calls **unless** the server populates `attachmentLocalPaths` internally (e.g. `MessagesService` for uploads). Plain `text`-only is the typical JSON use case.
+  - `threadId` (string) — target user or group id for the session
+  - `threadType` (optional) — `ThreadType` enum from zca-js; **omit = `ThreadType.Group`** for this endpoint (DM: set `ThreadType.User` explicitly)
+  - `attachmentLocalPaths` (optional, internal) — absolute paths; not intended for public JSON clients. For attachments from a browser, use **`POST /messages/send`** with multipart.
 
 ---
 
-### Parameters
+### `deleteMessage` (zca-js) — not used in this backend
 
-- options: DeleteMessageDestination  
-  → Message identification object
-
-- onlyMe: boolean (optional)  
-  → Default = true (delete only for current user)
-
-- threadId: string  
-  → ID of user or group
-
-- type: ThreadType (optional)  
-  → Thread type (User | Group)
-
----
-
-### Example
-
-#### Delete own message after 5 seconds
-
-```ts
-api.listener.on("message", (message) => {
-    const { content } = message.data;
-    const isTextMessage = typeof content === "string";
-    const shouldDelete = isTextMessage && content === "test";
-
-    if (message.isSelf && shouldDelete) {
-        setTimeout(() => {
-            api.deleteMessage(
-                {
-                    data: {
-                        cliMsgId: message.data.cliMsgId,
-                        msgId: message.data.msgId,
-                        uidFrom: message.data.uidFrom,
-                    },
-                    threadId: message.threadId,
-                    type: message.type
-                }
-            )
-            .then(console.log)
-            .catch(console.error);
-        }, 5000);
-    }
-});
-```
-
----
-
-### Return
-
-```ts
-{
-  status: number;
-}
-```
-
-- status  
-  → Operation result status code
+The mobile/web Zalo client exposes **`api.deleteMessage`** for cases such as “delete for me” vs “delete for everyone” on **someone else’s** message. This Nest service **does not** wrap `deleteMessage` (no `ZcaApiHelper.deleteMessage`); the only supported “withdraw your own / app-sent” path here is **`api.undo(UndoPayload, threadId, type)`** (see **API: undo** below) and the HTTP routes **`POST /zalo/actions/undo`** and **`POST /messages/undo/:id`**. Persisting `msgId` / `cliMsgId` after `sendMessage` is described under **Send Message** in this file.
 
 ---
 
@@ -716,15 +773,19 @@ User[]
 ---
 
 ## API: undo
-Thu hồi tin nhắn
+Thu hồi (undo) tin nhắn — **khớp** `UndoPayload` + `threadId` + `type` trong zca-js.
+
 ```ts
-api.undo(message)
+api.undo(payload, threadId, type?)
 ```
 
 ---
 
 ### Parameters
-message UndoPayload
+
+- **payload** `UndoPayload` — `msgId` và `cliMsgId` (cùng kiểu lưu sau `sendMessage` thành công)  
+- **threadId** — `grid` (nhóm) hoặc `toid` (DM), giống tham số 2 khi gửi tin  
+- **type** (tùy chọn) — `ThreadType` (mặc định zca: `User` nếu bỏ qua; **nhóm app** dùng `ThreadType.Group`)
 
 ### Return
 Promise<UndoResponse>
@@ -743,16 +804,21 @@ export type UndoResponse = {
 ### Examples
 
 ```ts
-// Thu hồi tin nhắn của bản thân nếu nó có chứa từ undo
-api.listener.on("message", (message) => {
-    const { content } = message.data;
-    const isTextMessage = typeof content == "string";
-    const shouldUndo = isTextMessage && content.includes("undo");
-    if (message.isSelf && shouldUndo) {
-        api.undo(message).then(console.log).catch(console.error);
-    }
-});
+// Thu hồi tin do chính tài khoản gửi (ví dụ sau khi đã có msgId + cliMsgId)
+import { ThreadType } from "zca-js";
+
+await api.undo(
+    { msgId: message.data.msgId, cliMsgId: message.data.cliMsgId },
+    message.threadId,
+    message.type,
+);
 ```
+
+#### Backend (this repo)
+
+- **Helper:** `ZcaApiHelper.prototype.undo` in `src/zalo/zca-api.helper.ts` — gọi `api.undo(payload, threadId, type)`.
+- **HTTP (session thô):** `POST /zalo/actions/undo` — JSON: `sessionId` (UUID), `msgId`, `cliMsgId`, `threadId` (grid / `toid`), `threadType` (tùy chọn; **bỏ qua = nhóm** giống các action khác).
+- **Ứng dụng (JWT, theo bản ghi `messages`):** `POST /messages/undo/:id` — khỏi gửi `sessionId` / `threadId`; server đọc `message_zalo_id`, `cli_msg_id`, map `group_zalo_id`, gọi `undo` rồi gắn `status: RECALL`.
 
 ---
 
