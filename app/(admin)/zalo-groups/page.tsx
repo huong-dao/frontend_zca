@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HiOutlineFunnel, HiOutlinePencilSquare, HiOutlineUserGroup } from "react-icons/hi2";
+import { HiOutlineFunnel, HiOutlineInformationCircle, HiOutlinePencilSquare, HiOutlineUserGroup } from "react-icons/hi2";
 import PageHeader from "@/components/features/PageHeader";
 import Pagination from "@/components/features/Pagination";
 import Modal from "@/components/features/Modal";
@@ -17,6 +17,7 @@ import { filterZaloAccountsByType } from "@/lib/api/zalo-accounts";
 import {
   changeZaloGroupName,
   getLinkedAccountsByGroupId,
+  getZaloGroupInfo,
   getZaloGroups,
 } from "@/lib/api/zalo-groups";
 import { getCurrentZaloSession } from "@/lib/zalo/client";
@@ -25,6 +26,7 @@ import type {
   GroupMetadataSyncStatus,
   PaginationMeta,
   ZaloGroup,
+  ZaloGroupInfoResponse,
   ZaloGroupLinkedAccount,
 } from "@/lib/api/types";
 import {
@@ -66,6 +68,82 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+const GROUP_INFO_FIELD_LABELS: Record<string, string> = {
+  name: "Tên nhóm",
+  globalId: "Global ID",
+  groupName: "Tên nhóm",
+  group_name: "Tên nhóm",
+  gridName: "Tên nhóm",
+  title: "Tiêu đề",
+  subject: "Chủ đề",
+  groupId: "Grid ID",
+  group_zalo_id: "Grid ID",
+  memberCount: "Số thành viên",
+  totalMember: "Số thành viên",
+  desc: "Mô tả",
+  description: "Mô tả",
+  avatar: "Avatar",
+  fullAvatar: "Avatar đầy đủ",
+  creatorId: "Người tạo",
+  adminIds: "Danh sách admin",
+};
+
+function formatGroupInfoValue(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function buildGroupInfoRows(group: ZaloGroup, payload: ZaloGroupInfoResponse | null) {
+  const rows: { key: string; label: string; value: string }[] = [
+    {
+      key: "group_zalo_id",
+      label: GROUP_INFO_FIELD_LABELS.group_zalo_id,
+      value: group.groupZaloId,
+    },
+  ];
+
+  if (!payload?.groupInfo) {
+    return rows;
+  }
+
+  const gridEntry = payload.groupInfo.gridInfoMap?.[group.groupZaloId];
+
+  if (gridEntry) {
+    for (const [fieldKey, fieldValue] of Object.entries(gridEntry)) {
+      rows.push({
+        key: fieldKey,
+        label: GROUP_INFO_FIELD_LABELS[fieldKey] ?? fieldKey,
+        value: formatGroupInfoValue(fieldValue),
+      });
+    }
+  }
+
+  for (const [fieldKey, fieldValue] of Object.entries(payload.groupInfo)) {
+    if (fieldKey === "gridInfoMap") {
+      continue;
+    }
+
+    rows.push({
+      key: `groupInfo.${fieldKey}`,
+      label: GROUP_INFO_FIELD_LABELS[fieldKey] ?? fieldKey,
+      value: formatGroupInfoValue(fieldValue),
+    });
+  }
+
+  return rows;
+}
+
 export default function ZaloGroupsPage() {
   const { user, loading: authLoading } = useAuth();
   const { showToast } = useToast();
@@ -85,6 +163,11 @@ export default function ZaloGroupsPage() {
   const [linkedAccounts, setLinkedAccounts] = useState<ZaloGroupLinkedAccount[]>([]);
   const [linkedAccountsLoading, setLinkedAccountsLoading] = useState(false);
   const [linkedAccountsError, setLinkedAccountsError] = useState("");
+  const [openGroupInfoModal, setOpenGroupInfoModal] = useState(false);
+  const [groupInfoTarget, setGroupInfoTarget] = useState<ZaloGroup | null>(null);
+  const [groupInfoPayload, setGroupInfoPayload] = useState<ZaloGroupInfoResponse | null>(null);
+  const [groupInfoLoading, setGroupInfoLoading] = useState(false);
+  const [groupInfoError, setGroupInfoError] = useState("");
   const [openRenameModal, setOpenRenameModal] = useState(false);
   const [renameGroup, setRenameGroup] = useState<ZaloGroup | null>(null);
   const [newGroupName, setNewGroupName] = useState("");
@@ -184,6 +267,69 @@ export default function ZaloGroupsPage() {
     setSelectedGroup(null);
     setLinkedAccounts([]);
     setLinkedAccountsError("");
+  }, []);
+
+  const handleCloseGroupInfoModal = useCallback(() => {
+    setOpenGroupInfoModal(false);
+    setGroupInfoTarget(null);
+    setGroupInfoPayload(null);
+    setGroupInfoError("");
+  }, []);
+
+  const handleOpenGroupInfoModal = useCallback(async (group: ZaloGroup) => {
+    setGroupInfoTarget(group);
+    setOpenGroupInfoModal(true);
+    setGroupInfoPayload(null);
+    setGroupInfoError("");
+    setGroupInfoLoading(true);
+
+    try {
+      const sessionResponse = await getCurrentZaloSession();
+      const sessionList =
+        sessionResponse.sessions.length > 0
+          ? sessionResponse.sessions
+          : sessionResponse.session
+            ? [sessionResponse.session]
+            : [];
+
+      const activeSessionId = sessionResponse.activeSessionId ?? sessionResponse.session?.id ?? null;
+      const activeSession =
+        (activeSessionId ? sessionList.find((session) => session.id === activeSessionId) : null) ??
+        sessionResponse.session ??
+        sessionList[0] ??
+        null;
+
+      if (!activeSession) {
+        setGroupInfoError(
+          "Chưa có phiên Zalo đang chọn. Vui lòng đăng nhập Zalo (QR) và chọn phiên ở header.",
+        );
+        return;
+      }
+
+      const sessionValidity = await ensureZaloSessionValid(activeSession.id, {
+        label: activeSession.user.displayName || activeSession.user.zaloName || activeSession.user.uid,
+      });
+
+      if (!sessionValidity.ok) {
+        setGroupInfoError(sessionValidity.reason);
+        return;
+      }
+
+      const response = await getZaloGroupInfo({
+        sessionId: activeSession.id,
+        groupId: group.groupZaloId,
+      });
+
+      setGroupInfoPayload(response);
+    } catch (requestError) {
+      setGroupInfoError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Không thể lấy thông tin nhóm từ Zalo.",
+      );
+    } finally {
+      setGroupInfoLoading(false);
+    }
   }, []);
 
   const handleOpenLinkedAccountsModal = useCallback(async (group: ZaloGroup) => {
@@ -305,7 +451,13 @@ export default function ZaloGroupsPage() {
 
   const getGroupActionItems = useCallback(
     (group: ZaloGroup): ActionItem[] => {
-      const items: ActionItem[] = [];
+      const items: ActionItem[] = [
+        {
+          label: "Xem thông tin nhóm",
+          icon: <HiOutlineInformationCircle className="h-5 w-5" />,
+          onClick: () => void handleOpenGroupInfoModal(group),
+        },
+      ];
 
       if (group._count.accountMaps > 0) {
         items.push({
@@ -323,7 +475,12 @@ export default function ZaloGroupsPage() {
 
       return items;
     },
-    [handleOpenLinkedAccountsModal, handleOpenRenameModal],
+    [handleOpenGroupInfoModal, handleOpenLinkedAccountsModal, handleOpenRenameModal],
+  );
+
+  const groupInfoRows = useMemo(
+    () => (groupInfoTarget ? buildGroupInfoRows(groupInfoTarget, groupInfoPayload) : []),
+    [groupInfoPayload, groupInfoTarget],
   );
 
   const pageSummary = useMemo(() => {
@@ -585,6 +742,84 @@ export default function ZaloGroupsPage() {
         {!linkedAccountsLoading && linkedAccounts.length > 0 ? (
           <p className="text-sm text-on-surface-variant">
             Tổng cộng {linkedAccounts.length} tài khoản liên kết.
+          </p>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={openGroupInfoModal}
+        title={
+          groupInfoTarget
+            ? `Xem thông tin nhóm — ${groupInfoTarget.groupName}`
+            : "Xem thông tin nhóm"
+        }
+        buttonText=""
+        modalWidth="800px"
+        onClose={handleCloseGroupInfoModal}
+      >
+        {groupInfoError ? (
+          <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">
+            {groupInfoError}
+          </div>
+        ) : null}
+
+        <DataTableScroll>
+          <table className={dataTableClassName}>
+            <thead>
+              <tr className="bg-surface-container-low/50">
+                <th className="text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface">
+                  Trường
+                </th>
+                <th className="text-sm px-6 py-3 text-label-sm font-normal tracking-wider text-on-surface">
+                  Giá trị
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-outline-variant/10">
+              {groupInfoLoading ? (
+                <tr>
+                  <td colSpan={2} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                    Đang tải thông tin nhóm từ Zalo...
+                  </td>
+                </tr>
+              ) : groupInfoRows.length === 0 ? (
+                <tr>
+                  <td colSpan={2} className="px-6 py-10 text-center text-sm text-on-surface-variant">
+                    {groupInfoError
+                      ? "Không thể hiển thị thông tin nhóm."
+                      : "Không có dữ liệu thông tin nhóm."}
+                  </td>
+                </tr>
+              ) : (
+                groupInfoRows.map((row) => (
+                  <tr
+                    key={row.key}
+                    className="group transition-colors hover:bg-surface-container-low/30"
+                  >
+                    <td className="px-6 py-3">
+                      <div
+                        className={`body-md text-sm font-semibold text-on-surface ${dataTableFrozenFirstColumnInnerClass}`}
+                      >
+                        {row.label}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-3">
+                      <div className="whitespace-pre-wrap break-all text-sm text-on-surface-variant">
+                        {row.value}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </DataTableScroll>
+
+        {!groupInfoLoading && groupInfoRows.length > 0 ? (
+          <p className="text-sm text-on-surface-variant">
+            Dữ liệu lấy từ Zalo qua phiên đang chọn ({groupInfoRows.length} trường).
           </p>
         ) : null}
       </Modal>

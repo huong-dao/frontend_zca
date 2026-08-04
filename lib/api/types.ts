@@ -232,6 +232,25 @@ export interface ZaloGroupLinkedAccountsResponse {
   data: ZaloGroupLinkedAccount[];
 }
 
+/** POST `/zalo-groups/group-info` — metadata nhóm từ Zalo (zca-js `GroupInfoResponse`). */
+export interface ZaloGroupGridInfo {
+  name?: string;
+  globalId?: string;
+  [key: string]: unknown;
+}
+
+export interface ZaloGroupInfoResponse {
+  groupInfo: {
+    gridInfoMap?: Record<string, ZaloGroupGridInfo>;
+    [key: string]: unknown;
+  };
+}
+
+export interface GetZaloGroupInfoPayload {
+  sessionId: string;
+  groupId: string;
+}
+
 export interface BulkCreateZaloGroupInput {
   group_name: string;
   group_zalo_id: string;

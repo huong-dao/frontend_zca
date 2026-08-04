@@ -60,7 +60,7 @@ This document is intended for the NextJS frontend team and is generated from the
   - All other endpoints
 - Role-protected controllers:
   - `users` has mixed per-method roles
-  - `zalo-groups` is ADMIN only
+  - `zalo-groups` — most routes allow `ADMIN` and `USER`; see each endpoint
   - `zalo-accounts` is ADMIN only
   - `configs` is ADMIN only
   - `api-keys` is ADMIN only
@@ -875,7 +875,7 @@ With `"mode": "update origin name"` at the top level of the body (next to `group
 ```
 
 #### Frontend notes
-- **Master group scan / re-scan:** after `getAllGroups`, POST this endpoint with the master’s `zaloAccountId` as `:id` (new groups only need correct `group_zalo_id`; names from Zalo can follow via background sync).
+- **Master group scan / re-scan:** after `GET /zalo/actions/groups?sessionId=...`, call **`POST /zalo-groups/group-info`** per grid id to read **`name`** / **`globalId`**, then POST this bulk endpoint with the master’s `zaloAccountId` as `:id` (new groups only need correct `group_zalo_id`; names from Zalo can follow via background sync if you skip step 2).
 - **User renames a group in ZCA:** `PATCH /zalo-groups/:id/group-name` (Zalo + DB).
 - **User renames on Zalo app:** wait for **`group-metadata-sync`** or re-import with updated `group_name` in bulk.
 - **`PATCH .../group-data` alone does not rename groups** in `zalo_groups`.
@@ -948,6 +948,73 @@ Example:
 - `401` / `403`: as other `zalo-groups` routes
 - `404`: group or master not found; group not linked to master
 - `500`: session restore / unexpected error
+
+#### Authentication
+- JWT required
+- Guards: `JwtAuthGuard`, `RolesGuard`
+- Roles: authenticated `ADMIN` or `USER`
+
+### POST `/zalo-groups/group-info`
+#### Endpoint
+- Method: `POST`
+- Full path: `/zalo-groups/group-info`
+- Function: `ZaloGroupsController.getGroupInfo`
+
+#### Description
+Fetch **live** Zalo group metadata for one grid id using a stored login session. The server restores the Zalo client from `zalo_login_sessions`, calls zca-js **`getGroupInfo(groupId)`**, refreshes cookies if Zalo rotates them, and **`touch`**es the session.
+
+Use this when the UI has selected a logged-in session (master or child) and needs group **name**, **`globalId`**, or other fields from Zalo before import / bulk create — **`GET /zalo/actions/groups`** only returns grid id lists (`gridVerMap`), not full metadata.
+
+Equivalent low-level route: **`POST /zalo/actions/group-info`** (same body/response shape). Prefer **`/zalo-groups/group-info`** from group-management screens.
+
+#### Request
+- Params: none
+- Body:
+  - `sessionId`: `string`, UUID — `zalo_login_sessions.id` for the account whose Zalo session should call the API (master or child)
+  - `groupId`: `string`, required — Zalo **group grid id** (`group_zalo_id`); same value as a key in `groups.gridVerMap` from `GET /zalo/actions/groups?sessionId=...`
+
+Example:
+
+```json
+{
+  "sessionId": "e2c52ab6-5134-4f9c-9968-3e8b430094aa",
+  "groupId": "4722820980206948279"
+}
+```
+
+#### Response
+
+Wrapper around zca-js **`GroupInfoResponse`**. The useful map for the frontend is usually **`groupInfo.gridInfoMap`**: keys = grid ids, values include at least **`name`** and often **`globalId`** (stable group identifier shared across master/child views).
+
+```json
+{
+  "groupInfo": {
+    "gridInfoMap": {
+      "4722820980206948279": {
+        "name": "Marketing Team",
+        "globalId": "EPHPVTP4JNKHS9M7F4QP0UK2I8978C00"
+      }
+    }
+  }
+}
+```
+
+Other fields inside `groupInfo` follow zca-js / Zalo API; treat them as opaque unless you need them. Do **not** assume every key is present on every group.
+
+#### Frontend flow (recommended)
+1. User picks a session → `GET /zalo-sessions` or your session picker (store `sessionId`).
+2. List groups on device → `GET /zalo/actions/groups?sessionId=<uuid>` → read grid ids from `groups.gridVerMap` (object keys).
+3. For each grid id to import or preview → **`POST /zalo-groups/group-info`** with `{ sessionId, groupId }`.
+4. Map response → bulk payload for **`POST /zalo-groups/bulk/:zaloAccountId`**:
+   - `group_zalo_id` = `groupId` from step 3
+   - `group_name` = `gridInfoMap[groupId].name` (fallback: grid id string)
+   - `global_id` = `gridInfoMap[groupId].globalId` when present (helps child/master linking)
+
+#### Error cases
+- `400`: validation error; Zalo API rejected the call (`ZaloApiError`, e.g. invalid grid id or session no longer in that group)
+- `401` / `403`: as other `zalo-groups` routes
+- `400`: stored session cannot be restored (expired QR login — user must scan again and upsert via `POST /zalo-sessions`)
+- `500`: unexpected server error
 
 #### Authentication
 - JWT required

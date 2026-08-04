@@ -4,6 +4,7 @@ import type {
   BulkCreateZaloGroupsResponse,
   ChangeZaloGroupNamePayload,
   ChangeZaloGroupNameResponse,
+  GetZaloGroupInfoPayload,
   InviteMemberToZaloGroupPayload,
   InviteMemberToZaloGroupResponse,
   RemoveMemberFromZaloGroupPayload,
@@ -13,6 +14,7 @@ import type {
   UpdateZaloGroupPayload,
   UpdateZaloGroupResponse,
   ZaloGroup,
+  ZaloGroupInfoResponse,
   ZaloGroupLinkedAccountsResponse,
 } from "@/lib/api/types";
 
@@ -54,6 +56,13 @@ export function getZaloGroups(params: GetZaloGroupsParams = {}) {
 export function getLinkedAccountsByGroupId(groupId: string) {
   return apiRequest<ZaloGroupLinkedAccountsResponse>(`/zalo-groups/${groupId}/accounts`, {
     method: "GET",
+  });
+}
+
+export function getZaloGroupInfo(data: GetZaloGroupInfoPayload) {
+  return apiRequest<ZaloGroupInfoResponse>("/zalo-groups/group-info", {
+    method: "POST",
+    body: data,
   });
 }
 
